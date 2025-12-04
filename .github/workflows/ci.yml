@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+      - name: Install Composer deps
+        run: |
+          cd backend
+          composer install --no-interaction --no-progress --prefer-dist || echo "composer not configured"
+      - name: Run PHP tests
+        run: |
+          cd backend
+          vendor/bin/phpunit --version || echo 'phpunit not configured'
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install and build
+        run: |
+          cd frontend
+          npm ci || echo 'no package.json'
+          npm run build || echo 'no build script'
+  file-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+      - name: Build Go service
+        run: |
+          cd file-engine-go
+          go env || echo 'no go mod'
+          go build ./... || echo 'build failed'

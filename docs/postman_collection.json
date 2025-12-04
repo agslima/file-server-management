@@ -1,0 +1,61 @@
+{
+  "info": {
+    "name": "File Server API - Example",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Folder",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <token>"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"parent_path\": \"/projects/cliente-a/\", \"name\": \"cliente-a-2025-12\"}"
+        },
+        "url": {
+          "raw": "https://api.example.com/api/folders",
+          "host": [
+            "api.example.com"
+          ],
+          "path": [
+            "api",
+            "folders"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Initiate Upload",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer <token>"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"target_path\": \"/projects/cliente-a/cliente-a-2025-12/\", \"filename\": \"doc.pdf\", \"size\": 12345}"
+        },
+        "url": {
+          "raw": "https://api.example.com/api/uploads/initiate",
+          "host": [
+            "api.example.com"
+          ],
+          "path": [
+            "api",
+            "uploads",
+            "initiate"
+          ]
+        }
+      }
+    }
+  ]
+}

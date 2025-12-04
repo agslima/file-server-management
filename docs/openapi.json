@@ -1,0 +1,48 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "File Server Management API",
+    "version": "1.0.0",
+    "description": "API to create folders and manage uploads on a remote file server (PHP + Go hybrid architecture)."
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com",
+      "description": "Production server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/folders": {
+      "post": {
+        "summary": "Create a folder (async)"
+      },
+      "get": {
+        "summary": "List folders under a path"
+      }
+    },
+    "/api/uploads/initiate": {
+      "post": {
+        "summary": "Initiate upload (get presigned URL)"
+      }
+    },
+    "/api/uploads/complete": {
+      "post": {
+        "summary": "Complete upload (notify server to scan & move)"
+      }
+    },
+    "/api/tasks/{task_id}": {
+      "get": {
+        "summary": "Get task status"
+      }
+    }
+  }
+}
