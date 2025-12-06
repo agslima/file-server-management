@@ -1,0 +1,23 @@
+
+syntax = "proto3";
+
+package fileengine;
+
+service FileEngine {
+  rpc CreateFolder (CreateFolderRequest) returns (CreateFolderResponse);
+  rpc InitiateUpload (InitiateUploadRequest) returns (InitiateUploadResponse);
+  rpc CompleteUpload (CompleteUploadRequest) returns (CompleteUploadResponse);
+  rpc GetTask (GetTaskRequest) returns (GetTaskResponse);
+}
+
+message CreateFolderRequest { string path = 1; }
+message CreateFolderResponse { bool ok = 1; string task_id = 2; }
+
+message InitiateUploadRequest { string filename = 1; int64 size = 2; }
+message InitiateUploadResponse { string upload_id = 1; }
+
+message CompleteUploadRequest { string upload_id = 1; string target_path = 2; }
+message CompleteUploadResponse { bool ok = 1; string task_id = 2; }
+
+message GetTaskRequest { string task_id = 1; }
+message GetTaskResponse { string task_id = 1; string status = 2; string details = 3; }
