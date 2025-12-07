@@ -34,3 +34,40 @@ See `docs/openapi.yaml` for the API spec.
      │ (Local / Cloud / AD)    │
      └─────────────────────────┘
 ```
+```text
+project-root/
+├─ frontend/               # React / Next.js
+│  ├─ components/
+│  ├─ pages/
+│  └─ services/
+├─ backend/                # Laravel API
+│  ├─ app/
+│  │   ├─ Http/Controllers/
+│  │   ├─ Services/       # Chama Go File Engine
+│  │   └─ Policies/
+│  ├─ database/migrations/
+│  ├─ routes/
+│  └─ tests/
+├─ file-engine-go/         # Go service
+│  ├─ cmd/                 # Entrypoint
+│  ├─ internal/
+│  │   ├─ filesystem/
+│  │   ├─ validators/
+│  │   └─ uploader/
+│  └─ pkg/
+├─ docker/                 # Dockerfiles + Compose
+└─ docs/
+```
+```Yaml
+Usuário → Frontend: Solicita nova pasta
+Frontend → API Laravel: POST /folders
+API Laravel → Validator: Verifica regras de nome
+API Laravel → Queue (Redis/Kafka): Envia tarefa
+File Engine Go → File Server: Cria pasta no caminho correto
+File Engine Go → API Laravel: Retorna status
+API Laravel → Audit Log DB: Registra ação
+API Laravel → Frontend: Notifica sucesso/erro
+```
+
+
+
