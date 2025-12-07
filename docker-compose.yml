@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  # ------------ REDIS ---------------
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ------------ FILE ENGINE API (Go) ---------------
+  file-engine:
+    build:
+      context: ./file-engine-api
+    container_name: file-engine
+    environment:
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - file_data:/mnt/files  # Aqui ficam as pastas reais
+    depends_on:
+      - redis
+
+  # ------------ FILE ENGINE WORKER (Go) ---------------
+  file-engine-worker:
+    build:
+      context: ./file-engine-worker
+    container_name: file-engine-worker
+    environment:
+      - REDIS_HOST=redis:6379
+      - FILE_ENGINE_URL=http://file-engine:8080
+    depends_on:
+      - redis
+      - file-engine
+
+  # ------------ BACKEND LARAVEL API ---------------
+  backend:
+    build:
+      context: ./backend
+    container_name: backend
+    ports:
+      - "9000:9000"
+    environment:
+      - FILE_ENGINE_URL=http://file-engine:8080/v1
+      - DB_CONNECTION=sqlite
+    volumes:
+      - ./backend:/var/www
+    depends_on:
+      - file-engine
+
+  # ------------ NGINX (para servir Laravel) ---------------
+  nginx:
+    image: nginx:1.25
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./backend:/var/www
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+
+volumes:
+  redis_data:
+  file_data:
