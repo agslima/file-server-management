@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7
+    ports:
+      - 6379:6379
+
+  file-engine:
+    build:
+      context: .
+      dockerfile: build/docker/server.Dockerfile
+    ports:
+      - 8080:8080
+      - 50051:50051
+    volumes:
+      - ./data:/mnt/files
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: build/docker/worker.Dockerfile
+    environment:
+      - REDIS_ADDR=redis:6379
+      - FILE_BASE_ROOT=/mnt/files
+    depends_on:
+      - redis
+      - file-engine

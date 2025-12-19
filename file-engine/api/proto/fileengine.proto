@@ -1,0 +1,50 @@
+syntax = "proto3";
+package fileengine;
+option go_package = "github.com/example/file-engine/pkg/generated;generated";
+
+service FileEngine {
+  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
+  rpc InitiateUpload(InitiateUploadRequest) returns (InitiateUploadResponse);
+  rpc CompleteUpload(CompleteUploadRequest) returns (CompleteUploadResponse);
+  rpc GetTaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
+}
+
+message CreateFolderRequest {
+  string parent_path = 1;
+  string folder_name = 2;
+  string requested_by = 3;
+}
+message CreateFolderResponse {
+  string task_id = 1;
+  string status = 2;
+  string message = 3;
+}
+
+message InitiateUploadRequest {
+  string target_path = 1;
+  string filename = 2;
+  int64 size = 3;
+  string mime = 4;
+}
+message InitiateUploadResponse {
+  string upload_id = 1;
+  string upload_url = 2;
+}
+
+message CompleteUploadRequest {
+  string upload_id = 1;
+}
+message CompleteUploadResponse {
+  string task_id = 1;
+  string status = 2;
+}
+
+message TaskStatusRequest {
+  string task_id = 1;
+}
+message TaskStatusResponse {
+  string task_id = 1;
+  string status = 2;
+  int32 progress = 3;
+  string message = 4;
+}
