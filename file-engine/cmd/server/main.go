@@ -11,7 +11,7 @@ import (
     "time"
 
     "google.golang.org/grpc"
-    pb "github.com/example/file-engine/grpc/pkg"
+    pb "github.com/example/file-engine/pkg/generated"
 )
 
 type server struct {

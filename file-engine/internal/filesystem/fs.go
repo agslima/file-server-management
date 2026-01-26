@@ -3,7 +3,6 @@ package filesystem
 import (
     "errors"
     "fmt"
-    "os"
 )
 
 // This package contains helpers to interact with SMB/SFTP/NFS servers.
