@@ -1,8 +1,6 @@
 # Backend (Laravel API)
 
-Place Laravel application here.
-
-Suggested structure:
+Structure:
 - app/
 - routes/
 - database/migrations/
