@@ -7,12 +7,6 @@ import (
     "time"
 )
 
-type Task struct {
-    ID     string
-    Type   string
-    Params map[string]string
-}
-
 type Queue interface {
     Pop(ctx context.Context) (*Task, error)
     Complete(ctx context.Context, id string, status string) error

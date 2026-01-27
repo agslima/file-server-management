@@ -8,7 +8,7 @@ import (
 
     "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
     "google.golang.org/grpc"
-    pb "github.com/example/file-engine/grpc/pkg"
+    pb "github.com/example/file-engine/pkg/generated"
 )
 
 func run() error {

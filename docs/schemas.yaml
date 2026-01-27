@@ -1,0 +1,100 @@
+components:
+  schemas:
+
+    # -------------------------
+    # Create Folder
+    # -------------------------
+    CreateFolderRequest:
+      type: object
+      required: [path, folderName, createdBy]
+      properties:
+        path:
+          type: string
+          description: Caminho existente no servidor onde a nova pasta será criada.
+        folderName:
+          type: string
+          description: Nome da nova pasta. Deve seguir as regras de naming.
+        createdBy:
+          type: string
+          description: Usuário solicitante.
+
+    CreateFolderResponse:
+      type: object
+      required: [taskId, status]
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+
+    # -------------------------
+    # Upload Flow
+    # -------------------------
+    InitiateUploadRequest:
+      type: object
+      required: [path, filename, mimeType, createdBy]
+      properties:
+        path:
+          type: string
+          description: Caminho onde o arquivo será salvo.
+        filename:
+          type: string
+          description: Nome do arquivo final.
+        mimeType:
+          type: string
+          description: Tipo MIME (restrito pela aplicação).
+        createdBy:
+          type: string
+
+    InitiateUploadResponse:
+      type: object
+      required: [uploadId, uploadUrl]
+      properties:
+        uploadId:
+          type: string
+          description: ID único do upload.
+        uploadUrl:
+          type: string
+          description: URL pré-assinada ou endpoint temporário para enviar o arquivo.
+
+    CompleteUploadRequest:
+      type: object
+      required: [uploadId]
+      properties:
+        uploadId:
+          type: string
+
+    CompleteUploadResponse:
+      type: object
+      required: [taskId, status]
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+
+    # -------------------------
+    # Task Status
+    # -------------------------
+    TaskStatus:
+      type: object
+      required: [id, type, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [createFolder, uploadProcess]
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        details:
+          type: object
+          description: Informações adicionais do processamento.

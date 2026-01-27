@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/example/file-engine/internal/filesystem"
+	"github.com/example/file-engine/internal/adapters/fs/local"
 )
 
 // Reuse Task struct from previous design
@@ -46,10 +44,10 @@ func (q *RedisQueue) Complete(ctx context.Context, id string, status string) err
 
 // FSProcessor now uses filesystem.LocalFs
 type FSProcessor struct {
-	FS *filesystem.LocalFs
+	FS *local.LocalFs
 }
 
-func NewFSProcessor(fs *filesystem.LocalFs) *FSProcessor {
+func NewFSProcessor(fs *local.LocalFs) *FSProcessor {
 	return &FSProcessor{FS: fs}
 }
 
