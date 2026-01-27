@@ -1,4 +1,4 @@
-FROM golang:1.22 AS builder
+FROM golang:1.25 AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o file-engine ./cmd/main.go
 
-FROM alpine:3.19
+FROM alpine:3.23
 RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
