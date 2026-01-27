@@ -1,6 +1,6 @@
 module github.com/example/file-engine
 
-go 1.21
+go 1.23.0
 
 require (
 	cloud.google.com/go/storage v1.36.0
@@ -14,7 +14,7 @@ require (
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/pkg/sftp v1.13.0
 	github.com/redis/go-redis/v9 v9.0.0
-	golang.org/x/crypto v0.20.0
+	golang.org/x/crypto v0.36.0
 	google.golang.org/api v0.160.0
 	google.golang.org/grpc v1.60.1
 )
@@ -60,11 +60,11 @@ require (
 	go.opentelemetry.io/otel v1.22.0 // indirect
 	go.opentelemetry.io/otel/metric v1.22.0 // indirect
 	go.opentelemetry.io/otel/trace v1.22.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240102182953-50ed04b92917 // indirect
