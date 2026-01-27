@@ -14,7 +14,7 @@ require (
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/pkg/sftp v1.13.0
 	github.com/redis/go-redis/v9 v9.0.0
-	golang.org/x/crypto v0.20.0
+	golang.org/x/crypto v0.36.0
 	google.golang.org/api v0.160.0
 	google.golang.org/grpc v1.60.1
 )
