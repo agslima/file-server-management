@@ -3,17 +3,25 @@ package tasks
 import (
     "context"
     "fmt"
+    "strings"
 
     "github.com/example/file-engine/internal/adapters/queue/redisq"
-    "github.com/example/file-engine/internal/adapters/fs/local"
+    "github.com/example/file-engine/internal/storage"
 )
 
 type Processor struct {
-    fs *local.LocalFs
+    st storage.Storage
 }
 
-func NewProcessor(fs *local.LocalFs) *Processor {
-    return &Processor{fs: fs}
+func NewProcessorWithStorage(st storage.Storage) *Processor {
+    return &Processor{st: st}
+}
+
+// NewProcessor kept for compatibility with older wiring (local FS).
+// It is intentionally removed in this version to enforce the unified storage interface.
+// If you need to keep it, create a local storage adapter and call NewProcessorWithStorage.
+func NewProcessor(_ any) *Processor {
+    panic("use NewProcessorWithStorage")
 }
 
 func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
@@ -24,11 +32,15 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
         if parent == "" || name == "" {
             return fmt.Errorf("missing params")
         }
-        return p.fs.CreateFolder(ctx, parent, name)
+        parent = strings.TrimSuffix(parent, "/")
+        return p.st.CreateFolder(ctx, parent+"/"+name)
     case "move_file":
-        src := []string{t.Params["src"]}
-        dst := []string{t.Params["dst"]}
-        return p.fs.MoveUploadedFile(ctx, src, dst)
+        src := t.Params["src"]
+        dst := t.Params["dst"]
+        if src == "" || dst == "" {
+            return fmt.Errorf("missing params")
+        }
+        return p.st.Move(ctx, src, dst)
     default:
         return fmt.Errorf("unknown task type %s", t.Type)
     }
