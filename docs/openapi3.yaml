@@ -1,0 +1,121 @@
+openapi: 3.0.3
+info:
+  title: File Engine API
+  version: 1.0.0
+  description: |
+    API responsável por operações de criação de pastas, upload de arquivos e 
+    consulta de tasks assíncronas.  
+    Conecta-se a um File Engine (Go) que executa as operações no servidor de arquivos.
+
+servers:
+  - url: https://api.example.com/v1
+
+paths:
+  /health:
+    get:
+      summary: Health check da API
+      responses:
+        "200":
+          description: OK
+
+  /folders:
+    post:
+      summary: Criar uma nova pasta no servidor
+      operationId: createFolder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFolderRequest"
+            example:
+              path: "/team/projects/2025"
+              folderName: "design-assets"
+              createdBy: "agnaldo.silva"
+      responses:
+        "200":
+          description: Pasta criada (task assíncrona iniciada)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateFolderResponse"
+              example:
+                taskId: "tsk_91f021b2"
+                status: "queued"
+
+  /uploads/initiate:
+    post:
+      summary: Iniciar upload de um arquivo
+      operationId: initiateUpload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiateUploadRequest"
+            example:
+              path: "/team/projects/design-assets"
+              filename: "mockup-v5.png"
+              mimeType: "image/png"
+              createdBy: "agnaldo.silva"
+      responses:
+        "200":
+          description: Upload iniciado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InitiateUploadResponse"
+              example:
+                uploadId: "upl_123abc"
+                uploadUrl: "https://uploads.example.com/upl_123abc"
+
+  /uploads/complete:
+    post:
+      summary: Completar um upload previamente iniciado
+      operationId: completeUpload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteUploadRequest"
+            example:
+              uploadId: "upl_123abc"
+      responses:
+        "200":
+          description: Task criada para mover o arquivo finalizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompleteUploadResponse"
+              example:
+                taskId: "tsk_48ac9fa0"
+                status: "queued"
+
+  /tasks/{id}:
+    get:
+      summary: Consultar status de uma task assíncrona
+      operationId: getTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "tsk_48ac9fa0"
+      responses:
+        "200":
+          description: Status atual da task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskStatus"
+              example:
+                id: "tsk_48ac9fa0"
+                type: "createFolder"
+                status: "completed"
+                createdAt: "2025-02-04T13:21:12Z"
+                updatedAt: "2025-02-04T13:21:30Z"
+                details:
+                  path: "/team/projects/2025/design-assets"
+                  createdBy: "agnaldo.silva"
