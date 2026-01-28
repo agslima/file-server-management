@@ -1,6 +1,6 @@
 # Server File Manager Platform (Laravel + Go File Engine)
 
-A web-based file management platform that operates on a **real server-side filesystem** (SMB/NFS/SFTP/local). The platform is designed for **enterprise governance**: RBAC, auditability, malware scanning, and strict path controls.
+A web-based file management platform that operates on a **server-side filesystem** (SMB/NFS/SFTP/local). The platform is designed with: RBAC, auditability, malware scanning, and strict path controls.
 
 > [!Note]
 > **Project status:** In active development. This repository documents an evolving architecture.
@@ -39,7 +39,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - **Anti-malware:** ClamAV scanning before committing files to the final location
 - **Temporary Upload Storage:** S3/MinIO (or a hardened local staging area)
 
-### Architecture Diagram (Mermaid)
+### Architecture Diagram
 
 ```mermaid
 flowchart TB
@@ -178,7 +178,7 @@ project-root/
 ├─ frontend/                 # React / Next.js (UI)
 ├─ backend/                  # Laravel API (Auth, RBAC, Audit, Orchestration)
 ├─ file-engine/              # Go service (Filesystem Engine)
-├─ docker/                   # Dockerfiles / Compose / local stack│
+├─ docker/                   # Dockerfiles / Compose
 └─ docs/
    ├─ architecture/            # Platform architecture docs
    ├─ readmes/                 # Role-specific READMEs
@@ -191,6 +191,6 @@ This project is a work in progress. Some controls are documented as “target st
 
 ---
 
-##License
+## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
