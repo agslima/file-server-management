@@ -19,6 +19,7 @@ type Storage interface {
     Delete(ctx context.Context, path string) error
     Exists(ctx context.Context, path string) (bool, error)
     List(ctx context.Context, prefix string) ([]ObjectInfo, error)
+    Open(ctx context.Context, path string) (io.ReadCloser, error)
 }
 
 type ObjectInfo struct {
