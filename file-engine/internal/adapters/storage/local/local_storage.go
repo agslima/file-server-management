@@ -104,3 +104,7 @@ func (l *LocalStorage) List(ctx context.Context, prefix string) ([]storage.Objec
     }
     return out, nil
 }
+
+func (l *LocalStorage) Open(ctx context.Context, path string) (io.ReadCloser, error) {
+    return os.Open(l.full(path))
+}

@@ -1,20 +1,62 @@
-# JWT Integration (HTTP + gRPC)
+# JWT Middleware + Claims -> AuthContext
+
+This project supports extracting identity from JWT and producing `auth.AuthContext`:
+
+- `sub` claim -> `AuthContext.UserID`
+- `roles` claim -> `AuthContext.Roles`
 
 ## Configuration
+
 Set either:
-- `JWT_SECRET` (HMAC) OR
+
+- `JWT_SECRET` (HMAC), OR
 - `JWT_PUBLIC_KEY_PEM` (RSA public key PEM)
 
-Optional:
+Optional (recommended):
+
 - `JWT_ISSUER`
 - `JWT_AUDIENCE`
 
-## Claims mapping
-- `sub` → `AuthContext.UserID`
-- `roles[]` → `AuthContext.Roles`
+## HTTP integration (grpc-gateway)
 
-## HTTP middleware
-Wrap the HTTP mux/handler with JWT middleware to inject AuthContext into the request context.
+Wrap your HTTP handler/mux:
 
-## gRPC interceptor
-Use a unary interceptor to read `authorization` metadata and inject AuthContext into the gRPC context.
+```go
+verifier, _ := auth.NewJWTVerifier(cfg.JWTSecret, cfg.JWTPublicKeyPEM, cfg.JWTIssuer, cfg.JWTAudience)
+handler := auth.HTTPAuthMiddleware(verifier, mux)
+http.ListenAndServe(cfg.HTTPAddr, handler)
+```
+
+## gRPC integration
+
+Register interceptor on the gRPC server:
+
+```go
+verifier, _ := auth.NewJWTVerifier(cfg.JWTSecret, cfg.JWTPublicKeyPEM, cfg.JWTIssuer, cfg.JWTAudience)
+
+grpcServer := grpc.NewServer(
+  grpc.UnaryInterceptor(auth.GRPCAuthInterceptor(verifier)),
+)
+
+pb.RegisterFileEngineServer(grpcServer, yourHandler)
+```
+
+## Accessing AuthContext in handlers
+
+```go
+a, ok := auth.FromContext(ctx)
+if !ok { ... }
+userID := a.UserID
+roles := a.Roles
+```
+
+## Example JWT payload
+
+```json
+{
+  "sub": "user-42",
+  "roles": ["admin", "editor"],
+  "iss": "your-issuer",
+  "aud": "file-engine"
+}
+```

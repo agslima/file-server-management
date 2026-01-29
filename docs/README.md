@@ -5,3 +5,7 @@
 - `docs/errors.md` – Error model and status code mapping
 - `docs/STORAGE_BACKENDS.md` – Local/S3/GCS semantics (backend-agnostic ACL enforcement)
 - `docs/JWT_INTEGRATION.md` – Wiring middleware/interceptor in code
+
+- `docs/prod-checklist.md` – production deployment checklist & runbook starter
+
+- `docs/observability.md` – logging + tracing + context propagation standards
