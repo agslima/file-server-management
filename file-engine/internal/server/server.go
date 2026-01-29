@@ -57,7 +57,7 @@ func (g *GRPCServer) Start() error {
 		return fmt.Errorf("listen: %w", err)
 	}
 
-	srv := grpc.NewServer(
+	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
 			auth.GRPCAuthInterceptor(g.Verifier),
 			authz.GRPCAuthZInterceptor(g.ACLStore),
@@ -67,7 +67,8 @@ func (g *GRPCServer) Start() error {
 			auth.GRPCStreamAuthInterceptor(g.Verifier),
 			authz.GRPCAuthZStreamInterceptor(g.ACLStore),
 		),
-	)
+	}
+	srv := grpc.NewServer(opts...)
 
 	pb.RegisterFileEngineServer(srv, g.Handler)
 
