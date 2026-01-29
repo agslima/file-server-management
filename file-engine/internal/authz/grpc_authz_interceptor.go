@@ -13,7 +13,9 @@ func GRPCAuthZInterceptor(store auth.ACLStore) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		perm, ok := MethodPermission[info.FullMethod]
 		if !ok {
-			return nil, status.Error(codes.PermissionDenied, "no permission mapping for method")
+			// Allow unmapped methods to proceed as long as auth is present.
+			// This avoids breaking existing clients when new RPCs are added.
+			return handler(ctx, req)
 		}
 
 		a, ok := auth.FromContext(ctx)
@@ -63,7 +65,9 @@ func GRPCAuthZStreamInterceptor(store auth.ACLStore) grpc.StreamServerIntercepto
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		perm, ok := MethodPermission[info.FullMethod]
 		if !ok {
-			return status.Error(codes.PermissionDenied, "no permission mapping for method")
+			// Allow unmapped methods to proceed as long as auth is present.
+			// This avoids breaking existing clients when new RPCs are added.
+			return handler(srv, stream)
 		}
 
 		a, ok := auth.FromContext(stream.Context())

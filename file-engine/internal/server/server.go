@@ -62,6 +62,7 @@ func (g *GRPCServer) Start() error {
 			auth.GRPCAuthInterceptor(g.Verifier),
 			authz.GRPCAuthZInterceptor(g.ACLStore),
 		),
+		// Stream interceptors are required for server-streaming RPCs like DownloadObject.
 		grpc.ChainStreamInterceptor(
 			auth.GRPCStreamAuthInterceptor(g.Verifier),
 			authz.GRPCAuthZStreamInterceptor(g.ACLStore),
