@@ -13,7 +13,10 @@ func GRPCAuthZInterceptor(store auth.ACLStore) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		perm, ok := MethodPermission[info.FullMethod]
 		if !ok {
-			// Allow unmapped methods to proceed as long as auth is present.
+			if _, ok := auth.FromContext(ctx); !ok {
+				return nil, status.Error(codes.Unauthenticated, "missing auth context")
+			}
+			// Allow unmapped methods to proceed when auth is present.
 			// This avoids breaking existing clients when new RPCs are added.
 			return handler(ctx, req)
 		}
@@ -65,7 +68,10 @@ func GRPCAuthZStreamInterceptor(store auth.ACLStore) grpc.StreamServerIntercepto
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		perm, ok := MethodPermission[info.FullMethod]
 		if !ok {
-			// Allow unmapped methods to proceed as long as auth is present.
+			if _, ok := auth.FromContext(stream.Context()); !ok {
+				return status.Error(codes.Unauthenticated, "missing auth context")
+			}
+			// Allow unmapped methods to proceed when auth is present.
 			// This avoids breaking existing clients when new RPCs are added.
 			return handler(srv, stream)
 		}
