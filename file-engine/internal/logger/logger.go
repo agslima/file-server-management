@@ -14,6 +14,7 @@ func New(level string) *Logger {
 }
 
 func (l *Logger) Info(v ...interface{}) { log.Println(v...) }
+func (l *Logger) Infof(format string, v ...interface{}) { log.Printf(format, v...) }
 func (l *Logger) Fatal(v ...interface{}) { log.Fatalln(v...) }
 func (l *Logger) Fatalf(format string, v ...interface{}) { log.Fatalf(format, v...) }
 func (l *Logger) Debug(v ...interface{}) { if l.level == "debug" { log.Println(v...) } }

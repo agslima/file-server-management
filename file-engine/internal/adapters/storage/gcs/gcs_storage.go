@@ -143,3 +143,9 @@ func (g *GCSStorage) List(ctx context.Context, prefix string) ([]istorage.Object
     }
     return out, nil
 }
+
+
+func (g *GCSStorage) Open(ctx context.Context, path string) (io.ReadCloser, error) {
+    key := g.key(path)
+    return g.client.Bucket(g.bucket).Object(key).NewReader(ctx)
+}
