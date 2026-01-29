@@ -1,14 +1,6 @@
 # Server File Manager Platform (Laravel + Go File Engine)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 A web-based file management platform that operates on a **server-side filesystem** (SMB/NFS/SFTP/local). The platform is designed with: RBAC, auditability, malware scanning, and strict path controls.
-=======
-A web-based file management platform that operates on a **real server-side filesystem** (SMB/NFS/SFTP/local). The platform is designed for **enterprise governance**: RBAC, auditability, malware scanning, and strict path controls.
->>>>>>> 19c1a12 (Update README.md (#65))
-=======
-A web-based file management platform that operates on a **server-side filesystem** (SMB/NFS/SFTP/local). The platform is designed with: RBAC, auditability, malware scanning, and strict path controls.
->>>>>>> 7f8e2d8 (Update README.md)
 
 > [!Note]
 > **Project status:** In active development. This repository documents an evolving architecture.
@@ -47,15 +39,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - **Anti-malware:** ClamAV scanning before committing files to the final location
 - **Temporary Upload Storage:** S3/MinIO (or a hardened local staging area)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ### Architecture Diagram
-=======
-### Architecture Diagram (Mermaid)
->>>>>>> 19c1a12 (Update README.md (#65))
-=======
-### Architecture Diagram
->>>>>>> 7f8e2d8 (Update README.md)
 
 ```mermaid
 flowchart TB
@@ -194,15 +178,7 @@ project-root/
 ├─ frontend/                 # React / Next.js (UI)
 ├─ backend/                  # Laravel API (Auth, RBAC, Audit, Orchestration)
 ├─ file-engine/              # Go service (Filesystem Engine)
-<<<<<<< HEAD
-<<<<<<< HEAD
 ├─ docker/                   # Dockerfiles / Compose
-=======
-├─ docker/                   # Dockerfiles / Compose / local stack│
->>>>>>> 19c1a12 (Update README.md (#65))
-=======
-├─ docker/                   # Dockerfiles / Compose
->>>>>>> 7f8e2d8 (Update README.md)
 └─ docs/
    ├─ architecture/            # Platform architecture docs
    ├─ readmes/                 # Role-specific READMEs
@@ -215,14 +191,6 @@ This project is a work in progress. Some controls are documented as “target st
 
 ---
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ## License
-=======
-##License
->>>>>>> 19c1a12 (Update README.md (#65))
-=======
-## License
->>>>>>> 7f8e2d8 (Update README.md)
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
