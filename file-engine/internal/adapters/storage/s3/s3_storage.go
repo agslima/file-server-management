@@ -214,3 +214,16 @@ func urlPathEscape(s string) string {
     s = strings.ReplaceAll(s, " ", "%20")
     return s
 }
+
+
+func (s *S3Storage) Open(ctx context.Context, path string) (io.ReadCloser, error) {
+    key := s.key(path)
+    out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+        Bucket: aws.String(s.bucket),
+        Key:    aws.String(key),
+    })
+    if err != nil {
+        return nil, err
+    }
+    return out.Body, nil
+}
