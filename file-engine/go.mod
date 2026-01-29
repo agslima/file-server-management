@@ -12,8 +12,8 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.6
 	github.com/jackc/pgx/v5 v5.5.5
-	github.com/pkg/sftp v1.13.10
-	github.com/redis/go-redis/v9 v9.0.0
+	github.com/pkg/sftp v1.13.0
+	github.com/redis/go-redis/v9 v9.17.3
 	golang.org/x/crypto v0.47.0
 	google.golang.org/api v0.263.0
 	google.golang.org/grpc v1.78.0
