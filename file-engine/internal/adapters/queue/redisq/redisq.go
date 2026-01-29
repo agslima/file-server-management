@@ -35,3 +35,29 @@ func (q *RedisQueue) Pop(ctx context.Context) (*TaskPayload, error) {
 func (q *RedisQueue) Complete(ctx context.Context, id, status string) error {
     return q.client.Set(ctx, "task:"+id, status, 0).Err()
 }
+
+func (q *RedisQueue) Enqueue(ctx context.Context, payload *TaskPayload) error {
+    b, err := json.Marshal(payload)
+    if err != nil {
+        return err
+    }
+    return q.client.RPush(ctx, "tasks", string(b)).Err()
+}
+
+// Convenience helper used by the gRPC handler.
+func (q *RedisQueue) EnqueueCreateFolder(ctx context.Context, parentPath, folderName, requestedBy string) (string, error) {
+    id := time.Now().UTC().Format("20060102T150405.000000000Z07:00")
+    p := &TaskPayload{
+        ID:   id,
+        Type: "create_folder",
+        Params: map[string]string{
+            "parent": parentPath,
+            "name":   folderName,
+            "by":     requestedBy,
+        },
+    }
+    if err := q.Enqueue(ctx, p); err != nil {
+        return "", err
+    }
+    return id, nil
+}
