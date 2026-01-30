@@ -1,14 +1,4 @@
-# For most projects, this workflow file will not need changing; you simply need
-# to commit it to your repository.
-#
-# You may wish to alter this file to override the set of languages analyzed,
-# or to provide custom queries or build logic.
-#
-# ******** NOTE ********
-# We have attempted to detect the languages in your repository. Please check
-# the `language` matrix defined below to confirm you have the correct set of
-# supported CodeQL languages.
-#
+# CodeQL
 name: "CodeQL Advanced"
 
 on:
@@ -31,6 +21,7 @@ jobs:
     permissions:
       # required for all workflows
       security-events: write
+      pull-requests: write # Required for posting comments
 
       # required to fetch internal or private CodeQL packs
       packages: read
@@ -45,7 +36,7 @@ jobs:
         include:
         - language: actions
           build-mode: none
-        - language: go
+        - language: [ 'go', 'javascript-typescript' ]
           build-mode: autobuild
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
@@ -99,3 +90,26 @@ jobs:
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
+
+    # Post results to PR (runs for each language)
+    - name: Post CodeQL Results to PR
+      if: startsWith(github.ref, 'refs/heads/pull-request/')
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
+      run: |
+        PR_NUM="${{ github.ref }}"
+        PR_NUM="${PR_NUM##*/}"
+        LANGUAGE="${{ matrix.language }}"
+
+        # Fetch alerts specific to the tool (CodeQL) and state
+        ALERTS=$(gh api "repos/${{ github.repository }}/code-scanning/alerts?tool_name=CodeQL&ref=${{ github.ref }}&state=open" --jq 'length')
+
+        # Only comment if security issues are found
+        if [[ "$ALERTS" -gt 0 ]]; then
+          REPORT="## 🛡️ CodeQL Analysis ($LANGUAGE)\n🚨 Found **$ALERTS** open security alert(s) in this branch.\n\n🔗 [View details](https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3A${{ github.ref_name }}+tool%3ACodeQL)"
+          echo -e "$REPORT" | gh pr comment "$PR_NUM" --body-file=-
+        else
+          echo "No security issues found for $LANGUAGE - skipping PR comment"
+        fi
+      
