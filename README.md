@@ -1,11 +1,11 @@
 # Server File Manager Platform (Laravel + Go File Engine)
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
-![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20security%20%7C%20adr-brightgreen)
-![gRPC](https://img.shields.io/badge/API-gRPC%20%2B%20HTTP%20Gateway-5e5e5e)
-![CodeQL](https://github.com/<org>/<repo>/actions/workflows/codeql.yml/badge.svg)
+[![CodeQL](https://github.comagslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.comagslima/file-server-management/actions/workflows/codeql.yml/badge.svg)
 ![Go Version](https://img.shields.io/badge/go-1.21+-blue)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
+![gRPC](https://img.shields.io/badge/API-gRPC%20%2B%20-5e5e5e)
+[![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 <!--
 ![Go Tests](https://github.com/<org>/<repo>/actions/workflows/go-test.yaml/badge.svg)
@@ -15,15 +15,9 @@
 ![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
 -->
 
-A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, **dual-layer auditing**, and a **quarantine → scan → promote** upload pipeline.
-
-> **Core principle:** JWT authenticates the user; **tenant scope is resolved server-side**. The **Go File Engine is the final authorization gate** for tenant membership, RBAC/ACL decisions, and safe-path execution.
-
-
 ## TL;DR
 
-A multi-tenant, governance-first file manager for **real storage backends** (mounted SMB/NFS/SFTP/local or S3/GCS).  
-**Laravel** handles UI + business validation; the **Go File Engine** is the **final authorization gate** and runs mutations **as async tasks**.
+A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, **dual-layer auditing**, and a **quarantine → scan → promote** upload pipeline.
 
 **Key points**
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
@@ -122,41 +116,27 @@ flowchart TB
 
 ---
 
-Multi-tenancy model
+### Multi-tenancy model
 
-Server-side tenant mapping (source of truth)
+#### Server-side tenant mapping (source of truth)
 
-The system does not trust the client or JWT to define tenant scope.
+- The system does not trust the client or JWT to define tenant scope.
+- The File Engine resolves which tenants a user can act on using server-owned data (e.g., a mapping table/service).
+- A request is authorized only if:
+  - a. the user is mapped to the tenant, and
+  - b. RBAC/ACL permits the operation on the target path within that tenant namespace.
 
-The File Engine resolves which tenants a user can act on using server-owned data (e.g., a mapping table/service).
+#### Namespacing strategy
 
-A request is authorized only if:
-
-1. the user is mapped to the tenant, and
-
-
-2. RBAC/ACL permits the operation on the target path within that tenant namespace.
-
-
-
-
-Namespacing strategy (recommended layout)
-
-Final (publishable): tenants/<tenant_id>/...
-
-Quarantine: quarantine/<tenant_id>/<uploadId>/...
-
-Malware hold: malware/<tenant_id>/<uploadId>/...
-
+- Final (publishable): tenants/<tenant_id>/...
+- Quarantine: quarantine/<tenant_id>/<uploadId>/...
+- Malware hold: malware/<tenant_id>/<uploadId>/...
 
 > Only objects/paths under tenants/<tenant_id>/... are listable/downloadable.
 
-
-
-
 ---
 
-Authentication & Authorization
+## Authentication & Authorization
 
 Authentication (JWT Bearer)
 
@@ -252,7 +232,7 @@ queued → running → success | failed | quarantined
 
 ---
 
-Key flows
+## Key flows
 
 1) Create folder (async)
 
@@ -324,7 +304,7 @@ if MALICIOUS/UNKNOWN: moves to malware hold and marks task quarantined
 
 ---
 
-Security model (README-level)
+## Security model (README-level)
 
 Trust boundaries:
 
@@ -368,7 +348,7 @@ Stronger immutability guarantees for the secondary audit sink 🔒
 
 ---
 
-Auditing
+## Auditing
 
 Dual-layer audit
 
@@ -389,7 +369,7 @@ Correlation fields: request_id, trace_id, task_id, user_id, tenant_id, operation
 
 ---
 
-Observability
+## Observability
 
 Standards:
 
@@ -423,7 +403,7 @@ Quarantine growth
 
 ---
 
-Quickstart (local development)
+## Quickstart (local development)
 
 Requirements:
 
@@ -455,21 +435,17 @@ curl -i http://localhost:8080/healthz
 
 go test ./... -v
 
-Default ports:
-
-HTTP: 8080
-
-gRPC: 50051
-
-Redis: 6379
-
-Postgres: 5432
+**Default ports:**
+- HTTP: `8080`
+- gRPC: `50051`
+- Redis: `6379`
+- Postgres: `5432`
 
 
 
 ---
 
-Repository structure
+## Repository structure
 
 ```text
 file-server-management/
@@ -486,45 +462,39 @@ file-server-management/
 
 ---
 
-Roadmap
+## Roadmap
 
-Phase	Goal	Status
-
-Phase 1	Browse directories + read authz baseline	🟡
-Phase 2	Folder creation (async) + audit events	🟡
-Phase 3	Quarantine → scan → promote + observability baseline	🟡
-Phase 4	Advanced governance (fine-grained ACL, workflows, notifications)	🔒
-Phase 5	Enterprise features (retention, eDiscovery-friendly audit, versioning)	🔒
-
+| Phase |	Goal |	Status |
+| --- | --- | --- |
+| Phase 1	| Browse directories + read authz baseline |	🟡 |
+| Phase 2 |	Folder creation (async) + audit events |	🟡 |
+| Phase 3	| Quarantine → scan → promote + observability baseline |	🟡 |
+| Phase 4 |	Advanced governance (fine-grained ACL, workflows, notifications) |	🔒 |
+| Phase 5 |	Enterprise features (retention, eDiscovery-friendly audit, versioning) | 🔒 |
 
 Queue strategy:
-
-Redis initially (simplicity), Kafka later (scale/replay) — see ADRs in docs/adr/.
-
-
+- Redis (simplicity) — see ADRs in `docs/adr/`.
 
 ---
 
-Documentation map
+## Documentation map
 
-docs/api-reference.md — File Engine API (gRPC + HTTP/JSON)
-
-docs/auth.md — JWT + RBAC/ACL model
-
-docs/security/threat-model.md — STRIDE + trust boundaries
-
-docs/security/pipeline-security.md — Upload → scan → promote security analysis
-
-docs/observability.md — logging, metrics, tracing standards
-
-docs/STORAGE_BACKENDS.md — local/s3/gcs adapters + configuration
-
-docs/adr/ — decisions and rationale
-
-
+- docs/api-reference.md — File Engine API (gRPC + HTTP/JSON)
+- docs/auth.md — JWT + RBAC/ACL model
+- docs/security/threat-model.md — STRIDE + trust boundaries
+- docs/security/pipeline-security.md — Upload → scan → promote security analysis
+- docs/observability.md — logging, metrics, tracing standards
+- docs/STORAGE_BACKENDS.md — local/s3/gcs adapters + configuration
+- docs/adr/ — decisions and rationale
 
 ---
 
-License
+## Disclaimer
 
-MIT License. See LICENSE.
+This project is a work in progress. Some controls are documented as “target state” and may not be fully implemented yet. Each milestone aims to move documented intent into enforced reality.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
