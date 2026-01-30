@@ -1,5 +1,5 @@
 # CodeQL
-name: "CodeQL Advanced"
+name: "CodeQL"
 
 on:
   push:
@@ -58,6 +58,7 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
+      if: matrix.language == 'go'
       uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
