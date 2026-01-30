@@ -1,6 +1,4 @@
 name: CI
-permissions:
-  contents: read
 
 on:
   push:
@@ -9,7 +7,10 @@ on:
     branches: [ main ]
 
 jobs:
+  # Stage 1
   backend:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -25,7 +26,10 @@ jobs:
         run: |
           cd backend
           vendor/bin/phpunit --version || echo 'phpunit not configured'
+  # Stage 2
   frontend:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -38,7 +42,10 @@ jobs:
           cd frontend
           npm ci || echo 'no package.json'
           npm run build || echo 'no build script'
+  # Stage 3
   file-engine:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
