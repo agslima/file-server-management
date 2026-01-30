@@ -95,7 +95,7 @@ flowchart TB
   U[User / Browser] -->|HTTPS| L[Laravel Control Plane<br/>UI + Business Validation]
 
   %% TB2: Service boundary
-  L -->|gRPC/HTTP (mTLS recommended)| FE[Go File Engine API<br/>AuthContext + Final AuthZ Gate]
+  L -->|"gRPC/HTTP (mTLS recommended)"| FE[Go File Engine API<br/>AuthContext + Final AuthZ Gate]
 
   %% TB3: Queue boundary
   FE --> Q[(Redis Queue<br/>Kafka later)]
@@ -234,73 +234,46 @@ queued → running → success | failed | quarantined
 
 ## Key flows
 
-1) Create folder (async)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User / UI
+    participant FE as File Engine (API)
+    participant DB as Postgres
+    participant Q as Redis Queue
+    participant W as Worker
+    participant ST as Storage (S3/Local)
 
-1. User → Laravel: request folder creation
+    Note over U, ST: Phase 1: Initiate & Upload
 
+    U->>FE: POST /v1/uploads:initiate<br/>(path, size, mime)
+    FE->>FE: Validate JWT, RBAC, Policy
+    FE->>DB: Create Record (State: PENDING, Path: quarantine/...)
+    FE-->>U: Return uploadId + uploadUrl
 
-2. Laravel: validates naming policy (business rule)
+    U->>ST: PUT binary to uploadUrl<br/>(Writes to quarantine/tenant/id/...)
+    
+    Note over U, ST: Phase 2: Completion & Scan
 
+    U->>FE: POST /v1/uploads/{id}:complete
+    FE->>DB: Update State: QUEUED
+    FE->>Q: Enqueue Scan Task
+    FE-->>U: HTTP 202 Accepted (taskId)
 
-3. Laravel → File Engine: create folder (with JWT)
+    Q->>W: Pop Task
+    W->>ST: Read File Stream
+    W->>W: ClamAV Scan (Stream)
 
-
-4. File Engine:
-
-validates JWT → AuthContext
-
-resolves tenant scope via server mapping
-
-enforces RBAC/ACL + safe-path constraints
-
-enqueues task
-
-
-
-5. Worker executes mkdir/prefix creation
-
-
-6. Audit event is written (Postgres) and forwarded to immutable sink
-
-
-7. UI polls task status and updates view
-
-
-
-2) Upload (two-phase publish: quarantine → scan → promote)
-
-Initiate
-
-1. UI requests POST /v1/uploads:initiate with metadata (path, filename, size, mime)
-
-
-2. File Engine validates:
-
-tenant membership (server mapping)
-
-RBAC/ACL on target path
-
-file policy (allowlists, size caps, naming rules)
-
-
-
-3. Returns an upload session + upload URL scoped to a quarantine prefix
-
-
-
-Complete 4. UI calls POST /v1/uploads/{uploadId}:complete 5. Worker:
-
-scans quarantined object (scanner boundary)
-
-if CLEAN: promotes to final namespace (tenants/<tenant>/...) using backend-appropriate atomic semantics
-
-if MALICIOUS/UNKNOWN: moves to malware hold and marks task quarantined
-
-
-6. Audit records: upload complete, scan verdict, promote/hold decision
-
-
-
+    alt Verdict: CLEAN
+        W->>ST: Atomic Move<br/>(quarantine/... -> tenants/...)
+        W->>DB: Update State: SUCCESS
+        W->>DB: Log Audit (Promote)
+    else Verdict: MALICIOUS
+        W->>ST: Move to malware/... (Hold)
+        W->>DB: Update State: QUARANTINED
+        W->>DB: Log Audit (Security Alert)
+    end
+```
 
 ---
 
@@ -343,9 +316,6 @@ Stronger immutability guarantees for the secondary audit sink 🔒
 
 > Detailed STRIDE model: docs/security/threat-model.md
 
-
-
-
 ---
 
 ## Auditing
@@ -364,8 +334,6 @@ Mutation events: create/move/rename/write, upload lifecycle, scan verdict, promo
 Security events: authz denials, policy failures (rate-limited + aggregated as needed)
 
 Correlation fields: request_id, trace_id, task_id, user_id, tenant_id, operation, path, outcome
-
-
 
 ---
 
@@ -440,8 +408,6 @@ go test ./... -v
 - gRPC: `50051`
 - Redis: `6379`
 - Postgres: `5432`
-
-
 
 ---
 
