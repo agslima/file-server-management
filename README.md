@@ -396,13 +396,13 @@ Queue strategy:
 
 ## Documentation map
 
-- docs/api-reference.md — File Engine API (gRPC + HTTP/JSON)
-- docs/auth.md — JWT + RBAC/ACL model
-- docs/threat-model.md — STRIDE + trust boundaries
-- docs/pipeline-security.md — Upload → scan → promote security analysis
-- docs/observability.md — logging, metrics, tracing standards
-- docs/STORAGE_BACKENDS.md — local/s3/gcs adapters + configuration
-- docs/adr/ — decisions and rationale
+- `docs/api-reference.md` — File Engine API (gRPC + HTTP/JSON)
+- `docs/auth.md` — JWT + RBAC/ACL model
+- `docs/threat-model.md` — STRIDE + trust boundaries
+- `docs/pipeline-security.md` — Upload → scan → promote security analysis
+- `docs/observability.md` — logging, metrics, tracing standards
+- `docs/STORAGE_BACKENDS.md` — local/s3/gcs adapters + configuration
+- `docs/adr/` — decisions and rationale
 
 ---
 
