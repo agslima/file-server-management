@@ -5,6 +5,9 @@ on:
   pull_request:
     branches: ["main"] # Run 'test' (gate) on PRs
 
+permissions:
+  contents: read
+
 jobs:
   snyk-security:
     runs-on: ubuntu-latest
