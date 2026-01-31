@@ -12,8 +12,8 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
-      labels:
-        - "ci"
+    labels:
+      - "ci"
 
   # 2. PHP (Backend) - Grouped
   - package-ecosystem: "composer"
@@ -27,8 +27,8 @@ updates:
     commit-message:
       prefix: "fix" # or 'chore'
       include: "scope"
-      labels:
-        - "backend"
+    labels:
+      - "backend"
 
   # 3. Go (File Engine) - Grouped
   # Very important for Go: ensures go.mod and go.sum stay in sync for related updates
@@ -43,8 +43,8 @@ updates:
     commit-message:
       prefix: "fix"
       include: "scope"
-      labels:
-        - "file-engine"
+    labels:
+      - "file-engine"
 
   # 4. Frontend (NPM) - Grouped
   - package-ecosystem: "npm"
@@ -58,8 +58,8 @@ updates:
     commit-message:
       prefix: "fix"
       include: "scope"
-      labels:
-        - "frontend"
+    labels:
+      - "frontend"
 
   # 5. Docker Configurations
   # Since these are distinct directories, they must remain separate entries.
@@ -69,8 +69,8 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
-      labels:
-        - "docker"
+    labels:
+      - "docker"
   
   - package-ecosystem: "docker"
     directory: "/docker"
@@ -78,8 +78,8 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
-      labels:
-        - "docker"
+    labels:
+      - "docker"
 
   - package-ecosystem: "docker"
     directory: "/backend"
@@ -87,9 +87,9 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
-      labels:
-        - "docker"
-        - "backend"
+    labels:
+      - "docker"
+      - "backend"
 
   - package-ecosystem: "docker"
     directory: "/frontend"
@@ -97,9 +97,9 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
-      labels:
-        - "docker"
-        - "frontend"
+    labels:
+      - "docker"
+      - "frontend"
 
   - package-ecosystem: "docker"
     directory: "/file-engine"
@@ -107,9 +107,9 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
-      labels:
-        - "docker"
-        - "file-engine"
+    labels:
+      - "docker"
+      - "file-engine"
 
   - package-ecosystem: "docker"
     directory: "/file-engine/api"
@@ -117,9 +117,9 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
-      labels:
-        - "docker"
-        - "file-engine"
+    labels:
+      - "docker"
+      - "file-engine"
 
   - package-ecosystem: "docker"
     directory: "/file-engine/worker"
@@ -127,6 +127,6 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
-      labels:
-        - "docker"
-        - "file-engine"
+    labels:
+      - "docker"
+      - "file-engine"
