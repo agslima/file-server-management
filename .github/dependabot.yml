@@ -1,67 +1,132 @@
 version: 2
 updates:
+  # 1. GitHub Actions - Grouped to update all actions in one PR
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+      labels:
+        - "ci"
 
+  # 2. PHP (Backend) - Grouped
   - package-ecosystem: "composer"
     directory: "/backend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    groups:
+      php-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "fix" # or 'chore'
+      include: "scope"
+      labels:
+        - "backend"
 
+  # 3. Go (File Engine) - Grouped
+  # Very important for Go: ensures go.mod and go.sum stay in sync for related updates
   - package-ecosystem: "gomod"
     directory: "/file-engine"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "fix"
+      include: "scope"
+      labels:
+        - "file-engine"
 
+  # 4. Frontend (NPM) - Grouped
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "fix"
+      include: "scope"
+      labels:
+        - "frontend"
 
+  # 5. Docker Configurations
+  # Since these are distinct directories, they must remain separate entries.
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
-
+    commit-message:
+      prefix: "ci"
+      labels:
+        - "docker"
+  
   - package-ecosystem: "docker"
     directory: "/docker"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      labels:
+        - "docker"
 
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      labels:
+        - "docker"
+        - "backend"
 
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      labels:
+        - "docker"
+        - "frontend"
 
   - package-ecosystem: "docker"
     directory: "/file-engine"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      labels:
+        - "docker"
+        - "file-engine"
 
   - package-ecosystem: "docker"
     directory: "/file-engine/api"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      labels:
+        - "docker"
+        - "file-engine"
 
   - package-ecosystem: "docker"
     directory: "/file-engine/worker"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      labels:
+        - "docker"
+        - "file-engine"
