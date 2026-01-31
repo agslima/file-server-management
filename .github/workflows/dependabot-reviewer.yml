@@ -3,28 +3,34 @@ name: Auto-merge for dependabot
 on: pull_request
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
-  review:
-    if: ${{ github.actor == 'dependabot[bot]'}}
-    permissions:
-      pull-requests: write # for approving a PR
-      contents: write # for enabling auto-merge on a PR
-    runs-on: ubuntu-24.04
+  review-and-merge:
+    # Only run for Dependabot
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
     steps:
       - name: Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
+        uses: dependabot/fetch-metadata@v2
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
-      - name: Approve PR
-        run: gh pr review --approve "$PR_URL"
+
+      # Only approve/merge if it's a Patch or Minor update.
+      # Ignore "Major" updates to review them manually.
+      
+      - name: Enable auto-merge for Dependabot PRs
+        if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor' }}
+        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      - name: Enable auto-merge for Dependabot PRs
-        run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Approve PR
+        if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor' }}
+        run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
