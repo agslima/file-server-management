@@ -42,6 +42,16 @@ func NewSftpFs(addr, user, password string, privateKey []byte, baseRoot string) 
 	return cfg, nil
 }
 
+// hostKeyCallback returns a HostKeyCallback implementation that must
+// verify the server's host key against a trusted allow list.
+// NOTE: This implementation currently does not have access to any
+// configured host key material and therefore fails closed. It should
+// be extended to load and check known host keys as appropriate for
+// the deployment environment.
+func (s *SftpFs) hostKeyCallback() (ssh.HostKeyCallback, error) {
+	return nil, errors.New("host key verification is not configured")
+}
+
 func (s *SftpFs) connect() error {
 	var auth []ssh.AuthMethod
 	if len(s.PrivateKey) > 0 {
@@ -56,10 +66,15 @@ func (s *SftpFs) connect() error {
 		return errors.New("no auth method provided")
 	}
 
+	hostKeyCallback, err := s.hostKeyCallback()
+	if err != nil {
+		return fmt.Errorf("host key callback: %w", err)
+	}
+
 	sshCfg := &ssh.ClientConfig{
 		User:            s.User,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // for demo only; production must verify host key
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         s.Timeout,
 	}
 

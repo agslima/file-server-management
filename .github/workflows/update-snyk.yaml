@@ -1,0 +1,35 @@
+name: Snyk report update
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 0 * * 0' # midnight every Sunday
+
+permissions:
+  contents: read
+
+jobs:
+  snyk-report:
+    permissions:
+      contents: write
+      pull-requests: write
+    name: Update Snyk report in the docs directory
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build reports
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          make snyk-report
+          pr_branch="snyk-update-$(echo $RANDOM | md5sum | head -c 20)"
+          git checkout -b "$pr_branch"
+          git config --global user.email 'a.agnaldosilva@gmail.com'
+          git config --global user.name 'agslima'
+          git add docs/snyk
+          git commit -m "[Bot] docs: Update Snyk reports" --signoff
+          git push --set-upstream origin "$pr_branch"
+          gh pr create -B main -H "$pr_branch" --title '[Bot] docs: Update Snyk report' --body ''

@@ -1,0 +1,18 @@
+# ==================================
+# GOVERNANCE ENFORCEMENT ZONES
+# ==================================
+
+# 1. Pipeline Integrity
+.github/workflows/    @agslima
+
+# 2. Policy Definitions
+k8s/policies/         @agslima
+policies/             @agslima
+
+# 3. Risk Acceptance
+
+# 4. Infrastructure State
+k8s/resources/        @agslima
+
+# 5. Trivy allowlist
+.trivyignore          @agslima
