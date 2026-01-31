@@ -19,4 +19,4 @@ jobs:
         with:
           # On PRs, just check and fail build if issues found
           command: ${{ github.event_name == 'pull_request' && 'test' || 'monitor' }}
-          args: --severity-threshold=high
+          args: --file=file-engine/go.mod --severity-threshold=high
