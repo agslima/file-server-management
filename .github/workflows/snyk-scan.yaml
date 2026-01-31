@@ -1,9 +1,10 @@
 name: Security Scan
 on:
-  push:
-    branches: ["main"] # Run 'monitor' only on main merge
-  pull_request:
-    branches: ["main"] # Run 'test' (gate) on PRs
+  workflow_dispatch: {}
+  # push:
+  #   branches: ["main"] # Run 'monitor' only on main merge
+  # pull_request:
+  #   branches: ["main"] # Run 'test' (gate) on PRs
 
 permissions:
   contents: read
@@ -12,10 +13,10 @@ jobs:
   snyk-security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
     
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.22' # Match my project version
 
