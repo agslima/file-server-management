@@ -1,7 +1,9 @@
 # Server File Manager Platform (Laravel + Go File Engine)
 
+## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads.
+
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
-[![CodeQL](https://github.comagslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.comagslima/file-server-management/actions/workflows/codeql.yml/badge.svg)
+[![CodeQL](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml)
 ![Go Version](https://img.shields.io/badge/go-1.21+-blue)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20%2B%20-5e5e5e)
@@ -98,18 +100,18 @@ flowchart TB
   L -->|"gRPC/HTTP (mTLS recommended)"| FE[Go File Engine API<br/>AuthContext + Final AuthZ Gate]
 
   %% TB3: Queue boundary
-  FE --> Q[(Redis Queue<br/>Kafka later)]
+  FE --> Q[Redis Queue]
   Q --> W[Worker<br/>Executes tasks]
 
   %% TB4: Data boundary
-  W --> ST[(Storage Backend<br/>Local/NFS/SMB/SFTP mounts<br/>S3/MinIO<br/>GCS)]
+  W --> ST["(Storage Backend<br/>Local/NFS/SMB/SFTP mounts<br/>S3/MinIO<br/>GCS)"]
 
   %% TB5: Scanner boundary
   W --> AV[Scanner Boundary<br/>ClamAV / pluggable]
   AV -->|verdict| W
 
   %% Audit
-  FE --> DB[(Postgres<br/>audit_events (append-only)<br/>ACL / mappings)]
+  FE --> DB["(Postgres<br/>audit_events (append-only)<br/>ACL / mappings)"]
   W --> DB
   DB --> SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
 ```
@@ -128,107 +130,77 @@ flowchart TB
 
 #### Namespacing strategy
 
-- Final (publishable): tenants/<tenant_id>/...
-- Quarantine: quarantine/<tenant_id>/<uploadId>/...
-- Malware hold: malware/<tenant_id>/<uploadId>/...
+- Final (publishable): `tenants/<tenant_id>/...`
+- Quarantine: `quarantine/<tenant_id>/<uploadId>/...`
+- Malware hold: `malware/<tenant_id>/<uploadId>/...`
 
-> Only objects/paths under tenants/<tenant_id>/... are listable/downloadable.
+> Only objects/paths under `tenants/<tenant_id>/...` are listable/downloadable.
 
 ---
 
 ## Authentication & Authorization
 
-Authentication (JWT Bearer)
+### Authentication (JWT Bearer)
 
 All endpoints require:
 
+```Http
 Authorization: Bearer <JWT>
+```
 
 Required claims:
-
-sub → user identifier
-
-roles → array of role names
-
+- `sub` → user identifier
+- `roles` → array of role names
 
 Recommended production validation:
 
 RSA public-key verification
+- enforce `iss`, `aud`
+- validate `exp`
 
-enforce iss, aud
+### Authorization (RBAC + path-based ACL with inheritance)
 
-validate exp
-
-
-Authorization (RBAC + path-based ACL with inheritance)
-
-Authorization is enforced before operations are executed/enqueued at the File Engine boundary.
+Authorization is enforced **before operations are executed/enqueued at the File Engine boundary**.
 
 Resolution order:
 
-1. Closest ACL for user:<sub> on path
+* 1. Closest ACL for `user:<sub>` on path
+* 2. Closest ACL for `role:<role>` on path
+* 3. RBAC fallback (role defaults)
+* 4. Deny by default
 
+Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 
-2. Closest ACL for role:<role> on path
+### No authorization drift (explicit responsibility split)
 
-
-3. RBAC fallback (role defaults)
-
-
-4. Deny by default
-
-
-
-Inheritance walks up the path: /a/b/c → /a/b → /a → /
-
-No authorization drift (explicit responsibility split)
-
-Laravel may validate business intent (naming policies, UX flow), but must not be the final gate.
-
-File Engine is the final enforcement point for:
-
-tenant membership (server-side mapping),
-
-RBAC/ACL decision,
-
-path normalization + safe execution constraints.
-
-
-
+- Laravel may validate business intent (naming policies, UX flow), but must not be the final gate.
+- **File Engine** is the final enforcement point for:
+  - tenant membership (server-side mapping),
+  - RBAC/ACL decision,
+  - path normalization + safe execution constraints.
 
 ---
 
-File Engine API (contract snapshot)
+## File Engine API (contract snapshot)
 
 > Full reference: docs/api-reference.md (link target)
 
-
-
 Base URLs:
 
-HTTP: http://<host>:8080
-
-gRPC: <host>:50051
-
+- HTTP: `http://<host>:8080`
+- gRPC: `<host>:50051`
 
 Core endpoints (HTTP/JSON via gRPC-Gateway):
 
-POST /v1/folders → returns taskId (async)
-
-POST /v1/uploads:initiate → returns uploadId, uploadUrl
-
-POST /v1/uploads/{uploadId}:complete → returns taskId
-
-GET /v1/tasks/{taskId} → poll task status
-
-GET /healthz → liveness (200 OK if process + HTTP server responsive)
-
+- `POST /v1/folders` → returns `taskId` (async)
+- `POST /v1/uploads:initiate` → returns `uploadId, uploadUrl`
+- `POST /v1/uploads/{uploadId}:complete` → returns `taskId`
+- `GET /v1/tasks/{taskId}` → poll task status
+- `GET /healthz` → liveness (200 OK if process + HTTP server responsive)
 
 Task state model (canonical):
 
-queued → running → success | failed | quarantined
-
-
+- `queued → running → success | failed | quarantined`
 
 ---
 
@@ -281,59 +253,43 @@ sequenceDiagram
 
 Trust boundaries:
 
-TB1: Browser ↔ Laravel (untrusted input)
-
-TB2: Laravel ↔ File Engine (east-west; mTLS recommended)
-
-TB3: Queue boundary (tamper/replay/poison messages)
-
-TB4: Storage boundary (least privilege; private endpoints)
-
-TB5: Scanner boundary (hostile bytes; sandboxed)
-
+- TB1: Browser ↔ Laravel (untrusted input)
+- TB2: Laravel ↔ File Engine (east-west; mTLS recommended)
+- TB3: Queue boundary (tamper/replay/poison messages)
+- TB4: Storage boundary (least privilege; private endpoints)
+- TB5: Scanner boundary (hostile bytes; sandboxed)
 
 Secure-by-default controls:
 
-Deny-by-default authorization at File Engine
-
-Tenant scope from server-side mapping (not JWT)
-
-Strict path normalization + traversal rejection
-
-Quarantine → scan → promote gating
-
-Redaction policy: never log tokens or pre-signed URLs
+- Deny-by-default authorization at File Engine
+- Tenant scope from server-side mapping (not JWT)
+- Strict path normalization + traversal rejection
+- Quarantine → scan → promote gating
+- Redaction policy: never log tokens or pre-signed URLs
 
 
 Known gaps / planned hardening (examples):
 
-Explicit deny rules in ACL (deny > allow) 🔒 (ADR candidate)
+- Explicit deny rules in ACL (deny > allow) 🔒 (ADR candidate)
+- Signed task payloads / replay defense 🔒 (ADR candidate)
+- Stronger immutability guarantees for the secondary audit sink 🔒
 
-Signed task payloads / replay defense 🔒 (ADR candidate)
-
-Stronger immutability guarantees for the secondary audit sink 🔒
-
-
-> Detailed STRIDE model: docs/security/threat-model.md
+> Detailed STRIDE model: `docs/threat-model.md`
 
 ---
 
 ## Auditing
 
-Dual-layer audit
+**Dual-layer audit**
 
-Primary (queryable): Postgres audit_events table (append-only)
-
-Secondary (tamper-resistant): external sink (SIEM / Loki / S3 WORM)
-
+- **Primary (queryable)**: Postgres audit_events table (append-only)
+- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM)
 
 Audit coverage (target baseline):
 
-Mutation events: create/move/rename/write, upload lifecycle, scan verdict, promote/hold decision
-
-Security events: authz denials, policy failures (rate-limited + aggregated as needed)
-
-Correlation fields: request_id, trace_id, task_id, user_id, tenant_id, operation, path, outcome
+- Mutation events: create/move/rename/write, upload lifecycle, scan verdict, promote/hold decision
+- Security events: authz denials, policy failures (rate-limited + aggregated as needed)
+- Correlation fields: `request_id, trace_id, task_id, user_id, tenant_id, operation, path`, outcome
 
 ---
 
@@ -341,33 +297,20 @@ Correlation fields: request_id, trace_id, task_id, user_id, tenant_id, operation
 
 Standards:
 
-JSON structured logs (consistent envelope, redaction)
-
-Request correlation across HTTP ↔ gRPC ↔ queue ↔ worker
-
-X-Request-Id, traceparent (W3C)
-
-
-Distributed tracing via OpenTelemetry (OTLP exporter)
-
+- JSON structured logs (consistent envelope, redaction)
+- Request correlation across HTTP ↔ gRPC ↔ queue ↔ worker
+  - X-Request-Id, traceparent (W3C)
+- Distributed tracing via OpenTelemetry (OTLP exporter)
 
 Operational signals to monitor:
 
-Queue depth / worker saturation
+- Queue depth / worker saturation
+- Scan duration + pass/fail ratio
+- Promotion failures
+- Quarantine growth
+- 403 spikes (probing / misconfig)
 
-Scan duration + pass/fail ratio
-
-Promotion failures
-
-Quarantine growth
-
-403 spikes (probing / misconfig)
-
-
-> Full spec: docs/observability.md
-
-
-
+> Full spec: `docs/observability.md`
 
 ---
 
@@ -375,33 +318,41 @@ Quarantine growth
 
 Requirements:
 
-Go 1.21+
-
-Docker Engine / Docker Desktop + Compose v2
-
-curl
+- Go 1.21+
+- Docker Engine / Docker Desktop + Compose v2
+- curl
 
 
-1) Start dependencies (Redis + Postgres)
+### 1) Start dependencies (Redis + Postgres)
 
+```bash
 docker compose up -d postgres redis
+```
 
-2) Apply migrations
+### 2) Apply migrations
 
+```bash
 export POSTGRES_DSN="postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"
 go run ./cmd/migrate
+```
 
-3) Run the stack (API + Worker)
+### 3) Run the stack (API + Worker)
 
+```bash
 docker compose up --build
+```
 
-4) Smoke test (liveness)
+### 4) Smoke test (liveness)
 
+```bash
 curl -i http://localhost:8080/healthz
+```
 
-5) Run unit tests
+### 5) Run unit tests
 
+```bash
 go test ./... -v
+```
 
 **Default ports:**
 - HTTP: `8080`
@@ -447,8 +398,8 @@ Queue strategy:
 
 - docs/api-reference.md — File Engine API (gRPC + HTTP/JSON)
 - docs/auth.md — JWT + RBAC/ACL model
-- docs/security/threat-model.md — STRIDE + trust boundaries
-- docs/security/pipeline-security.md — Upload → scan → promote security analysis
+- docs/threat-model.md — STRIDE + trust boundaries
+- docs/pipeline-security.md — Upload → scan → promote security analysis
 - docs/observability.md — logging, metrics, tracing standards
 - docs/STORAGE_BACKENDS.md — local/s3/gcs adapters + configuration
 - docs/adr/ — decisions and rationale
