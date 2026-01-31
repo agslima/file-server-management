@@ -1,0 +1,22 @@
+name: Security Scan
+on:
+  push:
+    branches: ["main"] # Run 'monitor' only on main merge
+  pull_request:
+    branches: ["main"] # Run 'test' (gate) on PRs
+
+jobs:
+  snyk-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Step 1: Install Snyk CLI (Standard Action)
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/golang@master # Adjust for your language (node, python, etc)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          # On PRs, just check and fail build if issues found
+          command: ${{ github.event_name == 'pull_request' && 'test' || 'monitor' }}
+          args: --severity-threshold=high
