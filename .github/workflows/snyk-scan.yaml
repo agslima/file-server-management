@@ -14,37 +14,22 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-            go-version: '1.22' # Match my project version
+          go-version: '1.22' # Match my project version
 
-       # 2. Install Snyk CLI (Better than the Docker action)
-       - name: Install Snyk CLI
-         uses: snyk/actions/setup@master
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
 
-       # 3. PREPARE THE CODE (Critical Step)
-       # Snyk needs 'go list' to work, which requires:
-       # A. Dependencies downloaded
-       # B. Generated files (like .pb.go) to exist
-       - name: Prepare Go Environment
-         run: |
+      - name: Prepare Go Environment
+        run: |
            cd file-engine
            go mod download
-        
            go build ./... || echo "::warning::Build failed, Snyk might fail too"
-
-       # 4. Run Snyk
-       - name: Run Snyk to check for vulnerabilities
-         env:
+      
+      - name: Run Snyk to check for vulnerabilities
+        env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-         run: |
+        run: |
            cd file-engine
            snyk test --file=go.mod --severity-threshold=high
 
-      # Step 1: Install Snyk CLI (Standard Action)
-      # - name: Run Snyk to check for vulnerabilities
-      #   uses: snyk/actions/golang@master # Adjust for your language (node, python, etc)
-      #   env:
-      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      #   with:
-          # On PRs, just check and fail build if issues found
-      #     command: ${{ github.event_name == 'pull_request' && 'test' || 'monitor' }}
-      #     args: --file=file-engine/go.mod --severity-threshold=high
+      
