@@ -1,6 +1,7 @@
 # File Engine - Complete Scaffold (Generated)
 
 This scaffold includes:
+
 - Clean architecture layout
 - Local filesystem adapter (atomic writes, move with fallback)
 - Redis-backed worker and queue adapter
@@ -9,6 +10,7 @@ This scaffold includes:
 - Dockerfiles and docker-compose for local development
 
 Usage:
+
 1. Install protoc and Go protoc plugins (protoc-gen-go, protoc-gen-go-grpc, protoc-gen-grpc-gateway)
 2. Run `make proto` to generate gRPC code into pkg/generated/
 3. Build: `make build`
@@ -32,11 +34,12 @@ go run ./cmd/migrate
 ```
 
 ### Migration files
+
 - `db/migrations/0001_create_acl_entries.sql`
 
 ### Reference queries
-- `db/queries/acl.sql`
 
+- `db/queries/acl.sql`
 
 ## Authorization Tests
 
@@ -53,7 +56,6 @@ Run:
 ```bash
 go test ./internal/auth -v
 ```
-
 
 ## Storage backends (Local / S3 / GCS)
 
@@ -219,5 +221,3 @@ file-engine/
 └── go.sum
 
 ```
-
-

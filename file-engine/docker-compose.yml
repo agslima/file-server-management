@@ -28,7 +28,6 @@ services:
       POSTGRES_DSN: postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable
       FILE_BASE_ROOT: /mnt/files
       STORAGE_BACKEND: local
-      STORAGE_BACKEND: local
     volumes:
       - ./data:/mnt/files
     depends_on:

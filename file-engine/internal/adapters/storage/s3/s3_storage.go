@@ -77,7 +77,7 @@ func randHex(n int) string {
 }
 
 func (s *S3Storage) CreateFolder(ctx context.Context, path string) error {
-    // In S3, folders are prefixes; we optionally create a zero-byte placeholder "<prefix>/"
+    // In S3, folders are prefixes; optionally create a zero-byte placeholder "<prefix>/"
     key := s.key(strings.TrimSuffix(path, "/") + "/")
     _, err := s.client.PutObject(ctx, &s3.PutObjectInput{
         Bucket: aws.String(s.bucket),

@@ -21,7 +21,7 @@ func run() error {
 
     // After generating the code, the following function will be available:
     // pb.RegisterFileEngineHandlerFromEndpoint(ctx, mux, "localhost:50051", opts)
-    // For development, you can use the generated pkg to register handlers.
+    // Use the generated pkg to register handlers.
     if err := pb.RegisterFileEngineHandlerFromEndpoint(ctx, mux, "localhost:50051", opts); err != nil {
         return err
     }

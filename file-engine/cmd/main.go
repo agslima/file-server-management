@@ -117,7 +117,7 @@ func createFolderHandler(w http.ResponseWriter, r *http.Request) {
     tasks[taskID] = &Task{ID: taskID, Status: "queued", Message: "Task queued for folder creation", Created: time.Now()}
     tasksMu.Unlock()
 
-    // In a real implementation, enqueue to Redis/Kafka and have a worker create the folder on the remote FS.
+    // In a real implementation, enqueue to Redis and have a worker create the folder on the remote FS.
 
     resp := CreateFolderResp{Status: "queued", TaskID: taskID, Message: "Pasta em criação. Verifique o status via /tasks/" + taskID}
     w.Header().Set("Content-Type", "application/json")
