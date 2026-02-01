@@ -19,7 +19,7 @@ func NewProcessorWithStorage(st storage.Storage) *Processor {
 
 // NewProcessor kept for compatibility with older wiring (local FS).
 // It is intentionally removed in this version to enforce the unified storage interface.
-// If you need to keep it, create a local storage adapter and call NewProcessorWithStorage.
+// If need to keep it, create a local storage adapter and call NewProcessorWithStorage.
 func NewProcessor(_ any) *Processor {
     panic("use NewProcessorWithStorage")
 }

@@ -16,7 +16,7 @@ import (
 
 type LocalFs struct {
 	BaseRoot string // absolute canonical base path
-	// Optionally you can add logger, uid/gid mappings, umask handling, etc.
+	// Opt: can add logger, uid/gid mappings, umask handling, etc.
 }
 
 // NewLocalFs returns a LocalFs instance ensuring baseRoot is absolute and cleaned.

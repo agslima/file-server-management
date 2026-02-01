@@ -11,7 +11,7 @@ import (
     "crypto/x509"
 )
 
-// Claims shape we expect.
+// Claims shape.
 // Recommended:
 // - sub: user id
 // - roles: ["admin","viewer"]

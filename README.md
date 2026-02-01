@@ -1,6 +1,6 @@
 # Server File Manager Platform (Laravel + Go File Engine)
 
-## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads.
+## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml)
@@ -9,6 +9,7 @@
 ![gRPC](https://img.shields.io/badge/API-gRPC%20%2B%20-5e5e5e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 <!--
 ![Go Tests](https://github.com/<org>/<repo>/actions/workflows/go-test.yaml/badge.svg)
 ![Laravel Tests](https://github.com/<org>/<repo>/actions/workflows/phpunit.yaml/badge.svg)
@@ -21,7 +22,8 @@
 
 A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, **dual-layer auditing**, and a **quarantine → scan → promote** upload pipeline.
 
-**Key points**
+**Key points:**
+
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
 - **Async mutations:** create/move/upload return a `taskId`; clients poll task status.
@@ -36,6 +38,7 @@ A multi-tenant, governance-first file management platform that operates on **rea
 This repository documents an evolving architecture.
 
 Legend:
+
 - ✅ implemented
 - 🟡 in progress
 - 🔒 planned / target state
@@ -46,7 +49,8 @@ Legend:
 
 ## Why this exists
 
-Many organizations still rely on direct file server access (shared drives/SSH/FTP) to create folders, upload documents, and manage structured storage. This is:
+Many organizations rely on direct file server access (shared drives/SSH/FTP) to create folders, upload documents, and manage structured storage. This is:
+
 - hard to audit,
 - easy to misuse (authorization drift, unsafe paths),
 - inconsistent with compliance requirements,
@@ -59,15 +63,18 @@ This platform provides a centralized, permissioned interface that **controls and
 ## What it does
 
 ### Read path
+
 - Browse folders (tree navigation, directory listing)
 - Metadata display (size, timestamps, ownership, etc.) *(as applicable per backend)*
 
 ### Write path (async)
+
 - Create folders (policy-enforced naming)
 - Upload files (two-step: initiate → complete)
 - Move/rename/write operations *(as tasks)*
 
 ### Governance & security
+
 - JWT auth (Bearer)
 - RBAC + path-based ACL (inheritance)
 - Multi-tenant enforcement via **server-side tenant mapping**
@@ -76,21 +83,23 @@ This platform provides a centralized, permissioned interface that **controls and
 
 ---
 
-## Architecture at a glance
+## Architecture
 
 ### Control plane vs data plane
 
-**Control Plane — Laravel**
+**Control Plane — Laravel (PHP):**
+
 - UI/API orchestration and business validation (e.g., naming conventions)
 - Integrations (planned/target): enterprise identity patterns (AD/LDAP/OIDC broker)
 - Admin/UX aggregation (task status, audit views)
 
-**Data Plane — Go File Engine + Worker**
+**Data Plane — Go File Engine + Worker:**
+
 - gRPC-first API + HTTP/JSON via gRPC-Gateway
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
 - Enqueues tasks; worker executes storage operations with least privilege
 
-### High-level diagram (trust boundaries)
+### Diagram (trust boundaries)
 
 ```mermaid
 flowchart TB
@@ -149,14 +158,15 @@ Authorization: Bearer <JWT>
 ```
 
 Required claims:
+
 - `sub` → user identifier
 - `roles` → array of role names
 
 Recommended production validation:
 
-RSA public-key verification
-- enforce `iss`, `aud`
-- validate `exp`
+- RSA public-key verification
+  - enforce `iss`, `aud`
+  - validate `exp`
 
 ### Authorization (RBAC + path-based ACL with inheritance)
 
@@ -164,10 +174,10 @@ Authorization is enforced **before operations are executed/enqueued at the File 
 
 Resolution order:
 
-* 1. Closest ACL for `user:<sub>` on path
-* 2. Closest ACL for `role:<role>` on path
-* 3. RBAC fallback (role defaults)
-* 4. Deny by default
+1. Closest ACL for `user:<sub>` on path
+2. Closest ACL for `role:<role>` on path
+3. RBAC fallback (role defaults)
+4. Deny by default
 
 Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 
@@ -181,9 +191,9 @@ Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 
 ---
 
-## File Engine API (contract snapshot)
+## File Engine API
 
-> Full reference: docs/api-reference.md (link target)
+> Full reference: docs/api-reference.md
 
 Base URLs:
 
@@ -249,12 +259,12 @@ sequenceDiagram
 
 ---
 
-## Security model (README-level)
+## Security model
 
 Trust boundaries:
 
 - TB1: Browser ↔ Laravel (untrusted input)
-- TB2: Laravel ↔ File Engine (east-west; mTLS recommended)
+- TB2: Laravel ↔ File Engine (east-west; mTLS)
 - TB3: Queue boundary (tamper/replay/poison messages)
 - TB4: Storage boundary (least privilege; private endpoints)
 - TB5: Scanner boundary (hostile bytes; sandboxed)
@@ -266,7 +276,6 @@ Secure-by-default controls:
 - Strict path normalization + traversal rejection
 - Quarantine → scan → promote gating
 - Redaction policy: never log tokens or pre-signed URLs
-
 
 Known gaps / planned hardening (examples):
 
@@ -280,9 +289,9 @@ Known gaps / planned hardening (examples):
 
 ## Auditing
 
-**Dual-layer audit**
+**Dual-layer audit:**
 
-- **Primary (queryable)**: Postgres audit_events table (append-only)
+- **Primary (queryable)**: Postgres `audit_events` table (append-only)
 - **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM)
 
 Audit coverage (target baseline):
@@ -322,7 +331,6 @@ Requirements:
 - Docker Engine / Docker Desktop + Compose v2
 - curl
 
-
 ### 1) Start dependencies (Redis + Postgres)
 
 ```bash
@@ -355,6 +363,7 @@ go test ./... -v
 ```
 
 **Default ports:**
+
 - HTTP: `8080`
 - gRPC: `50051`
 - Redis: `6379`
@@ -381,28 +390,32 @@ file-server-management/
 
 ## Roadmap
 
-| Phase |	Goal |	Status |
-| --- | --- | --- |
-| Phase 1	| Browse directories + read authz baseline |	🟡 |
-| Phase 2 |	Folder creation (async) + audit events |	🟡 |
-| Phase 3	| Quarantine → scan → promote + observability baseline |	🟡 |
-| Phase 4 |	Advanced governance (fine-grained ACL, workflows, notifications) |	🔒 |
-| Phase 5 |	Enterprise features (retention, eDiscovery-friendly audit, versioning) | 🔒 |
+| Phase | Goal | Status |
+| :---- | :---- | :---- |
+| Phase 1 | Browse directories + read authz baseline | 🟡 |
+| Phase 2 | Folder creation (async) + audit events | 🟡 |
+| Phase 3 | Quarantine → scan → promote + observability baseline | 🟡 |
+| Phase 4 | Advanced governance (fine-grained ACL, workflows, notifications) | 🔒 |
+| Phase 5 | Enterprise features (retention, eDiscovery-friendly audit, versioning) | 🔒 |
 
 Queue strategy:
+
 - Redis (simplicity) — see ADRs in `docs/adr/`.
 
 ---
 
 ## Documentation map
 
-- `docs/api-reference.md` — File Engine API (gRPC + HTTP/JSON)
-- `docs/auth.md` — JWT + RBAC/ACL model
-- `docs/threat-model.md` — STRIDE + trust boundaries
-- `docs/pipeline-security.md` — Upload → scan → promote security analysis
-- `docs/observability.md` — logging, metrics, tracing standards
-- `docs/STORAGE_BACKENDS.md` — local/s3/gcs adapters + configuration
-- `docs/adr/` — decisions and rationale
+For detailed implementation guides, please refer to:
+
+- Decisions and rationale — [`docs/adr/readme.md`](https://github.com/agslima/file-server-management/blob/main/docs/adr/readme.md)
+- File Engine API (gRPC + HTTP/JSON) — [`docs/api-reference.md`](https://github.com/agslima/file-server-management/blob/main/docs/api-reference.md)
+- Architecture — [`docs/architecture.md`](https://github.com/agslima/file-server-management/blob/main/docs/architecture.md)
+- JWT + RBAC/ACL model — [`docs/auth.md`](https://github.com/agslima/file-server-management/blob/main/docs/auth.md)
+- STRIDE + trust boundaries — [`docs/threat-model.md`](https://github.com/agslima/file-server-management/blob/main/docs/threat-model.md)
+- Upload → scan → promote security analysis —  [`docs/pipeline-security.md`](https://github.com/agslima/file-server-management/blob/main/docs/pipeline-security.md)
+- Logging, metrics, tracing standards — [`docs/observability.md`](https://github.com/agslima/file-server-management/blob/main/docs/observability.md)
+- Setud & Installation Guide — [`docs/setup.md`](https://github.com/agslima/file-server-management/blob/main/docs/setup.md)
 
 ---
 
