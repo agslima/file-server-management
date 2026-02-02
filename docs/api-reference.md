@@ -6,7 +6,7 @@ Clients call the API; filesystem mutations run **asynchronously** via a worker, 
 
 **Core domains**
 - Filesystem commands: create folders, upload files (two-step), move/write operations (executed by worker)
-- Tasks: long-running job status (`queued/running/success/failed`)
+- Tasks: long-running job status (`PENDING/RUNNING/SUCCEEDED/FAILED/QUARANTINED`)
 - Authorization: enforced at the API boundary using **JWT → AuthContext** + **RBAC + path-based ACL (with inheritance)**
 
 **Service communication**
@@ -52,7 +52,7 @@ See `docs/auth.md` for details.
 ```json
 {
   "taskId": "b3a2c8f1-7a93-4a4c-9f92-3c7c8c1a12f9",
-  "status": "queued",
+  "status": "PENDING",
   "message": "Folder creation scheduled"
 }
 ```
@@ -120,7 +120,7 @@ curl -X POST http://localhost:8080/v1/uploads:initiate   -H "Authorization: Bear
 ```
 **Success (202)**
 ```json
-{ "taskId": "tsk_01HRXKAF...", "status": "queued" }
+{ "taskId": "tsk_01HRXKAF...", "status": "PENDING" }
 ```
 
 **curl**
@@ -136,7 +136,7 @@ curl -X POST http://localhost:8080/v1/uploads/upl_01HRXK9V8Q...:complete   -H "A
 ```json
 {
   "taskId": "tsk_01HRXKAF...",
-  "status": "running",
+  "status": "RUNNING",
   "progress": 35,
   "message": "Moving object to final destination"
 }
