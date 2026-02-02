@@ -60,7 +60,7 @@ All services MUST emit JSON logs with these required fields:
   "tenant_id": "tenant-123",
   "operation": "create_folder",
   "path": "/tenants/tenant-123/projects/alpha",
-  "status": "queued",
+  "status": "PENDING",
   "duration_ms": 12,
   "error": null
 }
