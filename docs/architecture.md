@@ -132,7 +132,7 @@ This document describes the platform-level architecture: components, trust bound
 ---
 
 ### C) Folder creation (async mutation)
-1. Frontend calls `POST /folders` with `parent` + `folderName`.
+1. Frontend calls `POST /v1/folders` with `parent` + `folderName`.
 2. Laravel validates:
    - RBAC permission to create in that parent
    - naming convention (regex)
@@ -163,7 +163,7 @@ This document describes the platform-level architecture: components, trust bound
 4. If `CLEAN`:
    - Laravel publishes a “commit upload” job to Go
    - Go moves the staged object into final filesystem path
-   - Laravel writes audit log + marks job success
+   - Laravel writes audit log + marks job `SUCCEEDED`
 5. If `INFECTED`:
    - file is quarantined (recommended)
    - job state becomes `QUARANTINED`
