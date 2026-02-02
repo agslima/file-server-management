@@ -1,4 +1,4 @@
-# Server File Manager Platform (Laravel + Go File Engine)
+# Server File Manager Platform (PHP + Go File Engine)
 
 ## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads
 
