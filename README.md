@@ -6,7 +6,7 @@
 [![CodeQL](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml)
 ![Go Version](https://img.shields.io/badge/go-1.21+-blue)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
-![gRPC](https://img.shields.io/badge/API-gRPC%20%2B%20-5e5e5e)
+![gRPC](https://img.shields.io/badge/API-gRPC%20-5e5e5e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
@@ -408,12 +408,12 @@ Queue strategy:
 
 For detailed implementation guides, please refer to:
 
-- Decisions and rationale — [`docs/adr/readme.md`](https://github.com/agslima/file-server-management/blob/main/docs/adr/readme.md)
+- Documentation Overview - [`docs/readme.md`](https://github.com/agslima/file-server-management/blob/main/docs/README.md)
+- Decisions and rationale — [`docs/adr`](https://github.com/agslima/file-server-management/blob/main/docs/adr)
+- Platform Architecture Overview — [`docs/architecture.md`](https://github.com/agslima/file-server-management/blob/main/docs/architecture.md)
 - File Engine API (gRPC + HTTP/JSON) — [`docs/api-reference.md`](https://github.com/agslima/file-server-management/blob/main/docs/api-reference.md)
-- Architecture — [`docs/architecture.md`](https://github.com/agslima/file-server-management/blob/main/docs/architecture.md)
 - JWT + RBAC/ACL model — [`docs/auth.md`](https://github.com/agslima/file-server-management/blob/main/docs/auth.md)
-- STRIDE + trust boundaries — [`docs/threat-model.md`](https://github.com/agslima/file-server-management/blob/main/docs/threat-model.md)
-- Upload → scan → promote security analysis —  [`docs/pipeline-security.md`](https://github.com/agslima/file-server-management/blob/main/docs/pipeline-security.md)
+- Threat Model & Security Specification (STRIDE)  — [`docs/threat-model.md`](https://github.com/agslima/file-server-management/blob/main/docs/threat-model.md)
 - Logging, metrics, tracing standards — [`docs/observability.md`](https://github.com/agslima/file-server-management/blob/main/docs/observability.md)
 - Setud & Installation Guide — [`docs/setup.md`](https://github.com/agslima/file-server-management/blob/main/docs/setup.md)
 
