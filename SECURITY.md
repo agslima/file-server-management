@@ -29,19 +29,5 @@ Go to the **Security** tab of this repository -> **Advisories** -> **New draft s
 
 ### 3. Response Timeline
 * **Acknowledgement:** I will attempt to acknowledge your report within 48 hours.
-* **Fix:** If confirmed, I will work on a patch and release it via the CI/CD pipeline (Tekton/GitHub Actions).
-
-## Security Measures in Place
-
-This project implements several DevSecOps practices to prevent common vulnerabilities:
-
-* **Security Headers:** Implemented using `Flask-Talisman` to protect against XSS and other attacks.
-* **CORS Policies:** Configured via `Flask-Cors` to restrict resource sharing.
-* **Dependency Scanning:** The project dependencies are monitored for known vulnerabilities.
-* **Linting:** `Flake8` is used in the CI pipeline to enforce coding standards and catch potential errors early.
-* **Container Security:** Docker images are built using standard base images.
-
-## Disclaimer
-
-This is an educational project created for the **IBM DevOps and Software Engineering Professional Certificate**. While best efforts have been made to secure the application, it should be deployed in a production environment with caution and appropriate additional security layers (Firewalls, WAFs, etc).
+* **Fix:** If confirmed, I will work on a patch and release it via the CI/CD pipeline (GitHub Actions).
 
