@@ -68,7 +68,7 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
-Note: HTTP/gRPC gateway wiring is still scaffold-level. Use this path for debugging, not as a validated API contract.
+Note: HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder` and `GetTaskStatus`. Upload routes remain target-state. Use this path for debugging beyond baseline behavior.
 
 ---
 

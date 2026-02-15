@@ -1,7 +1,7 @@
 # File Engine API Reference (gRPC + HTTP)
 
 ## Overview
-The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is **target-state** until real generated gateway code is committed.
+The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is available for the baseline `CreateFolder` and `GetTaskStatus` routes.
 Filesystem mutations run **asynchronously** via a worker, so the API returns a **Task ID** you can poll.
 
 **Core domains**
@@ -17,10 +17,10 @@ Filesystem mutations run **asynchronously** via a worker, so the API returns a *
 
 ## Baseline support (validated)
 
-- `CreateFolder` (gRPC) → async task enqueued
-- `GetTaskStatus` (gRPC) → task status polling
+- `CreateFolder` (gRPC + HTTP/JSON) → async task enqueued
+- `GetTaskStatus` (gRPC + HTTP/JSON) → task status polling
 
-HTTP/JSON routes are **illustrative** until gateway code is generated and validated.
+Uploads and other routes remain target-state until implemented.
 
 ## Base URLs
 ### HTTP
@@ -76,15 +76,17 @@ See `docs/auth.md` for details.
 }
 ```
 
-## HTTP/JSON mapping (target-state)
+## HTTP/JSON mapping
 
-These routes represent a **recommended mapping** for gRPC-Gateway once `google.api.http` annotations and generated gateway code are committed.
-Do **not** assume availability until they are promoted to baseline.
+Baseline routes:
 
 - `POST /v1/folders` → `CreateFolder`
 - `GET /v1/tasks/{taskId}` → `GetTaskStatus`
-- `POST /v1/uploads:initiate` → `InitiateUpload` (target-state)
-- `POST /v1/uploads/{uploadId}:complete` → `CompleteUpload` (target-state)
+
+Target-state routes:
+
+- `POST /v1/uploads:initiate` → `InitiateUpload`
+- `POST /v1/uploads/{uploadId}:complete` → `CompleteUpload`
 
 ## Errors
 See `docs/errors.md`.

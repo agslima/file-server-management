@@ -26,25 +26,13 @@ This guide is for developers contributing code: local setup, dev workflows, and 
 
 ## Quick start (local)
 
-1. Copy environment templates:
-   - `backend/.env.example` → `backend/.env`
-   - `frontend/.env.example` → `frontend/.env`
-   - `file-engine/.env.example` → `file-engine/.env`
+Use the canonical onboarding guide in `docs/setup.md`. Baseline-validated path is:
 
-2. Start local dependencies:
-   - Postgres
-   - Redis (if used)
-   - MinIO (if used for staging uploads)
-   - ClamAV (if used in dev)
+```bash
+./file-engine/scripts/dev.sh
+```
 
-3. Bring up stack:
-   - `docker compose up --build`
-
-4. Run migrations & seeders:
-   - `backend`: run Laravel migrations
-   - create initial admin user
-
-> NOTE: Exact commands will be added once the scaffold is finalized.
+If you need a full stack compose, note that the root `docker-compose.yml` is **experimental** until validated end-to-end.
 
 ---
 

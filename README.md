@@ -142,7 +142,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway *(target-state until gateway code is generated)*
+- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder + GetTaskStatus; uploads target-state)
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
 - Enqueues tasks; worker executes storage operations with least privilege
 
@@ -247,9 +247,9 @@ Contract source of truth
 - Canonical proto: `file-engine/api/proto/fileengine.proto`
 - Compatibility mirror (kept in sync): `file-engine/proto/fileengine.proto`
 
-Base URLs (when HTTP/gateway is enabled):
+Base URLs:
 
-- HTTP: `http://<host>:8080` *(target-state)*
+- HTTP (gRPC-Gateway): `http://<host>:8080`
 - gRPC: `<host>:50051`
 
 Core gRPC methods (canonical):
@@ -258,7 +258,12 @@ Core gRPC methods (canonical):
 - `GetTaskStatus` → poll task status
 - `InitiateUpload` / `CompleteUpload` *(target-state)*
 
-HTTP/JSON routes are **target-state** until gateway code is generated and validated.
+HTTP/JSON routes (baseline for CreateFolder + GetTaskStatus):
+
+- `POST /v1/folders` → `CreateFolder`
+- `GET /v1/tasks/{taskId}` → `GetTaskStatus`
+
+Upload HTTP routes remain target-state until the upload pipeline is implemented.
 
 Task state model (canonical):
 
@@ -459,12 +464,19 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
+### 4) Root `docker-compose.yml` (experimental)
+
+The root compose file is **experimental** until it is validated end-to-end. Use it only for container build validation, not as a baseline-validated runtime.
+
 **Default ports:**
 
 - HTTP: `8080`
 - gRPC: `50051`
 - Redis: `6379`
 - Postgres: `5432`
+
+> [!Note]
+> All setup flows (local File Engine run, experimental root compose, dev JWT) are documented in `docs/setup.md`.
 
 ---
 

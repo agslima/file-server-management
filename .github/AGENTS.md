@@ -47,7 +47,7 @@ Run from repository root unless noted:
 ## Known gaps to keep in mind
 
 - Some docs still describe target-state capabilities as implemented; verify with capability ledger commands before claiming support.
-- HTTP/JSON via gRPC-Gateway remains target-state until generated gateway code is committed.
+- HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder` + `GetTaskStatus`; upload routes remain target-state.
 - `docker/docker-compose.yml` is a legacy/alternate compose path and should not override canonical setup guidance.
 - Root `docker-compose.yml` is experimental and not a baseline-validated runtime path.
 

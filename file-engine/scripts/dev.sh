@@ -15,7 +15,14 @@ go test ./internal/config ./internal/logger ./internal/worker -v
 echo "[dev] running CreateFolder auth + task status handler tests"
 go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderRejectsNonTenantPath|TestCreateFolderRejectsUnauthorizedTenant|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v
 
+echo "[dev] running authz precedence + path normalization tests"
+go test ./internal/auth -run "TestRBACFallback|TestUserACLOverridesRBAC|TestACLPathInheritance|TestUserDenyPrecedesRoleAllowAndRBAC|TestRoleDenyPrecedesRoleAllowAtSamePath|TestClosestPathACLWinsBeforeParentACLs|TestUserACLPrecedenceOnSamePath|TestUserACLWithoutPermissionFallsThroughToRoleACL" -v
+go test ./internal/authz -run "TestExtractPathNormalizesCreateFolder|TestExtractPathRejectsTraversal|TestNormalizePathHandlesWindowsAndWhitespace|TestNormalizePathAllowsDotContainingNames|TestTenantFromPath|TestTenantFromPathRejectsNonTenantRoot|TestGRPCAuthZInterceptorListObjects" -v
+
 echo "[dev] running async folder flow integration test"
 go test ./tests/integration -run TestAsyncCreateFolderFlow -v
+
+echo "[dev] running HTTP handler + gateway tests"
+go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal|TestGatewayCreateFolderAndGetTaskStatusRoutes" -v
 
 echo "[dev] all checks passed"

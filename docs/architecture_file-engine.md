@@ -24,7 +24,7 @@ Filesystem mutations run **asynchronously** through a worker model.
 
 **Target-state (planned)**
 
-- HTTP/JSON via gRPC-Gateway with OpenAPI generation
+- HTTP/JSON via gRPC-Gateway for upload and extended read/write APIs
 - Upload quarantine → scan → promote pipeline
 - Full observability export pipeline (OTLP)
 
@@ -111,7 +111,7 @@ service FileEngine {
 
 ### 5.2 REST (gRPC-Gateway)
 
-HTTP/JSON is **target-state** until real generated gateway code is committed. Treat REST routes as **illustrative** unless explicitly validated in the capability ledger.
+HTTP/JSON is **baseline** for `CreateFolder` and `GetTaskStatus` and **target-state** for upload routes and expanded read APIs. Treat non-baseline routes as illustrative until validated in the capability ledger.
 
 ---
 

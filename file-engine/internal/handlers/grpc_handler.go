@@ -102,6 +102,20 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
 }
 
+func (h *GRPCHandler) InitiateUpload(ctx context.Context, _ *pb.InitiateUploadRequest) (*pb.InitiateUploadResponse, error) {
+	if _, ok := auth.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+	return nil, status.Error(codes.Unimplemented, "upload initiation not implemented")
+}
+
+func (h *GRPCHandler) CompleteUpload(ctx context.Context, _ *pb.CompleteUploadRequest) (*pb.CompleteUploadResponse, error) {
+	if _, ok := auth.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+	return nil, status.Error(codes.Unimplemented, "upload completion not implemented")
+}
+
 func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusRequest) (*pb.TaskStatusResponse, error) {
 	if _, ok := auth.FromContext(ctx); !ok {
 		return nil, status.Error(codes.Unauthenticated, "missing auth context")
@@ -138,6 +152,13 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 		Message:  taskStatus.Message,
 		Progress: progress,
 	}, nil
+}
+
+func (h *GRPCHandler) GetTask(ctx context.Context, _ *pb.GetTaskRequest) (*pb.GetTaskResponse, error) {
+	if _, ok := auth.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+	return nil, status.Error(codes.Unimplemented, "GetTask not implemented")
 }
 
 func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsRequest) (*pb.ListObjectsResponse, error) {

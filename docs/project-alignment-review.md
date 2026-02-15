@@ -25,7 +25,7 @@ Sources reviewed:
 
 **Mostly aligned at the baseline level, with limited remaining drift in feature-scope labeling.**
 
-The project now clearly distinguishes baseline vs target-state claims and anchors validation in `docs/capability-ledger.md`. HTTP/JSON and audit sink claims are explicitly marked as target-state, and onboarding paths are now baseline-first. Remaining drift is concentrated in a few feature lists that are not explicitly labeled as target-state.
+The project now clearly distinguishes baseline vs target-state claims and anchors validation in `docs/capability-ledger.md`. HTTP/JSON is baseline for `CreateFolder` + `GetTaskStatus`, while uploads and audit sinks remain target-state. Onboarding paths are baseline-first. Remaining drift is concentrated in a few feature lists that are not explicitly labeled as target-state.
 
 ### Where implementation matches documented baseline
 
@@ -60,7 +60,7 @@ The project now clearly distinguishes baseline vs target-state claims and anchor
 **Risks**
 
 - Authorization boundary ambiguity increases the chance of policy drift or duplicated logic.
-- HTTP gateway scaffolding may lead consumers to assume supported REST endpoints before they are actually enforced.
+- Remaining REST routes (uploads, expanded read APIs) are still target-state and should not be assumed available.
 - Multiple instruction surfaces can reintroduce drift if not actively pruned.
 
 ### Process efficiency
@@ -100,8 +100,8 @@ The project now clearly distinguishes baseline vs target-state claims and anchor
 
 ### Priority 2 (Strategic)
 
-1. **Generate and commit real gateway code.**
-   - Promote REST endpoints only after the gateway is real and tested.
+1. **Promote REST routes only when they are real and tested.**
+   - `CreateFolder` + `GetTaskStatus` are now baseline via gRPC-Gateway; uploads remain target-state.
 2. **Expand capability ledger coverage.**
    - Add checks for authz precedence behavior and path normalization guarantees.
 

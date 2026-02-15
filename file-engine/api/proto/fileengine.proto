@@ -2,11 +2,26 @@ syntax = "proto3";
 package fileengine;
 option go_package = "github.com/example/file-engine/pkg/generated;generated";
 
+import "annotations.proto";
+
 service FileEngine {
-  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse);
+  rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse) {
+    option (google.api.http) = {
+      post: "/v1/folders"
+      body: "*"
+    };
+  }
   rpc InitiateUpload(InitiateUploadRequest) returns (InitiateUploadResponse);
   rpc CompleteUpload(CompleteUploadRequest) returns (CompleteUploadResponse);
-  rpc GetTaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
+  rpc GetTaskStatus(TaskStatusRequest) returns (TaskStatusResponse) {
+    option (google.api.http) = {
+      get: "/v1/tasks/{task_id}"
+    };
+  }
+  rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse);
+  rpc UploadObject(UploadObjectRequest) returns (UploadObjectResponse);
+  rpc DownloadObject(DownloadObjectRequest) returns (stream DownloadChunk);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
 }
 
 message CreateFolderRequest {
@@ -47,4 +62,43 @@ message TaskStatusResponse {
   string status = 2;
   int32 progress = 3;
   string message = 4;
+}
+
+message ObjectInfo {
+  string path = 1;
+  int64 size = 2;
+  bool is_dir = 3;
+}
+
+message ListObjectsRequest {
+  string prefix = 1;
+}
+message ListObjectsResponse {
+  repeated ObjectInfo items = 1;
+}
+
+message UploadObjectRequest {
+  string path = 1;
+  bytes content = 2;
+}
+message UploadObjectResponse {
+  bool success = 1;
+}
+
+message DownloadObjectRequest {
+  string path = 1;
+}
+message DownloadChunk {
+  bytes data = 1;
+}
+
+message GetTaskRequest {
+  string task_id = 1;
+}
+message GetTaskResponse {
+  string task_id = 1;
+  string status = 2;
+  int32 progress = 3;
+  string message = 4;
+  string details = 5;
 }
