@@ -54,8 +54,8 @@ Legend:
 | :-- | :--: | :-- |
 | Canonical proto contract sync | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` |
 | File Engine baseline module checks | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` |
-| Async folder flow (enqueue → worker → folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| Task status persistence + audit + correlation IDs | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| Async folder flow (enqueue → worker → folder created) | ✅ | `cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| Task status persistence + audit + correlation IDs | ✅ | `cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
 | Backend basic endpoints scaffold + controller tests | 🟡 | `cd backend && composer test` (requires dependencies), plus `composer validate --strict` |
 | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
@@ -248,7 +248,7 @@ Implemented baseline reference flow:
 Validation command:
 
 ```bash
-cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
+cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ```
 
 ---

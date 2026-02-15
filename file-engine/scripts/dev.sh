@@ -12,6 +12,9 @@ cmp api/proto/fileengine.proto proto/fileengine.proto
 echo "[dev] running baseline module tests"
 go test ./internal/config ./internal/logger ./internal/worker -v
 
+echo "[dev] running CreateFolder auth + task status handler tests"
+go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v
+
 echo "[dev] running async folder flow integration test"
 go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 

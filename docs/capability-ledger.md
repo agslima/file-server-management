@@ -11,6 +11,9 @@ This ledger maps every **implemented baseline claim** to a runnable validation c
 | :-- | :--: | :-- | :-- |
 | Canonical proto mirror is synchronized (`api/proto` -> `proto`) | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` | Exit code `0` |
 | File Engine baseline modules compile/test in current baseline scope | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` | Tests pass (packages may report `[no test files]`) |
+| CreateFolder JWT-auth check is enforced at handler boundary | ✅ | `cd file-engine && go test ./internal/handlers -run TestCreateFolderRequiresAuthContext -v` | `PASS` for auth-required test |
+| CreateFolder request enqueues task with actor/correlation metadata | ✅ | `cd file-engine && go test ./internal/handlers -run TestCreateFolderEnqueuesWithCorrelationAndActorFallback -v` | `PASS` for enqueue metadata test |
+| Task status retrieval requires auth and returns persisted status | ✅ | `cd file-engine && go test ./internal/handlers -run TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus -v` | `PASS` for task status retrieval test |
 | Async create-folder flow works end-to-end (enqueue -> worker -> folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | `PASS` for `TestAsyncCreateFolderFlow` |
 | Task status persistence for async flow is present (`queued`/`success` with structured payload fields) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts status/correlation/message persistence |
 | Basic audit task events are emitted for async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts audit success event emission |
