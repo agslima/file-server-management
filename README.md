@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml)
-![Go Version](https://img.shields.io/badge/go-1.21+-blue)
+![Go Version](https://img.shields.io/badge/go-1.24+-blue)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20-5e5e5e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
@@ -20,7 +20,7 @@
 
 ## TL;DR
 
-A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, **dual-layer auditing**, and a **quarantine → scan → promote** upload pipeline.
+A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
 
 **Key points:**
 
@@ -28,7 +28,7 @@ A multi-tenant, governance-first file management platform that operates on **rea
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
 - **Async mutations:** create/move/upload return a `taskId`; clients poll task status.
 - **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
-- **Auditing:** persisted task status + basic task audit events in async folder flow baseline.
+- **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
 - **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
 
 ---
@@ -116,16 +116,16 @@ This platform provides a centralized, permissioned interface that **controls and
 ### Write path (async)
 
 - Create folders (policy-enforced naming)
-- Upload files (two-step: initiate → complete)
-- Move/rename/write operations *(as tasks)*
+- Upload files (two-step: initiate → complete) *(target-state)*
+- Move/rename/write operations *(as tasks; target-state)*
 
 ### Governance & security
 
 - JWT auth (Bearer)
 - RBAC + path-based ACL (inheritance)
 - Multi-tenant enforcement via **server-side tenant mapping**
-- Upload quarantine + malware scan gate before publish
-- Dual-layer audit (queryable + tamper-resistant sink)
+- Upload quarantine + malware scan gate before publish *(target-state)*
+- Dual-layer audit (queryable + tamper-resistant sink) *(target-state)*
 
 ---
 
@@ -141,7 +141,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway
+- gRPC-first API + HTTP/JSON via gRPC-Gateway *(target-state until gateway code is generated)*
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
 - Enqueues tasks; worker executes storage operations with least privilege
 
@@ -166,7 +166,7 @@ flowchart TB
   AV -->|verdict| W
 
   %% Audit
-  FE --> DB["(Postgres<br/>audit_events (append-only)<br/>ACL / mappings)"]
+  FE --> DB["(Postgres<br/>audit_events (append-only, target-state)<br/>ACL / mappings)"]
   W --> DB
   DB --> SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
 ```
@@ -246,18 +246,18 @@ Contract source of truth
 - Canonical proto: `file-engine/api/proto/fileengine.proto`
 - Compatibility mirror (kept in sync): `file-engine/proto/fileengine.proto`
 
-Base URLs:
+Base URLs (when HTTP/gateway is enabled):
 
-- HTTP: `http://<host>:8080`
+- HTTP: `http://<host>:8080` *(target-state)*
 - gRPC: `<host>:50051`
 
-Core endpoints (HTTP/JSON via gRPC-Gateway):
+Core gRPC methods (canonical):
 
-- `POST /v1/folders` → returns `taskId` (async)
-- `POST /v1/uploads:initiate` → returns `uploadId, uploadUrl`
-- `POST /v1/uploads/{uploadId}:complete` → returns `taskId`
-- `GET /v1/tasks/{taskId}` → poll task status
-- `GET /healthz` → liveness (200 OK if process + HTTP server responsive)
+- `CreateFolder` → returns `taskId` (async)
+- `GetTaskStatus` → poll task status
+- `InitiateUpload` / `CompleteUpload` *(target-state)*
+
+HTTP/JSON routes are **target-state** until gateway code is generated and validated.
 
 Task state model (canonical):
 
@@ -271,11 +271,11 @@ While the architecture supports the full Upload Quarantine flow (see below), the
 
 Implemented baseline reference flow:
 
-1. `POST /v1/folders` (`CreateFolder`) receives request metadata and JWT-authenticated context at File Engine boundary.
+1. `CreateFolder` (gRPC) receives request metadata and JWT-authenticated context at File Engine boundary.
 2. API enqueues async task in Redis and persists initial task status (`queued`).
 2a. API resolves tenant membership from server-side source-of-truth and rejects non-tenant-scoped or unauthorized tenant paths.
 3. Worker consumes queue, executes filesystem folder creation, persists terminal status (`success`/`failed`), and emits audit-style events.
-4. Client polls `GET /v1/tasks/{taskId}` (`GetTaskStatus`) until completion.
+4. Client polls `GetTaskStatus` until completion.
 
 Validation command:
 
@@ -286,6 +286,8 @@ cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuth
 ---
 
 ## Key flows
+
+**Target-state upload flow (not baseline-validated):**
 
 ```mermaid
 sequenceDiagram
@@ -345,7 +347,7 @@ Secure-by-default controls:
 - Deny-by-default authorization at File Engine
 - Tenant scope from server-side mapping (not JWT)
 - Strict path normalization + traversal rejection
-- Quarantine → scan → promote gating
+- Quarantine → scan → promote gating *(target-state)*
 - Redaction policy: never log tokens or pre-signed URLs
 
 Known gaps / planned hardening (examples):
@@ -360,10 +362,14 @@ Known gaps / planned hardening (examples):
 
 ## Auditing
 
-**Dual-layer audit:**
+**Dual-layer audit (target-state):**
 
-- **Primary (queryable)**: Postgres `audit_events` table (append-only)
-- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM)
+- **Primary (queryable)**: Postgres `audit_events` table (append-only, target-state)
+- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM, target-state)
+
+**Baseline audit behavior:**
+
+- Task audit events are emitted for the async folder flow (see `CL-005`).
 
 Audit coverage (target baseline):
 
@@ -398,53 +404,58 @@ Operational signals to monitor:
 
 Requirements:
 
-- Go 1.21+
-- Docker Engine / Docker Desktop + Compose v2
-- curl
+- Go 1.24+
+- Docker Engine / Docker Desktop + Compose v2 (optional; only needed for containerized dependencies)
+- curl (optional; only needed for manual API calls)
 
-### 1) Start dependencies & Apply migrations
+### 1) Run the validated baseline checks (recommended)
+
+This is the only **baseline-validated** quickstart today.
 
 ```bash
-docker compose up -d postgres redis
+./file-engine/scripts/dev.sh
+```
+
+### 2) Optional: run the async folder flow integration test alone
+
+```bash
+cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
+```
+
+### 3) Optional: local File Engine run (scaffold-level, for debugging)
+
+This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are still scaffold-level until generated gateway code is in place, so treat this as a debug path rather than a validated contract.
+
+```bash
+cd file-engine
+docker compose up -d redis postgres
+
+export REDIS_ADDR="localhost:6379"
 export POSTGRES_DSN="postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"
+export STORAGE_BACKEND="local"
+export FILE_BASE_ROOT="$PWD/data"
+export JWT_SECRET="dev-secret"
+export TENANT_MEMBERSHIPS="dev-admin=dev-tenant"
+
 go run ./cmd/migrate
 ```
 
-### 2) Seed Data & Generate Token
-
-The system denies access by default. You must seed a tenant and user to generate a valid JWT.
+API terminal:
 
 ```bash
-# 1. Seed a dev tenant and admin user
-go run ./cmd/seed --tenant=dev-tenant --user=dev-admin
-
-# 2. Generate a JWT for this user and save to env var
-export JWT=$(go run ./cmd/token-gen --user=dev-admin)
+cd file-engine && go run ./cmd/file-engine
 ```
 
-### 3) Run the stack (API + Worker)
+Worker terminal:
 
 ```bash
-docker compose up --build
+cd file-engine && go run ./cmd/worker
 ```
 
-### 4) Smoke test (liveness)
+Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`):
 
 ```bash
-# Verify health
-curl -i http://localhost:8080/healthz
-
-# Create a folder (Authorized)
-curl -X POST http://localhost:8080/v1/folders \
-  -H "Authorization: Bearer $JWT" \
-  -H "Content-Type: application/json" \
-  -d '{"path": "tenants/dev-tenant/my-folder"}'
-```
-
-### 5) Run unit tests
-
-```bash
-go test ./... -v
+export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
 **Default ports:**
@@ -465,10 +476,13 @@ file-server-management/
 ├─ file-engine/               # Go File Engine (API + Worker)
 ├─ docker/                    # Dockerfiles / Compose helpers
 └─ docs/
-   ├─ architecture/           # Platform architecture + contracts
-   ├─ security/               # Threat model, pipeline security, STRIDE
-   ├─ readmes/                # Role-specific docs (platform, security, contributors)
-   └─ adr/                    # Architectural Decision Records
+   ├─ adr/                    # Architectural Decision Records
+   ├─ architecture.md         # Platform architecture
+   ├─ api-reference.md        # API surface (gRPC + HTTP)
+   ├─ auth.md                 # AuthN/AuthZ model
+   ├─ observability.md        # Logs/metrics/tracing expectations
+   ├─ threat-model.md         # Security model + STRIDE notes
+   └─ setup.md                # Local development setup
 ```
 
 ---

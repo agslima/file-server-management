@@ -1,19 +1,26 @@
 # File Engine API Reference (gRPC + HTTP)
 
 ## Overview
-The File Engine exposes a **gRPC-first** API (source of truth) with an **HTTP/JSON surface** served via **gRPC-Gateway**.
-Clients call the API; filesystem mutations run **asynchronously** via a worker, so the API returns a **Task ID** you can poll.
+The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is **target-state** until real generated gateway code is committed.
+Filesystem mutations run **asynchronously** via a worker, so the API returns a **Task ID** you can poll.
 
 **Core domains**
-- Filesystem commands: create folders, upload files (two-step), move/write operations (executed by worker)
-- Tasks: long-running job status (`PENDING/RUNNING/SUCCEEDED/FAILED/QUARANTINED`)
-- Authorization: enforced at the API boundary using **JWT → AuthContext** + **RBAC + path-based ACL (with inheritance)**
+- Filesystem commands: create folders (baseline); uploads are target-state
+- Tasks: async status (`queued/running/success/failed/quarantined`)
+- Authorization: enforced at the **File Engine boundary** using **JWT → AuthContext** + **tenant membership** + **RBAC + path-based ACL (with inheritance)**
 
 **Service communication**
 - Client → API: gRPC or HTTP/JSON
 - API → Redis: enqueue tasks
 - Worker → Storage backend: execute filesystem/object operations
-- Postgres (optional): persist ACL rules (and tasks if you choose to persist later)
+- Postgres (optional): persist ACL rules (and task status if enabled)
+
+## Baseline support (validated)
+
+- `CreateFolder` (gRPC) → async task enqueued
+- `GetTaskStatus` (gRPC) → task status polling
+
+HTTP/JSON routes are **illustrative** until gateway code is generated and validated.
 
 ## Base URLs
 ### HTTP
@@ -30,15 +37,14 @@ Claims:
 - `sub` → user id
 - `roles` → role list
 
+Tenant membership is resolved **server-side** (not from JWT claims). Requests without tenant membership are denied.
+
 See `docs/auth.md` for details.
 
-## Endpoint Definitions (HTTP/JSON)
-> NOTE: These routes represent a recommended canonical mapping for gRPC-Gateway.
-> Align with your `.proto` `google.api.http` annotations when present.
+## gRPC Methods (canonical)
 
-### 1) Create Folder
-- **URL**: `POST /v1/folders`
-- **Purpose**: Create a folder under a parent path (async). Returns a task ID.
+### 1) CreateFolder
+**Purpose**: Create a folder under a parent path (async). Returns a task ID.
 
 **Request**
 ```json
@@ -48,104 +54,37 @@ See `docs/auth.md` for details.
   "requestedBy": "user-42"
 }
 ```
-**Success (202)**
+**Response**
 ```json
 {
   "taskId": "b3a2c8f1-7a93-4a4c-9f92-3c7c8c1a12f9",
-  "status": "PENDING",
+  "status": "queued",
   "message": "Folder creation scheduled"
 }
 ```
-**Failure (403)**
-```json
-{
-  "error": {
-    "code": "permission_denied",
-    "message": "access denied",
-    "details": {
-      "requiredPermission": "write",
-      "path": "/tenants/123/projects/alpha"
-    }
-  }
-}
-```
 
-**curl**
-```bash
-curl -X POST http://localhost:8080/v1/folders   -H "Authorization: Bearer <JWT>"   -H "Content-Type: application/json"   -d '{
-    "parentPath": "/tenants/123/projects/alpha",
-    "folderName": "reports",
-    "requestedBy": "user-42"
-  }'
-```
+### 2) GetTaskStatus
+**Purpose**: Poll async task status.
 
-### 2) Initiate Upload
-- **URL**: `POST /v1/uploads:initiate`
-- **Purpose**: Start an upload session and return an upload URL (pre-signed or internal).
-
-**Request**
-```json
-{
-  "targetPath": "/tenants/123/projects/alpha/reports",
-  "filename": "report.pdf",
-  "size": 1048576,
-  "mime": "application/pdf"
-}
-```
-**Success (200)**
-```json
-{
-  "uploadId": "upl_01HRXK9V8Q...",
-  "uploadUrl": "https://storage-provider/.../signed-url"
-}
-```
-
-**curl**
-```bash
-curl -X POST http://localhost:8080/v1/uploads:initiate   -H "Authorization: Bearer <JWT>"   -H "Content-Type: application/json"   -d '{
-    "targetPath": "/tenants/123/projects/alpha/reports",
-    "filename": "report.pdf",
-    "size": 1048576,
-    "mime": "application/pdf"
-  }'
-```
-
-### 3) Complete Upload
-- **URL**: `POST /v1/uploads/{uploadId}:complete`
-- **Purpose**: Finalize upload and enqueue post-processing. Returns a task ID.
-
-**Request**
-```json
-{ "uploadId": "upl_01HRXK9V8Q..." }
-```
-**Success (202)**
-```json
-{ "taskId": "tsk_01HRXKAF...", "status": "PENDING" }
-```
-
-**curl**
-```bash
-curl -X POST http://localhost:8080/v1/uploads/upl_01HRXK9V8Q...:complete   -H "Authorization: Bearer <JWT>"   -H "Content-Type: application/json"   -d '{"uploadId":"upl_01HRXK9V8Q..."}'
-```
-
-### 4) Get Task Status
-- **URL**: `GET /v1/tasks/{taskId}`
-- **Purpose**: Poll async task status.
-
-**Success (200)**
+**Response**
 ```json
 {
   "taskId": "tsk_01HRXKAF...",
-  "status": "RUNNING",
+  "status": "running",
   "progress": 35,
   "message": "Moving object to final destination"
 }
 ```
 
-**curl**
-```bash
-curl http://localhost:8080/v1/tasks/tsk_01HRXKAF...   -H "Authorization: Bearer <JWT>"
-```
+## HTTP/JSON mapping (target-state)
+
+These routes represent a **recommended mapping** for gRPC-Gateway once `google.api.http` annotations and generated gateway code are committed.
+Do **not** assume availability until they are promoted to baseline.
+
+- `POST /v1/folders` → `CreateFolder`
+- `GET /v1/tasks/{taskId}` → `GetTaskStatus`
+- `POST /v1/uploads:initiate` → `InitiateUpload` (target-state)
+- `POST /v1/uploads/{uploadId}:complete` → `CompleteUpload` (target-state)
 
 ## Errors
 See `docs/errors.md`.

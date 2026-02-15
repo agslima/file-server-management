@@ -1,27 +1,32 @@
 
-# File Engine – Technical Documentation 📁
+# File Engine – Technical Documentation
 
 ## 1. Overview
 
-The File Engine is a backend service designed to manage real filesystem structures through a secure, scalable, and auditable API.
-It provides functionality similar to a private Google Drive backend, operating directly on a filesystem while enforcing RBAC and path-based ACLs.
+The File Engine is the data-plane service that performs filesystem mutations and enforces **final authorization** at the execution boundary.
+It operates directly on storage backends while enforcing **tenant membership**, **RBAC**, and **path-based ACLs**.
 
-The system is built using Go, exposes both gRPC and REST (via gRPC-Gateway), and supports asynchronous filesystem operations through a worker model.
+The system is built in Go and is **gRPC-first**. HTTP/JSON via gRPC-Gateway is **target-state** until generated gateway code is committed.
+Filesystem mutations run **asynchronously** through a worker model.
 
 
 ---
 
 ## 2. Key Features
 
-- gRPC-first API with HTTP/REST support
-- Real filesystem operations (mkdir, atomic writes, move)
-- Asynchronous task execution via Redis-backed workers
-- RBAC (Role-Based Access Control)
-- ACL (Access Control List) enforced per filesystem path
-- Path inheritance for permissions
-- Clean Architecture with clear separation of concerns
-- Dockerized and CI-ready
-- OpenAPI specification generation
+**Baseline (validated)**
+
+- gRPC-first API boundary with async task execution
+- Real filesystem operations (mkdir) via worker
+- RBAC + path-based ACLs with inheritance
+- Tenant membership enforcement at File Engine boundary
+- Structured logs and correlation IDs in async flow
+
+**Target-state (planned)**
+
+- HTTP/JSON via gRPC-Gateway with OpenAPI generation
+- Upload quarantine → scan → promote pipeline
+- Full observability export pipeline (OTLP)
 
 ---
 
@@ -35,7 +40,7 @@ The system is built using Go, exposes both gRPC and REST (via gRPC-Gateway), and
                                 v
                      +------------------------+
                      | Authorization Layer    |
-                     | (RBAC + ACL Resolver)  |
+                     | (Tenant + RBAC + ACL)  |
                      +------------------------+
                                 |
                                 v
@@ -68,26 +73,24 @@ The system is built using Go, exposes both gRPC and REST (via gRPC-Gateway), and
 ```text
 file-engine/
 ├── api/
-│   └── proto/                # gRPC contract
-│
+│   └── proto/                # gRPC contract (canonical)
+├── proto/                     # Mirror proto (must match canonical)
 ├── cmd/
 │   ├── file-engine/          # API server entrypoint
 │   └── worker/               # Background worker
-│
 ├── internal/
-│   ├── auth/                 # RBAC + ACL implementation
-│   ├── fs/                   # Filesystem abstraction
-│   ├── services/             # Domain services
-│   ├── handlers/             # gRPC / HTTP handlers
-│   ├── adapters/             # Redis, filesystem adapters
-│   ├── di/                   # Dependency injection
-│   └── config/               # Environment configuration
-│
-├── build/docker/              # Dockerfiles
-├── scripts/                   # gRPC code generation
-├── docker-compose.yml
-├── go.mod
-└── README.md
+│   ├── adapters/             # Redis + storage adapters
+│   ├── app/                  # Task processor + worker orchestration
+│   ├── auth/                 # JWT + RBAC + ACL
+│   ├── authz/                # gRPC authz interceptors
+│   ├── handlers/             # gRPC handlers
+│   ├── observability/        # Metrics + log helpers
+│   ├── server/               # gRPC + HTTP server wiring
+│   ├── storage/              # Storage backends
+│   └── worker/               # Worker runtime
+├── build/docker/             # Dockerfiles
+├── scripts/                  # Dev + proto/gateway generation
+└── docker-compose.yml
 ```
 
 ---
@@ -108,11 +111,7 @@ service FileEngine {
 
 ### 5.2 REST (gRPC-Gateway)
 
-The REST API is automatically generated from the gRPC contract using grpc-gateway, ensuring:
-
-- Single source of API definition
-- Consistent validation and behavior
-- OpenAPI documentation generation
+HTTP/JSON is **target-state** until real generated gateway code is committed. Treat REST routes as **illustrative** unless explicitly validated in the capability ledger.
 
 ---
 
@@ -151,7 +150,7 @@ Filesystem operations are executed asynchronously to avoid blocking API calls.
 
 **Flow:**
 
-- 1. API validates request and permissions
+- 1. API validates JWT and enforces **tenant membership + RBAC/ACL**
 - 2. Task is enqueued in Redis
 - 3. Worker consumes the task
 - 4. Filesystem operation is executed
@@ -167,6 +166,12 @@ This model allows:
 ---
 
 ## 8. Authorization Model (RBAC + ACL)
+
+### 8.0 Tenant scoping (final authz boundary)
+
+- All tenant-scoped paths follow: `/tenants/<tenant_id>/...`
+- Tenant membership is resolved **server-side** (not from JWT claims).
+- If tenant membership cannot be resolved, the request is denied.
 
 ### 8.1 Permissions
 
@@ -241,14 +246,14 @@ Resolution order:
 - No direct filesystem access from API
 - Path traversal protection
 - Principle of least privilege
-- Authorization enforced before task creation
+- Authorization enforced before task creation (final authz boundary)
 - Designed for multi-tenant environments
 
 ---
 
 ## 10. Deployment & Runtime
 
-**Docker Compose**
+**Docker Compose (file-engine scope)**
 
 ```Yaml
 services:
@@ -274,11 +279,11 @@ services:
 scripts/generate_grpc_docker.sh
 ```
 
-Generates:
+Generates (when run):
 
 - gRPC server/client stubs
-- HTTP gateway
-- OpenAPI spec
+- HTTP gateway (target-state)
+- OpenAPI spec (target-state)
 
 
 This avoids local dependency issues and ensures CI reproducibility.
@@ -287,10 +292,9 @@ This avoids local dependency issues and ensures CI reproducibility.
 
 ## 12. Testing Strategy
 
-- Unit tests for filesystem operations
-- Deterministic ACL resolutions 
-- Isolation using temporary directories
-- Future-ready for integration tests
+- Unit tests for auth resolver and filesystem helpers
+- Integration test for async create-folder flow
+- Temporary directories for isolation
 
 ---
 
@@ -308,9 +312,8 @@ This avoids local dependency issues and ensures CI reproducibility.
 
 ## 14. Future Enhancements
 
-- PostgreSQL-backed ACL store
-- JWT authentication integration
-- Audit logs per filesystem action
-- S3 / GCS / MinIO backend support
+- Promote gRPC-Gateway + OpenAPI to baseline (real generated code)
+- Upload quarantine → scan → promote pipeline
+- Expand audit coverage beyond task lifecycle
 - Quota management
 - Soft delete / versioning

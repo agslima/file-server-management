@@ -41,15 +41,14 @@ This document describes the platform-level architecture: components, trust bound
 ### 2) API / Orchestrator (Laravel)
 **Responsibilities**
 - Authentication (JWT/OAuth2; optional LDAP/AD integration)
-- Authorization (RBAC + per-folder/path permissions via Policies)
-- Input validation (folder naming conventions, size/type limits)
+- Business intent validation (naming conventions, size/type limits, UX policy)
 - Job creation and status tracking
 - Audit log persistence (immutable append-only design goal)
 - Service-to-service calls or queue publishing to File Engine
 
 **Trust Boundary**
-- Laravel is the **business authorization** authority.
-- Laravel does **not** execute filesystem operations directly.
+- Laravel validates **business intent** (naming conventions, UX policy) but is **not** the final authorization gate.
+- File Engine is the **final authorization boundary** for tenant membership + RBAC/ACL and safe-path execution.
 
 ---
 
@@ -67,7 +66,8 @@ This document describes the platform-level architecture: components, trust bound
 - Consume async jobs from queue or accept synchronous RPC requests
 
 **Trust Boundary**
-- Go does not trust user input.
+- Go does not trust user input or client-provided tenant scope.
+- Go enforces tenant membership + RBAC/ACL **before** executing or enqueueing mutations.
 - Go only trusts **signed/scoped requests** from Laravel (target state: mTLS + scoped token).
 
 ---
@@ -118,15 +118,16 @@ This document describes the platform-level architecture: components, trust bound
 ### A) Authentication & Authorization
 1. User authenticates via Laravel (JWT/OAuth2).
 2. Frontend receives token + user context.
-3. Every request is authorized via Laravel Policies (RBAC + per-path permissions).
+3. Laravel validates business intent (policy, naming, UX constraints).
+4. File Engine performs **final** authorization (tenant membership + RBAC/ACL) at execution boundary.
 
 ---
 
 ### B) Directory listing (read path)
 1. Frontend requests a directory listing.
-2. Laravel authorizes access to the path (RBAC/permissions).
+2. Laravel validates business intent (policy constraints).
 3. Laravel calls Go File Engine for listing (RPC) **or** uses a job if listing can be heavy.
-4. Go canonicalizes the path, enforces root constraints, lists contents.
+4. Go canonicalizes the path, enforces tenant membership + RBAC/ACL, and lists contents.
 5. Laravel returns results and writes optional access logs.
 
 ---
@@ -134,9 +135,8 @@ This document describes the platform-level architecture: components, trust bound
 ### C) Folder creation (async mutation)
 1. Frontend calls `POST /v1/folders` with `parent` + `folderName`.
 2. Laravel validates:
-   - RBAC permission to create in that parent
    - naming convention (regex)
-   - parent path is allowed for this user/tenant
+   - request shape and UX policy
 3. Laravel creates a `job` record (`PENDING`) and publishes a message to the queue with:
    - jobId
    - canonical parent reference (recommended: server-issued path token)
@@ -144,7 +144,8 @@ This document describes the platform-level architecture: components, trust bound
    - idempotency key
 4. Go consumes the job:
    - resolves server-issued reference
-   - canonicalizes and root-checks the resulting path
+   - canonicalizes path + tenant boundary
+   - enforces tenant membership + RBAC/ACL
    - executes folder creation
    - reports status back (DB update or callback)
 5. Laravel marks job `SUCCEEDED` or `FAILED` and writes audit log.
@@ -154,7 +155,7 @@ This document describes the platform-level architecture: components, trust bound
 
 ### D) Secure upload (staged → scanned → committed)
 1. Frontend requests an upload session:
-   - Laravel checks `can_upload` for the destination
+   - Laravel validates business intent and request policy
    - Laravel returns pre-signed URL (S3/MinIO) or upload token
 2. Frontend uploads file to staging (not final filesystem).
 3. A scan job starts:
@@ -162,7 +163,7 @@ This document describes the platform-level architecture: components, trust bound
    - verdict is recorded (`CLEAN/INFECTED/ERROR`)
 4. If `CLEAN`:
    - Laravel publishes a “commit upload” job to Go
-   - Go moves the staged object into final filesystem path
+   - Go enforces tenant membership + RBAC/ACL, then moves the staged object into final filesystem path
    - Laravel writes audit log + marks job `SUCCEEDED`
 5. If `INFECTED`:
    - file is quarantined (recommended)
@@ -176,7 +177,7 @@ This document describes the platform-level architecture: components, trust bound
 ### Core principles
 - **Zero Trust for paths:** never trust user-supplied paths directly.
 - **Least privilege:** service accounts have minimal access.
-- **Defense-in-depth:** Laravel authorizes intent; Go enforces safe execution.
+- **Defense-in-depth:** Laravel validates intent; Go enforces final authz + safe execution.
 
 ### Required controls (target state)
 - mTLS between Laravel ↔ Go
