@@ -16,13 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4 
         with:
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT_GITHUB }}
           fetch-depth: 0
 
       - name: Build and Commit Reports
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
+          GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
         run: |
           # 1. Run the report generation
           make snyk-report
