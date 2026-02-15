@@ -16,15 +16,17 @@ import (
 )
 
 type inMemoryQueue struct {
-	ch       chan *redisq.TaskPayload
-	statuses map[string]redisq.TaskStatus
-	mu       sync.RWMutex
+	ch          chan *redisq.TaskPayload
+	statuses    map[string]redisq.TaskStatus
+	transitions map[string][]string
+	mu          sync.RWMutex
 }
 
 func newInMemoryQueue() *inMemoryQueue {
 	return &inMemoryQueue{
-		ch:       make(chan *redisq.TaskPayload, 1),
-		statuses: map[string]redisq.TaskStatus{},
+		ch:          make(chan *redisq.TaskPayload, 1),
+		statuses:    map[string]redisq.TaskStatus{},
+		transitions: map[string][]string{},
 	}
 }
 
@@ -41,6 +43,7 @@ func (q *inMemoryQueue) Complete(_ context.Context, id, status, correlationID, m
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.statuses[id] = redisq.TaskStatus{TaskID: id, Status: status, CorrelationID: correlationID, Message: message}
+	q.transitions[id] = append(q.transitions[id], status)
 	return nil
 }
 
@@ -48,6 +51,7 @@ func (q *inMemoryQueue) EnqueueCreateFolder(_ context.Context, parentPath, folde
 	id := fmt.Sprintf("task-%d", time.Now().UnixNano())
 	q.mu.Lock()
 	q.statuses[id] = redisq.TaskStatus{TaskID: id, Status: "queued", CorrelationID: correlationID, Message: "task accepted"}
+	q.transitions[id] = append(q.transitions[id], "queued")
 	q.mu.Unlock()
 
 	q.ch <- &redisq.TaskPayload{
@@ -68,6 +72,15 @@ func (q *inMemoryQueue) Status(id string) (redisq.TaskStatus, bool) {
 	defer q.mu.RUnlock()
 	status, ok := q.statuses[id]
 	return status, ok
+}
+
+func (q *inMemoryQueue) TransitionHistory(id string) []string {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	h := q.transitions[id]
+	cpy := make([]string, len(h))
+	copy(cpy, h)
+	return cpy
 }
 
 type inMemoryAuditor struct {
@@ -138,8 +151,22 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 			if !info.IsDir() {
 				t.Fatalf("expected %s to be a directory", expectedPath)
 			}
+			if !auditor.Contains("task.processing|" + taskID + "|" + correlationID) {
+				t.Fatalf("expected audit processing event for task %s", taskID)
+			}
 			if !auditor.Contains("task.succeeded|" + taskID + "|" + correlationID) {
 				t.Fatalf("expected audit success event for task %s", taskID)
+			}
+
+			history := queue.TransitionHistory(taskID)
+			expected := []string{"queued", "running", "success"}
+			if len(history) != len(expected) {
+				t.Fatalf("expected transition history %v, got %v", expected, history)
+			}
+			for i := range expected {
+				if history[i] != expected[i] {
+					t.Fatalf("expected transition history %v, got %v", expected, history)
+				}
 			}
 			return
 		}

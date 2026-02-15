@@ -40,6 +40,7 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 }
 
 func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusRequest) (*pb.TaskStatusResponse, error) {
+	requestCorrelationID := correlationIDFromContext(ctx)
 	taskStatus, err := h.queue.GetStatus(ctx, req.TaskId)
 	if err != nil {
 		if err == redisq.ErrTaskNotFound {
@@ -47,6 +48,12 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 		}
 		return nil, status.Error(codes.Internal, "failed to load task status")
 	}
+
+	correlationID := taskStatus.CorrelationID
+	if correlationID == "" {
+		correlationID = requestCorrelationID
+	}
+	log.Printf("request=get_task_status correlation_id=%s task_id=%s status=%s", correlationID, taskStatus.TaskID, taskStatus.Status)
 
 	return &pb.TaskStatusResponse{
 		TaskId:   taskStatus.TaskID,

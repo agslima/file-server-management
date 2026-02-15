@@ -3,7 +3,6 @@ package tasks
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
@@ -60,16 +59,23 @@ func (w *Worker) Start(ctx context.Context) {
 		}
 		correlationID := task.Params["correlation_id"]
 		w.auditor.EmitTaskEvent(ctx, "task.processing", task.ID, correlationID, fmt.Sprintf("task_type=%s", task.Type))
-		log.Printf("task_id=%s correlation_id=%s stage=processing type=%s", task.ID, correlationID, task.Type)
+		w.log.Infof("task_id=%s correlation_id=%s stage=processing type=%s", task.ID, correlationID, task.Type)
+		if err := w.q.Complete(ctx, task.ID, "running", correlationID, "task is running"); err != nil {
+			w.log.Infof("task_id=%s correlation_id=%s stage=status_update_failed error=%q", task.ID, correlationID, err.Error())
+		}
 
 		if err := w.p.Process(ctx, task); err != nil {
 			msg := err.Error()
-			log.Printf("task_id=%s correlation_id=%s stage=failed error=%q", task.ID, correlationID, msg)
-			_ = w.q.Complete(ctx, task.ID, "failed", correlationID, msg)
+			w.log.Infof("task_id=%s correlation_id=%s stage=failed error=%q", task.ID, correlationID, msg)
+			if completeErr := w.q.Complete(ctx, task.ID, "failed", correlationID, msg); completeErr != nil {
+				w.log.Infof("task_id=%s correlation_id=%s stage=status_update_failed error=%q", task.ID, correlationID, completeErr.Error())
+			}
 			w.auditor.EmitTaskEvent(ctx, "task.failed", task.ID, correlationID, msg)
 		} else {
-			log.Printf("task_id=%s correlation_id=%s stage=success", task.ID, correlationID)
-			_ = w.q.Complete(ctx, task.ID, "success", correlationID, "folder created")
+			w.log.Infof("task_id=%s correlation_id=%s stage=success", task.ID, correlationID)
+			if completeErr := w.q.Complete(ctx, task.ID, "success", correlationID, "folder created"); completeErr != nil {
+				w.log.Infof("task_id=%s correlation_id=%s stage=status_update_failed error=%q", task.ID, correlationID, completeErr.Error())
+			}
 			w.auditor.EmitTaskEvent(ctx, "task.succeeded", task.ID, correlationID, "task completed")
 		}
 	}
