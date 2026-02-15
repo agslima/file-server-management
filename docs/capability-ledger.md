@@ -1,35 +1,29 @@
-# Capability Ledger (Week 4 Alignment)
+# Capability Ledger
 
-This ledger maps every **implemented baseline claim** to a runnable validation command.
+This ledger is the source of truth for **what is currently implemented** and **how each claim is validated**.
 
-## How to use
+## Domain capability matrix
 
-- Run commands from repository root unless noted.
-- If a command fails, the corresponding capability claim should be treated as unverified.
+| Domain | Current state | Owner | Acceptance tests / runnable validation | Target milestone |
+| :-- | :-- | :-- | :-- | :-- |
+| AuthZ (JWT + RBAC/ACL enforcement at File Engine boundary) | **Baseline implemented** for the CreateFolder slice: handler requires auth context and authz interceptors remain in server wiring. | File Engine team (`file-engine/` maintainers) | `cd file-engine && go test ./internal/handlers -run TestCreateFolderRequiresAuthContext -v`<br>`cd file-engine && go test ./internal/auth -v` | M1 - Thin vertical slice hardened (complete) |
+| Tasks (async enqueue/consume + status retrieval) | **Baseline implemented** for create-folder flow: queue enqueue, worker consume, persisted task status (`queued/success/failed`), and `GetTaskStatus`. | File Engine team (`file-engine/` maintainers) | `cd file-engine && go test ./internal/handlers -run TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus -v`<br>`cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | M1 - Thin vertical slice hardened (complete) |
+| Uploads (initiate/complete API and execution pipeline) | **Scaffold only / partial**: backend endpoints and service proxy exist; full malware-gated async upload pipeline is not baseline-validated. | Backend team (`backend/`) + File Engine team (`file-engine/`) | `cd backend && composer validate --strict`<br>`php -l backend/app/Http/Controllers/UploadController.php` | M2 - Upload flow parity with folder slice |
+| Audit (task lifecycle emission + durable audit sink) | **Baseline partial**: task lifecycle emits audit-style log events in worker/API path; durable append-only sink integration remains target state. | File Engine team (`file-engine/`) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` (asserts audit event emission in test flow) | M2 - Durable audit persistence |
+| Observability (correlation IDs + operational signals) | **Baseline partial**: request correlation IDs (`x-request-id`/`x-correlation-id`) propagate into task payload/status/logs for folder flow; metrics/alerts/tracing are still target-state. | Platform + File Engine teams | `cd file-engine && go test ./internal/handlers -run TestCreateFolderEnqueuesWithCorrelationAndActorFallback -v`<br>`cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | M2 - Metrics/tracing baseline |
 
-| Capability claim | Status | Runnable validation | Expected result |
-| :-- | :--: | :-- | :-- |
-| Canonical proto mirror is synchronized (`api/proto` -> `proto`) | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` | Exit code `0` |
-| File Engine baseline modules compile/test in current baseline scope | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` | Tests pass (packages may report `[no test files]`) |
-| CreateFolder JWT-auth check is enforced at handler boundary | ✅ | `cd file-engine && go test ./internal/handlers -run TestCreateFolderRequiresAuthContext -v` | `PASS` for auth-required test |
-| CreateFolder request enqueues task with actor/correlation metadata | ✅ | `cd file-engine && go test ./internal/handlers -run TestCreateFolderEnqueuesWithCorrelationAndActorFallback -v` | `PASS` for enqueue metadata test |
-| Task status retrieval requires auth and returns persisted status | ✅ | `cd file-engine && go test ./internal/handlers -run TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus -v` | `PASS` for task status retrieval test |
-| Async create-folder flow works end-to-end (enqueue -> worker -> folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | `PASS` for `TestAsyncCreateFolderFlow` |
-| Task status persistence for async flow is present (`queued`/`success` with structured payload fields) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts status/correlation/message persistence |
-| Basic audit task events are emitted for async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts audit success event emission |
-| Correlation IDs are propagated from request metadata to task processing logs/status | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts correlation ID persistence |
-| Known-working local baseline script remains green | ✅ | `./file-engine/scripts/dev.sh` | Script completes with `[dev] all checks passed` |
-| Backend basic endpoints scaffold remains valid (composer metadata) | ✅ | `cd backend && composer validate --strict` | Exit code `0` |
-| Backend controller endpoint tests run | 🟡 | `cd backend && composer test` | Tests pass when composer dependencies are installed |
-| Frontend is intentionally placeholder (no Node runtime scaffold yet) | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` | Exit code `0` |
+## Cross-cutting baseline checks
 
-## Non-baseline / target-state claims
+Use this set for quick regression checks from repository root:
 
-The following themes are intentionally documented as target-state and are **not** baseline-validated in CI yet:
+```bash
+cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto
+./file-engine/scripts/dev.sh
+cd backend && composer validate --strict
+```
 
-- Enterprise identity integrations (AD/LDAP/OIDC broker)
-- Malware-gated upload promotion pipeline end-to-end
-- Full observability stack (OpenTelemetry backend export + alerting)
-- Immutable external audit sink integration
+## Notes on status labels
 
-Track these in roadmap milestones before promoting them to baseline claims.
+- **Baseline implemented**: runnable and validated by at least one command above.
+- **Baseline partial**: implemented in a narrow slice; broader target-state promises are not fully validated.
+- **Scaffold only / partial**: API or structure exists, but end-to-end behavior is not yet validated to baseline standard.

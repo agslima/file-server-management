@@ -6,7 +6,7 @@ The `docs/` directory contains project-wide documentation for the File Server Ma
 
 ### Index
 - [Documentation Overview (this file)](README.md)
-- [Capability Ledger (claim -> validation mapping)](capability-ledger.md)
+- [Capability Ledger (domain status + acceptance tests)](capability-ledger.md)
 
 ### Getting Started
 - [Setup & Developer Onboarding](setup.md)
