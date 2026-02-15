@@ -109,7 +109,6 @@ func (l *LocalStorage) List(ctx context.Context, prefix string) ([]storage.Objec
             modifiedAt = info.ModTime()
             createdAt = modifiedAt
             if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-                createdAt = time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
                 owner = strconv.FormatUint(uint64(stat.Uid), 10)
                 group = strconv.FormatUint(uint64(stat.Gid), 10)
             }
