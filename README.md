@@ -33,6 +33,21 @@ A multi-tenant, governance-first file management platform that operates on **rea
 
 ---
 
+## Canonical doc map
+
+Use this map to avoid documentation drift and find the correct source of truth quickly:
+
+- **Project capability truth (implemented vs target):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Project alignment review and improvement plan:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Contributor/agent operating constraints (repo-wide governance notes):** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/Agents.md`](file-engine/Agents.md)
+- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
+- **Legacy compose reference (non-canonical):** [`docker/docker-compose.yml`](docker/docker-compose.yml)
+
+> If guidance conflicts, prefer this order: capability ledger → setup guide → scoped agent docs.
+
+---
+
 ## Project status
 
 This repository documents an evolving architecture.
