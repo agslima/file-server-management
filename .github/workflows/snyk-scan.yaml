@@ -1,10 +1,10 @@
 name: Security Scan
 on:
   workflow_dispatch: {}
-  # push:
-  #   branches: ["main"] # Run 'monitor' only on main merge
-  # pull_request:
-  #   branches: ["main"] # Run 'test' (gate) on PRs
+  push:
+    branches: ["main"] # Run 'monitor' only on main merge
+  pull_request:
+    branches: ["main"] # Run 'test' (gate) on PRs
 
 permissions:
   contents: read
