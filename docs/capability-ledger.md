@@ -24,6 +24,18 @@ This ledger is the canonical claim-to-validation source for the repository.
 | `CL-010` | Structured JSON logs with correlation IDs and baseline queue/task metrics exposure are wired for API + worker | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` | Tests pass; handler logs include `correlation_id` and metrics snapshot assertions pass |
 | `CL-011` | Documentation link/path drift check remains green | ✅ | `./scripts/doc-drift-check.sh` | Script completes with `doc drift check passed` |
 
+## Domain capability ledger (by area)
+
+This section summarizes capability status by domain with ownership, acceptance tests, and target milestones. Target milestones reference the roadmap phases in `README.md`.
+
+| Domain | Current state | Owner | Acceptance tests | Target milestone |
+| :-- | :-- | :-- | :-- | :-- |
+| AuthZ | Baseline RBAC + path-based ACL with inheritance is implemented; tenant scoping enforced at File Engine boundary. | Unassigned (TBD) | `cd file-engine && go test ./internal/auth -v` | Phase 1 (read authz baseline) |
+| Tasks | Async task enqueue + worker execution + status persistence validated for create-folder flow. | Unassigned (TBD) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Phase 2 (folder creation + audit) |
+| Uploads | Quarantine → scan → promote is target-state only; no baseline validation yet. | Unassigned (TBD) | TBD (promote to ledger when runnable) | Phase 3 (upload + scan + observability) |
+| Audit | Baseline task audit events are emitted for async folder flow; external sink is target-state. | Unassigned (TBD) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Phase 2 baseline; Phase 3 for sink |
+| Observability | Structured logs + queue/task metrics baseline in place; OTEL export is target-state. | Unassigned (TBD) | `cd file-engine && go test ./internal/handlers ./internal/observability -v` | Phase 3 (observability baseline) |
+
 ## Target-state claims (documented, not baseline-validated)
 
 The following areas remain target-state and are not currently baseline-gated by CI:

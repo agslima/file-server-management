@@ -35,14 +35,6 @@ A multi-tenant, governance-first file management platform that operates on **rea
 
 ## Canonical doc map
 
-**Governance & Status:**
-
-- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
-- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
-- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
-- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
-
 **Architecture & Implementation:**
 
 - **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
@@ -50,8 +42,18 @@ A multi-tenant, governance-first file management platform that operates on **rea
 - **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
 - **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
 - **Observability:** [`docs/observability.md`](docs/observability.md)
+- **Roadmap (staged milestones):** [`docs/roadmap.md`](docs/roadmap.md)
 - **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
 - **Decisions and rationale:** [`docs/adr`](docs/adr)
+
+**Governance & Status:**
+
+- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
+- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
+- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
 
 > If guidance conflicts, prefer this order: capability ledger → architecture docs → setup guide.
 
@@ -361,7 +363,7 @@ Known gaps / planned hardening (examples):
 
 ## Auditing
 
-**Dual-layer audit (target-state):**
+**Dual-layer audit (target-state vision):**
 
 - **Primary (queryable)**: Postgres `audit_events` table (append-only, target-state)
 - **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM, target-state)
@@ -483,20 +485,6 @@ file-server-management/
    ├─ threat-model.md         # Security model + STRIDE notes
    └─ setup.md                # Local development setup
 ```
-
----
-
-## Roadmap
-
-| Phase | Goal | Status |
-| :---- | :---- | :---- |
-| Phase 1 | Browse directories + read authz baseline | 🟡 |
-| Phase 2 | Folder creation (async) + audit events | 🟡 |
-| Phase 3 | Quarantine → scan → promote + observability baseline | 🟡 |
-| Phase 4 | Advanced governance (fine-grained ACL, workflows, notifications) | 🔒 |
-| Phase 5 | Enterprise features (retention, eDiscovery-friendly audit, versioning) | 🔒 |
-
-> See ADRs in `docs/adr/`.
 
 ---
 
