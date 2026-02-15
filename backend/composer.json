@@ -19,6 +19,13 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate"
+        ],
+        "test": [
+            "@php vendor/bin/phpunit --colors=always"
         ]
+    },
+    "license": "MIT",
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
     }
 }

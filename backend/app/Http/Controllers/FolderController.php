@@ -2,26 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\FileEngineService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class FolderController extends Controller
 {
-    public function __construct(private FileEngineService $engine) {}
-
-    public function create(Request $request)
+    public function __construct(private readonly FileEngineService $engine)
     {
-        $validated = $request->validate([
-            'path' => 'required|string',
-            'folderName' => 'required|string',
-        ]);
+    }
 
-        $response = $this->engine->createFolder(
-            $validated['path'],
-            $validated['folderName'],
-            $request->user()->email
-        );
+    public function create(Request $request): JsonResponse
+    {
+        $path = (string) $request->input('path', '');
+        $folderName = (string) $request->input('folderName', '');
+        if ($path === '' || $folderName === '') {
+            return new JsonResponse(['message' => 'path and folderName are required'], 422);
+        }
 
-        return response()->json($response);
+        $requestedBy = (string) ($request->input('requestedBy') ?? optional($request->user())->email ?? 'system');
+
+        return new JsonResponse($this->engine->createFolder($path, $folderName, $requestedBy));
     }
 }

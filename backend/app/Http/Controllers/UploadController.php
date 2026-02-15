@@ -2,35 +2,42 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\FileEngineService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class UploadController extends Controller
 {
-    public function __construct(private FileEngineService $engine) {}
-
-    public function initiate(Request $request)
+    public function __construct(private readonly FileEngineService $engine)
     {
-        $validated = $request->validate([
-            'path' => 'required',
-            'filename' => 'required',
-            'mimeType' => 'required'
-        ]);
-
-        return $this->engine->initiateUpload(
-            $validated,
-            $request->user()->email
-        );
     }
 
-    public function complete(Request $request)
+    public function initiate(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'uploadId' => 'required|string'
-        ]);
+        $path = (string) $request->input('path', '');
+        $filename = (string) $request->input('filename', '');
+        $mimeType = (string) $request->input('mimeType', '');
 
-        return $this->engine->completeUpload(
-            $validated['uploadId']
-        );
+        if ($path === '' || $filename === '' || $mimeType === '') {
+            return new JsonResponse(['message' => 'path, filename and mimeType are required'], 422);
+        }
+
+        $requestedBy = (string) ($request->input('requestedBy') ?? optional($request->user())->email ?? 'system');
+
+        return new JsonResponse($this->engine->initiateUpload([
+            'path' => $path,
+            'filename' => $filename,
+            'mimeType' => $mimeType,
+        ], $requestedBy));
+    }
+
+    public function complete(Request $request): JsonResponse
+    {
+        $uploadId = (string) $request->input('uploadId', '');
+        if ($uploadId === '') {
+            return new JsonResponse(['message' => 'uploadId is required'], 422);
+        }
+
+        return new JsonResponse($this->engine->completeUpload($uploadId));
     }
 }

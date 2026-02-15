@@ -45,6 +45,23 @@ Legend:
 
 > **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
 
+> **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implemented claim.
+
+
+### Implementation status (baseline)
+
+| Capability | Status | Validation |
+| :-- | :--: | :-- |
+| Canonical proto contract sync | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` |
+| File Engine baseline module checks | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` |
+| Async folder flow (enqueue → worker → folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| Task status persistence + audit + correlation IDs | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
+| Backend basic endpoints scaffold + controller tests | 🟡 | `cd backend && composer test` (requires dependencies), plus `composer validate --strict` |
+| Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
+
+For detailed claim-to-check mapping (including target-state exclusions), see the [capability ledger](docs/capability-ledger.md).
+
 ---
 
 ## Why this exists
@@ -195,6 +212,11 @@ Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 
 > Full reference: docs/api-reference.md
 
+**Contract source of truth**
+
+- Canonical proto: `file-engine/api/proto/fileengine.proto`
+- Compatibility mirror (kept in sync): `file-engine/proto/fileengine.proto`
+
 Base URLs:
 
 - HTTP: `http://<host>:8080`
@@ -211,6 +233,23 @@ Core endpoints (HTTP/JSON via gRPC-Gateway):
 Task state model (canonical):
 
 - `queued → running → success | failed | quarantined`
+
+---
+
+## Thin vertical slice (reference implementation)
+
+Implemented baseline reference flow:
+
+1. `POST /v1/folders` (`CreateFolder`) receives request metadata and JWT-authenticated context at File Engine boundary.
+2. API enqueues async task in Redis and persists initial task status (`queued`).
+3. Worker consumes queue, executes filesystem folder creation, persists terminal status (`success`/`failed`), and emits audit-style events.
+4. Client polls `GET /v1/tasks/{taskId}` (`GetTaskStatus`) until completion.
+
+Validation command:
+
+```bash
+cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
+```
 
 ---
 
