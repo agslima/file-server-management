@@ -45,23 +45,49 @@ func (q *fakeTaskQueue) GetStatus(_ context.Context, id string) (*redisq.TaskSta
 	return st, nil
 }
 
-func TestCreateFolderRequiresAuthContext(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore())
+func tenantResolverForTests() auth.TenantResolver {
+	return auth.NewInMemoryTenantResolver(map[string][]string{
+		"alice": {"acme"},
+	})
+}
 
-	_, err := h.CreateFolder(context.Background(), &pb.CreateFolderRequest{ParentPath: "tenants/acme", FolderName: "reports"})
+func TestCreateFolderRequiresAuthContext(t *testing.T) {
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+
+	_, err := h.CreateFolder(context.Background(), &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
 	if status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("expected unauthenticated, got %v", err)
 	}
 }
 
+func TestCreateFolderRejectsNonTenantPath(t *testing.T) {
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+
+	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/projects/shared", FolderName: "reports"})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected invalid argument for non-tenant path, got %v", err)
+	}
+}
+
+func TestCreateFolderRejectsUnauthorizedTenant(t *testing.T) {
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+
+	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/beta", FolderName: "reports"})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected permission denied for tenant mismatch, got %v", err)
+	}
+}
+
 func TestCreateFolderEnqueuesWithCorrelationAndActorFallback(t *testing.T) {
 	q := &fakeTaskQueue{}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore())
+	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
 
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("x-request-id", "req-123"))
 
-	resp, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "tenants/acme", FolderName: "reports"})
+	resp, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
 	if err != nil {
 		t.Fatalf("CreateFolder returned error: %v", err)
 	}
@@ -81,7 +107,7 @@ func TestCreateFolderEnqueuesWithCorrelationAndActorFallback(t *testing.T) {
 
 func TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus(t *testing.T) {
 	q := &fakeTaskQueue{statuses: map[string]*redisq.TaskStatus{"task-abc": {TaskID: "task-abc", Status: "success", Message: "done"}}}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore())
+	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
 
 	_, err := h.GetTaskStatus(context.Background(), &pb.TaskStatusRequest{TaskId: "task-abc"})
 	if status.Code(err) != codes.Unauthenticated {

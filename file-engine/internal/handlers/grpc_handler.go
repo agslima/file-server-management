@@ -23,13 +23,17 @@ type TaskQueue interface {
 type GRPCHandler struct {
 	pb.UnimplementedFileEngineServer
 
-	queue   TaskQueue
-	objects *services.ObjectService
-	acl     auth.ACLStore
+	queue          TaskQueue
+	objects        *services.ObjectService
+	acl            auth.ACLStore
+	tenantResolver auth.TenantResolver
 }
 
-func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, acl auth.ACLStore) *GRPCHandler {
-	return &GRPCHandler{queue: q, objects: obj, acl: acl}
+func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, acl auth.ACLStore, tenantResolver auth.TenantResolver) *GRPCHandler {
+	if tenantResolver == nil {
+		tenantResolver = auth.NewAllowAllTenantResolver()
+	}
+	return &GRPCHandler{queue: q, objects: obj, acl: acl, tenantResolver: tenantResolver}
 }
 
 // CreateFolder stays async via task queue (worker executes).
@@ -37,6 +41,22 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	authCtx, ok := auth.FromContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+
+	fullPath, err := authz.ExtractPath(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid path")
+	}
+	tenantID, err := authz.TenantFromPath(fullPath)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "path must be tenant-scoped")
+	}
+	allowed, err := h.tenantResolver.UserHasTenant(ctx, authCtx.UserID, tenantID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "tenant resolution failed")
+	}
+	if !allowed {
+		return nil, status.Error(codes.PermissionDenied, "tenant access denied")
 	}
 
 	correlationID := correlationIDFromContext(ctx)
@@ -49,7 +69,7 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("request=create_folder actor=%s correlation_id=%s task_id=%s parent=%s folder=%s", requestedBy, correlationID, taskID, req.ParentPath, req.FolderName)
+	log.Printf("request=create_folder actor=%s tenant=%s correlation_id=%s task_id=%s parent=%s folder=%s", requestedBy, tenantID, correlationID, taskID, req.ParentPath, req.FolderName)
 	log.Printf("audit_event=task.queued task_id=%s correlation_id=%s message=%q", taskID, correlationID, "folder creation queued")
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
 }
