@@ -1,4 +1,4 @@
-package localstorage
+package local
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/example/file-engine/internal/storage"
 )
 
 func TestLocalStorageListMetadata(t *testing.T) {
@@ -28,7 +30,7 @@ func TestLocalStorageListMetadata(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 
-	var file *ObjectInfo
+	var file *storage.ObjectInfo
 	for i := range items {
 		if items[i].Path == "/tenants/acme/projects/report.txt" {
 			file = &items[i]
