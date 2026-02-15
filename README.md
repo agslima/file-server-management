@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml)
-![Go Version](https://img.shields.io/badge/go-1.21+-blue)
+![Go Version](https://img.shields.io/badge/go-1.24+-blue)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20-5e5e5e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
@@ -20,7 +20,7 @@
 
 ## TL;DR
 
-A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, **dual-layer auditing**, and a **quarantine → scan → promote** upload pipeline.
+A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
 
 **Key points:**
 
@@ -28,23 +28,32 @@ A multi-tenant, governance-first file management platform that operates on **rea
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
 - **Async mutations:** create/move/upload return a `taskId`; clients poll task status.
 - **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
-- **Auditing:** persisted task status + basic task audit events in async folder flow baseline.
+- **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
 - **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
 
 ---
 
 ## Canonical doc map
 
-Use this map to avoid documentation drift and find the correct source of truth quickly:
+**Governance & Status:**
 
-- **Project capability truth (implemented vs target):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
-- **Project alignment review and improvement plan:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
-- **Contributor/agent operating constraints (repo-wide governance notes):** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/Agents.md`](file-engine/Agents.md)
+- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
+- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
+
+**Architecture & Implementation:**
+
+- **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
+- **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
+- **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
+- **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
+- **Observability:** [`docs/observability.md`](docs/observability.md)
 - **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
-- **Legacy compose reference (non-canonical):** [`docker/docker-compose.yml`](docker/docker-compose.yml)
+- **Decisions and rationale:** [`docs/adr`](docs/adr)
 
-> If guidance conflicts, prefer this order: capability ledger → setup guide → scoped agent docs.
+> If guidance conflicts, prefer this order: capability ledger → architecture docs → setup guide.
 
 ---
 
@@ -58,10 +67,9 @@ Legend:
 - 🟡 in progress
 - 🔒 planned / target state
 
+> [!Note]
 > **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
-
 > **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implemented claim.
-
 
 ### Implementation status (baseline)
 
@@ -80,7 +88,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
 | [`CL-010`](docs/capability-ledger.md#baseline-claims-implemented) | Structured logs + queue/task metrics baseline | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` |
 
-For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
+> For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
 ---
 
@@ -107,16 +115,16 @@ This platform provides a centralized, permissioned interface that **controls and
 ### Write path (async)
 
 - Create folders (policy-enforced naming)
-- Upload files (two-step: initiate → complete)
-- Move/rename/write operations *(as tasks)*
+- Upload files (two-step: initiate → complete) *(target-state)*
+- Move/rename/write operations *(as tasks; target-state)*
 
 ### Governance & security
 
 - JWT auth (Bearer)
 - RBAC + path-based ACL (inheritance)
 - Multi-tenant enforcement via **server-side tenant mapping**
-- Upload quarantine + malware scan gate before publish
-- Dual-layer audit (queryable + tamper-resistant sink)
+- Upload quarantine + malware scan gate before publish *(target-state)*
+- Dual-layer audit (queryable + tamper-resistant sink) *(target-state)*
 
 ---
 
@@ -132,7 +140,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway
+- gRPC-first API + HTTP/JSON via gRPC-Gateway *(target-state until gateway code is generated)*
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
 - Enqueues tasks; worker executes storage operations with least privilege
 
@@ -157,7 +165,7 @@ flowchart TB
   AV -->|verdict| W
 
   %% Audit
-  FE --> DB["(Postgres<br/>audit_events (append-only)<br/>ACL / mappings)"]
+  FE --> DB["(Postgres<br/>audit_events (append-only, target-state)<br/>ACL / mappings)"]
   W --> DB
   DB --> SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
 ```
@@ -230,25 +238,25 @@ Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 
 ## File Engine API
 
-> Full reference: docs/api-reference.md
+> Full reference: `docs/api-reference.md`
 
-**Contract source of truth**
+Contract source of truth
 
 - Canonical proto: `file-engine/api/proto/fileengine.proto`
 - Compatibility mirror (kept in sync): `file-engine/proto/fileengine.proto`
 
-Base URLs:
+Base URLs (when HTTP/gateway is enabled):
 
-- HTTP: `http://<host>:8080`
+- HTTP: `http://<host>:8080` *(target-state)*
 - gRPC: `<host>:50051`
 
-Core endpoints (HTTP/JSON via gRPC-Gateway):
+Core gRPC methods (canonical):
 
-- `POST /v1/folders` → returns `taskId` (async)
-- `POST /v1/uploads:initiate` → returns `uploadId, uploadUrl`
-- `POST /v1/uploads/{uploadId}:complete` → returns `taskId`
-- `GET /v1/tasks/{taskId}` → poll task status
-- `GET /healthz` → liveness (200 OK if process + HTTP server responsive)
+- `CreateFolder` → returns `taskId` (async)
+- `GetTaskStatus` → poll task status
+- `InitiateUpload` / `CompleteUpload` *(target-state)*
+
+HTTP/JSON routes are **target-state** until gateway code is generated and validated.
 
 Task state model (canonical):
 
@@ -256,15 +264,17 @@ Task state model (canonical):
 
 ---
 
-## Thin vertical slice (reference implementation)
+## Current Implementation: Folder Flow
+
+While the architecture supports the full Upload Quarantine flow (see below), the currently verifiable baseline is the Async Folder Creation flow.
 
 Implemented baseline reference flow:
 
-1. `POST /v1/folders` (`CreateFolder`) receives request metadata and JWT-authenticated context at File Engine boundary.
+1. `CreateFolder` (gRPC) receives request metadata and JWT-authenticated context at File Engine boundary.
 2. API enqueues async task in Redis and persists initial task status (`queued`).
 2a. API resolves tenant membership from server-side source-of-truth and rejects non-tenant-scoped or unauthorized tenant paths.
 3. Worker consumes queue, executes filesystem folder creation, persists terminal status (`success`/`failed`), and emits audit-style events.
-4. Client polls `GET /v1/tasks/{taskId}` (`GetTaskStatus`) until completion.
+4. Client polls `GetTaskStatus` until completion.
 
 Validation command:
 
@@ -275,6 +285,8 @@ cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuth
 ---
 
 ## Key flows
+
+**Target-state upload flow (not baseline-validated):**
 
 ```mermaid
 sequenceDiagram
@@ -334,7 +346,7 @@ Secure-by-default controls:
 - Deny-by-default authorization at File Engine
 - Tenant scope from server-side mapping (not JWT)
 - Strict path normalization + traversal rejection
-- Quarantine → scan → promote gating
+- Quarantine → scan → promote gating *(target-state)*
 - Redaction policy: never log tokens or pre-signed URLs
 
 Known gaps / planned hardening (examples):
@@ -349,10 +361,14 @@ Known gaps / planned hardening (examples):
 
 ## Auditing
 
-**Dual-layer audit:**
+**Dual-layer audit (target-state):**
 
-- **Primary (queryable)**: Postgres `audit_events` table (append-only)
-- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM)
+- **Primary (queryable)**: Postgres `audit_events` table (append-only, target-state)
+- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM, target-state)
+
+**Baseline audit behavior:**
+
+- Task audit events are emitted for the async folder flow (see `CL-005`).
 
 Audit coverage (target baseline):
 
@@ -387,39 +403,58 @@ Operational signals to monitor:
 
 Requirements:
 
-- Go 1.21+
-- Docker Engine / Docker Desktop + Compose v2
-- curl
+- Go 1.24+
+- Docker Engine / Docker Desktop + Compose v2 (optional; only needed for containerized dependencies)
+- curl (optional; only needed for manual API calls)
 
-### 1) Start dependencies (Redis + Postgres)
+### 1) Run the validated baseline checks (recommended)
+
+This is the only **baseline-validated** quickstart today.
 
 ```bash
-docker compose up -d postgres redis
+./file-engine/scripts/dev.sh
 ```
 
-### 2) Apply migrations
+### 2) Optional: run the async folder flow integration test alone
 
 ```bash
+cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
+```
+
+### 3) Optional: local File Engine run (scaffold-level, for debugging)
+
+This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are still scaffold-level until generated gateway code is in place, so treat this as a debug path rather than a validated contract.
+
+```bash
+cd file-engine
+docker compose up -d redis postgres
+
+export REDIS_ADDR="localhost:6379"
 export POSTGRES_DSN="postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"
+export STORAGE_BACKEND="local"
+export FILE_BASE_ROOT="$PWD/data"
+export JWT_SECRET="dev-secret"
+export TENANT_MEMBERSHIPS="dev-admin=dev-tenant"
+
 go run ./cmd/migrate
 ```
 
-### 3) Run the stack (API + Worker)
+API terminal:
 
 ```bash
-docker compose up --build
+cd file-engine && go run ./cmd/file-engine
 ```
 
-### 4) Smoke test (liveness)
+Worker terminal:
 
 ```bash
-curl -i http://localhost:8080/healthz
+cd file-engine && go run ./cmd/worker
 ```
 
-### 5) Run unit tests
+Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`):
 
 ```bash
-go test ./... -v
+export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
 **Default ports:**
@@ -440,10 +475,13 @@ file-server-management/
 ├─ file-engine/               # Go File Engine (API + Worker)
 ├─ docker/                    # Dockerfiles / Compose helpers
 └─ docs/
-   ├─ architecture/           # Platform architecture + contracts
-   ├─ security/               # Threat model, pipeline security, STRIDE
-   ├─ readmes/                # Role-specific docs (platform, security, contributors)
-   └─ adr/                    # Architectural Decision Records
+   ├─ adr/                    # Architectural Decision Records
+   ├─ architecture.md         # Platform architecture
+   ├─ api-reference.md        # API surface (gRPC + HTTP)
+   ├─ auth.md                 # AuthN/AuthZ model
+   ├─ observability.md        # Logs/metrics/tracing expectations
+   ├─ threat-model.md         # Security model + STRIDE notes
+   └─ setup.md                # Local development setup
 ```
 
 ---
@@ -458,24 +496,7 @@ file-server-management/
 | Phase 4 | Advanced governance (fine-grained ACL, workflows, notifications) | 🔒 |
 | Phase 5 | Enterprise features (retention, eDiscovery-friendly audit, versioning) | 🔒 |
 
-Queue strategy:
-
-- Redis (simplicity) — see ADRs in `docs/adr/`.
-
----
-
-## Documentation map
-
-For detailed implementation guides, please refer to:
-
-- Documentation Overview - [`docs/readme.md`](https://github.com/agslima/file-server-management/blob/main/docs/README.md)
-- Decisions and rationale — [`docs/adr`](https://github.com/agslima/file-server-management/blob/main/docs/adr)
-- Platform Architecture Overview — [`docs/architecture.md`](https://github.com/agslima/file-server-management/blob/main/docs/architecture.md)
-- File Engine API (gRPC + HTTP/JSON) — [`docs/api-reference.md`](https://github.com/agslima/file-server-management/blob/main/docs/api-reference.md)
-- JWT + RBAC/ACL model — [`docs/auth.md`](https://github.com/agslima/file-server-management/blob/main/docs/auth.md)
-- Threat Model & Security Specification (STRIDE)  — [`docs/threat-model.md`](https://github.com/agslima/file-server-management/blob/main/docs/threat-model.md)
-- Logging, metrics, tracing standards — [`docs/observability.md`](https://github.com/agslima/file-server-management/blob/main/docs/observability.md)
-- Setud & Installation Guide — [`docs/setup.md`](https://github.com/agslima/file-server-management/blob/main/docs/setup.md)
+> See ADRs in `docs/adr/`.
 
 ---
 

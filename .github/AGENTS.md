@@ -43,13 +43,13 @@ Run from repository root unless noted:
 - File-engine baseline and integration checks are expected to pass via `scripts/dev.sh`.
 - Backend is scaffold-level; composer metadata validation is used as baseline signal.
 - Frontend is intentionally placeholder (README present, no `package.json`).
-- `READMD.md` is not present in this repository.
 
 ## Known gaps to keep in mind
 
 - Some docs still describe target-state capabilities as implemented; verify with capability ledger commands before claiming support.
-- `file-engine/README.md` includes scaffold-era content and can drift from current runtime behavior.
+- HTTP/JSON via gRPC-Gateway remains target-state until generated gateway code is committed.
 - `docker/docker-compose.yml` is a legacy/alternate compose path and should not override canonical setup guidance.
+- Root `docker-compose.yml` is experimental and not a baseline-validated runtime path.
 
 ## Conventions
 

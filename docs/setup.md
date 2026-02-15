@@ -4,84 +4,86 @@ This guide is the canonical setup reference for local development.
 
 ## Canonical startup paths
 
-- **Full stack (root compose):** run from repository root using `docker-compose.yml`.
-- **File Engine focused development:** run from `file-engine/` using `file-engine/docker-compose.yml`.
+- **Baseline validation (supported):** run `./file-engine/scripts/dev.sh` from repository root.
+- **File Engine local run (scaffold-level):** run Redis/Postgres in Docker, then run API/worker locally for debugging.
+- **Full stack compose (experimental):** `docker-compose.yml` builds containers, but backend/frontend are still scaffold-level and HTTP wiring is not yet a validated baseline.
 
 ---
 
-## 1) Full stack quickstart (repository root)
-
-```bash
-git clone <repo>
-cd file-server-management
-docker compose up --build
-```
-
-Services started by root compose include Redis, File Engine API/worker, Backend, and Nginx.
-
-### Useful checks
-
-```bash
-curl -i http://localhost:8080/healthz
-cd backend && composer validate --strict
-./file-engine/scripts/dev.sh
-```
-
----
-
-## 2) File Engine focused setup
-
-```bash
-cd file-engine
-docker compose up --build
-```
-
-This starts Redis + Postgres + File Engine API + worker using `file-engine/docker-compose.yml`.
-
-### Validate baseline behavior
+## 1) Baseline validation (recommended)
 
 From repository root:
 
 ```bash
-cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto
-cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v
-cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ./file-engine/scripts/dev.sh
 ```
 
+This is the only baseline-validated quickstart today (see `docs/capability-ledger.md`).
+
 ---
 
-## 3) Native local run (without containerized API/worker)
+## 2) File Engine local run (scaffold-level)
 
-Keep dependencies in Docker and run binaries locally for debugging.
+### Start dependencies
 
 ```bash
 cd file-engine
 docker compose up -d redis postgres
+```
 
+### Configure environment
+
+```bash
 export REDIS_ADDR="localhost:6379"
 export POSTGRES_DSN="postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"
 export STORAGE_BACKEND="local"
-export FILE_BASE_ROOT="./data"
+export FILE_BASE_ROOT="$PWD/data"
 export JWT_SECRET="dev-secret"
+export TENANT_MEMBERSHIPS="dev-admin=dev-tenant"
 ```
+
+### Apply migrations
+
+```bash
+go run ./cmd/migrate
+```
+
+### Run API + worker (separate terminals)
 
 API terminal:
 
 ```bash
-go run ./cmd/file-engine
+cd file-engine && go run ./cmd/file-engine
 ```
 
 Worker terminal:
 
 ```bash
-go run ./cmd/worker
+cd file-engine && go run ./cmd/worker
 ```
+
+Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`):
+
+```bash
+export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
+```
+
+Note: HTTP/gRPC gateway wiring is still scaffold-level. Use this path for debugging, not as a validated API contract.
+
+---
+
+## 3) Full stack quickstart (experimental)
+
+From repository root:
+
+```bash
+docker compose up --build
+```
+
+This path is useful to validate container builds, but it is **not** a baseline-validated runtime. Use the baseline validation or File Engine local run for reproducible checks.
 
 ---
 
 ## 4) Notes on legacy compose
 
 `docker/docker-compose.yml` is a legacy/alternate compose definition. It should not be treated as the primary onboarding path.
-
-Use one of the canonical startup paths above unless you are intentionally validating legacy behavior.
