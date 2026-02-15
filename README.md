@@ -37,14 +37,25 @@ A multi-tenant, governance-first file management platform that operates on **rea
 
 Use this map to avoid documentation drift and find the correct source of truth quickly:
 
-- **Project capability truth (implemented vs target):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
-- **Project alignment review and improvement plan:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
-- **Contributor/agent operating constraints (repo-wide governance notes):** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/Agents.md`](file-engine/Agents.md)
-- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
-- **Legacy compose reference (non-canonical):** [`docker/docker-compose.yml`](docker/docker-compose.yml)
+**Governance & Status:**
 
-> If guidance conflicts, prefer this order: capability ledger → setup guide → scoped agent docs.
+- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/Agents.md`](file-engine/Agents.md)
+- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
+
+**Architecture & Implementation:**
+
+- **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
+- **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
+- **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
+- **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
+- **Observability:** [`docs/observability.md`](docs/observability.md)
+- **Decisions and rationale:** [`docs/adr`](docs/adr)
+- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
+
+> If guidance conflicts, prefer this order: capability ledger → architecture docs → setup guide.
 
 ---
 
@@ -59,9 +70,7 @@ Legend:
 - 🔒 planned / target state
 
 > **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
-
 > **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implemented claim.
-
 
 ### Implementation status (baseline)
 
@@ -230,9 +239,9 @@ Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 
 ## File Engine API
 
-> Full reference: docs/api-reference.md
+> Full reference: `docs/api-reference.md`
 
-**Contract source of truth**
+Contract source of truth
 
 - Canonical proto: `file-engine/api/proto/fileengine.proto`
 - Compatibility mirror (kept in sync): `file-engine/proto/fileengine.proto`
@@ -256,7 +265,9 @@ Task state model (canonical):
 
 ---
 
-## Thin vertical slice (reference implementation)
+## Current Implementation: Folder Flow
+
+While the architecture supports the full Upload Quarantine flow (see below), the currently verifiable baseline is the Async Folder Creation flow.
 
 Implemented baseline reference flow:
 
@@ -391,17 +402,24 @@ Requirements:
 - Docker Engine / Docker Desktop + Compose v2
 - curl
 
-### 1) Start dependencies (Redis + Postgres)
+### 1) Start dependencies & Apply migrations
 
 ```bash
 docker compose up -d postgres redis
-```
-
-### 2) Apply migrations
-
-```bash
 export POSTGRES_DSN="postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"
 go run ./cmd/migrate
+```
+
+### 2) Seed Data & Generate Token
+
+The system denies access by default. You must seed a tenant and user to generate a valid JWT.
+
+```bash
+# 1. Seed a dev tenant and admin user
+go run ./cmd/seed --tenant=dev-tenant --user=dev-admin
+
+# 2. Generate a JWT for this user and save to env var
+export JWT=$(go run ./cmd/token-gen --user=dev-admin)
 ```
 
 ### 3) Run the stack (API + Worker)
@@ -413,7 +431,14 @@ docker compose up --build
 ### 4) Smoke test (liveness)
 
 ```bash
+# Verify health
 curl -i http://localhost:8080/healthz
+
+# Create a folder (Authorized)
+curl -X POST http://localhost:8080/v1/folders \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"path": "tenants/dev-tenant/my-folder"}'
 ```
 
 ### 5) Run unit tests
@@ -461,21 +486,6 @@ file-server-management/
 Queue strategy:
 
 - Redis (simplicity) — see ADRs in `docs/adr/`.
-
----
-
-## Documentation map
-
-For detailed implementation guides, please refer to:
-
-- Documentation Overview - [`docs/readme.md`](https://github.com/agslima/file-server-management/blob/main/docs/README.md)
-- Decisions and rationale — [`docs/adr`](https://github.com/agslima/file-server-management/blob/main/docs/adr)
-- Platform Architecture Overview — [`docs/architecture.md`](https://github.com/agslima/file-server-management/blob/main/docs/architecture.md)
-- File Engine API (gRPC + HTTP/JSON) — [`docs/api-reference.md`](https://github.com/agslima/file-server-management/blob/main/docs/api-reference.md)
-- JWT + RBAC/ACL model — [`docs/auth.md`](https://github.com/agslima/file-server-management/blob/main/docs/auth.md)
-- Threat Model & Security Specification (STRIDE)  — [`docs/threat-model.md`](https://github.com/agslima/file-server-management/blob/main/docs/threat-model.md)
-- Logging, metrics, tracing standards — [`docs/observability.md`](https://github.com/agslima/file-server-management/blob/main/docs/observability.md)
-- Setud & Installation Guide — [`docs/setup.md`](https://github.com/agslima/file-server-management/blob/main/docs/setup.md)
 
 ---
 
