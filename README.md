@@ -35,14 +35,12 @@ A multi-tenant, governance-first file management platform that operates on **rea
 
 ## Canonical doc map
 
-Use this map to avoid documentation drift and find the correct source of truth quickly:
-
 **Governance & Status:**
 
 - **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
 - **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
 - **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/Agents.md`](file-engine/Agents.md)
+- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
 - **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
 
 **Architecture & Implementation:**
@@ -52,8 +50,8 @@ Use this map to avoid documentation drift and find the correct source of truth q
 - **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
 - **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
 - **Observability:** [`docs/observability.md`](docs/observability.md)
-- **Decisions and rationale:** [`docs/adr`](docs/adr)
 - **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
+- **Decisions and rationale:** [`docs/adr`](docs/adr)
 
 > If guidance conflicts, prefer this order: capability ledger → architecture docs → setup guide.
 
@@ -69,6 +67,7 @@ Legend:
 - 🟡 in progress
 - 🔒 planned / target state
 
+> [!Note]
 > **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
 > **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implemented claim.
 
@@ -89,7 +88,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
 | [`CL-010`](docs/capability-ledger.md#baseline-claims-implemented) | Structured logs + queue/task metrics baseline | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` |
 
-For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
+> For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
 ---
 
@@ -497,9 +496,7 @@ file-server-management/
 | Phase 4 | Advanced governance (fine-grained ACL, workflows, notifications) | 🔒 |
 | Phase 5 | Enterprise features (retention, eDiscovery-friendly audit, versioning) | 🔒 |
 
-Queue strategy:
-
-- Redis (simplicity) — see ADRs in `docs/adr/`.
+> See ADRs in `docs/adr/`.
 
 ---
 
