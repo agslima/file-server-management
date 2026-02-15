@@ -14,7 +14,7 @@ import (
 	"github.com/example/file-engine/internal/logger"
 	"github.com/example/file-engine/internal/server"
 	"github.com/example/file-engine/internal/services"
-	"github.com/example/file-engine/internal/storage"
+	storagefactory "github.com/example/file-engine/internal/storage/factory"
 )
 
 type Container struct {
@@ -37,7 +37,7 @@ func (c *Container) Servers() *Servers {
 	q := redisq.NewRedisQueue(rdb)
 
 	// Storage backend (same as worker)
-	st, err := storage.NewFromConfig(context.Background(), storage.FactoryConfig{
+	st, err := storagefactory.NewFromConfig(context.Background(), storagefactory.Config{
 		Backend:           c.Config.StorageBackend,
 		LocalBase:         c.Config.FileBaseRoot,
 		S3Bucket:          c.Config.S3Bucket,

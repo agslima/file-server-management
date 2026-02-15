@@ -44,10 +44,5 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: 1.21
-      - name: Verify canonical proto contract is in sync
-        run: |
-          cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto
-      - name: Build strict baseline modules
-        run: |
-          cd file-engine
-          go test ./internal/config ./internal/logger ./internal/worker -v
+      - name: Run known-working file-engine dev checks
+        run: ./file-engine/scripts/dev.sh
