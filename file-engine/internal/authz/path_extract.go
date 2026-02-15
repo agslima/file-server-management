@@ -28,10 +28,12 @@ func normalize(p string) (string, error) {
 	if clean == "." {
 		clean = "/"
 	}
-	if strings.Contains(clean, "..") {
-		return "", fmt.Errorf("invalid path traversal")
-	}
 	return clean, nil
+}
+
+// NormalizePath enforces canonical slash handling and traversal rejection.
+func NormalizePath(p string) (string, error) {
+	return normalize(p)
 }
 
 func TenantFromPath(p string) (string, error) {

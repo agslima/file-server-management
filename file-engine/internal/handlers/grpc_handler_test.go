@@ -123,3 +123,33 @@ func TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus(t *testing.T) {
 		t.Fatalf("unexpected task status response: %+v", resp)
 	}
 }
+
+func TestCreateFolderEnqueuesNormalizedPath(t *testing.T) {
+	q := &fakeTaskQueue{}
+	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: `tenants\acme\projects//`, FolderName: "reports"})
+	if err != nil {
+		t.Fatalf("CreateFolder returned error: %v", err)
+	}
+	if q.enqueued == nil {
+		t.Fatalf("expected queue enqueue to be called")
+	}
+	if q.enqueued.parentPath != "/tenants/acme/projects" {
+		t.Fatalf("expected normalized parent path, got %q", q.enqueued.parentPath)
+	}
+	if q.enqueued.folderName != "reports" {
+		t.Fatalf("expected folder name reports, got %q", q.enqueued.folderName)
+	}
+}
+
+func TestCreateFolderWithNilResolverDefaultsToDenyAll(t *testing.T) {
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), nil)
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+
+	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected permission denied for deny-all default, got %v", err)
+	}
+}

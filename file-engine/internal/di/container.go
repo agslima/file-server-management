@@ -84,7 +84,7 @@ func (c *Container) Servers() *Servers {
 func buildTenantResolverFromEnv() auth.TenantResolver {
 	raw := strings.TrimSpace(getenv("TENANT_MEMBERSHIPS"))
 	if raw == "" {
-		return auth.NewAllowAllTenantResolver()
+		return auth.NewDenyAllTenantResolver()
 	}
 	// format: "alice=acme,beta;bob=beta"
 	seed := map[string][]string{}
