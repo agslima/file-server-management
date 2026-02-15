@@ -70,12 +70,6 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 		return nil, err
 	}
 	log.Printf("request=create_folder actor=%s tenant=%s correlation_id=%s task_id=%s parent=%s folder=%s", requestedBy, tenantID, correlationID, taskID, req.ParentPath, req.FolderName)
-	correlationID := correlationIDFromContext(ctx)
-	taskID, err := h.queue.EnqueueCreateFolder(ctx, req.ParentPath, req.FolderName, req.RequestedBy, correlationID)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("request=create_folder correlation_id=%s task_id=%s parent=%s folder=%s", correlationID, taskID, req.ParentPath, req.FolderName)
 	log.Printf("audit_event=task.queued task_id=%s correlation_id=%s message=%q", taskID, correlationID, "folder creation queued")
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
 }
@@ -108,7 +102,7 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 		TaskId:   taskStatus.TaskID,
 		Status:   taskStatus.Status,
 		Message:  taskStatus.Message,
-		Progress: 100,
+		Progress: progress,
 	}, nil
 }
 
