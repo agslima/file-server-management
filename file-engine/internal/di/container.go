@@ -3,6 +3,7 @@ package di
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -32,7 +33,6 @@ func BuildContainer(cfg *config.Config, logg *logger.Logger) *Container {
 }
 
 func (c *Container) Servers() *Servers {
-	// Redis queue
 	rdb := redis.NewClient(&redis.Options{Addr: c.Config.RedisAddr})
 	q := redisq.NewRedisQueue(rdb)
 
@@ -54,7 +54,6 @@ func (c *Container) Servers() *Servers {
 		c.Logger.Fatalf("storage init: %v", err)
 	}
 
-	// ACL store
 	var aclStore auth.ACLStore
 	if c.Config.PostgresDSN != "" {
 		pool, err := pgxpool.New(context.Background(), c.Config.PostgresDSN)
@@ -66,15 +65,15 @@ func (c *Container) Servers() *Servers {
 		aclStore = auth.NewInMemoryACLStore()
 	}
 
-	// JWT verifier
 	verifier, err := auth.NewJWTVerifier(c.Config.JWTSecret, c.Config.JWTPublicKeyPEM, c.Config.JWTIssuer, c.Config.JWTAudience)
 	if err != nil {
 		c.Logger.Fatalf("jwt verifier: %v", err)
 	}
 
-	// Services + Handlers
+	tenantResolver := buildTenantResolverFromEnv()
+
 	objSvc := services.NewObjectService(st)
-	grpcHandler := handlers.NewGRPCHandler(q, objSvc, aclStore)
+	grpcHandler := handlers.NewGRPCHandler(q, objSvc, aclStore, tenantResolver)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
 	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore)
@@ -82,8 +81,29 @@ func (c *Container) Servers() *Servers {
 	return &Servers{GRPC: grpcSrv, HTTP: httpSrv}
 }
 
+func buildTenantResolverFromEnv() auth.TenantResolver {
+	raw := strings.TrimSpace(getenv("TENANT_MEMBERSHIPS"))
+	if raw == "" {
+		return auth.NewAllowAllTenantResolver()
+	}
+	// format: "alice=acme,beta;bob=beta"
+	seed := map[string][]string{}
+	for _, entry := range strings.Split(raw, ";") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		user := strings.TrimSpace(parts[0])
+		tenants := strings.Split(parts[1], ",")
+		seed[user] = tenants
+	}
+	return auth.NewInMemoryTenantResolver(seed)
+}
+
 func getenv(k string) string {
-	// avoid importing os everywhere
-	// (no default here)
 	return os.Getenv(k)
 }

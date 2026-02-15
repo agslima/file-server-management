@@ -255,6 +255,24 @@ Task state model (canonical):
 
 ---
 
+## Thin vertical slice (reference implementation)
+
+Implemented baseline reference flow:
+
+1. `POST /v1/folders` (`CreateFolder`) receives request metadata and JWT-authenticated context at File Engine boundary.
+2. API enqueues async task in Redis and persists initial task status (`queued`).
+2a. API resolves tenant membership from server-side source-of-truth and rejects non-tenant-scoped or unauthorized tenant paths.
+3. Worker consumes queue, executes filesystem folder creation, persists terminal status (`success`/`failed`), and emits audit-style events.
+4. Client polls `GET /v1/tasks/{taskId}` (`GetTaskStatus`) until completion.
+
+Validation command:
+
+```bash
+cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderRejectsNonTenantPath|TestCreateFolderRejectsUnauthorizedTenant|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
+```
+
+---
+
 ## Key flows
 
 ```mermaid

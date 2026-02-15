@@ -1,6 +1,19 @@
-# Backend (Laravel API)
+# Backend (Laravel API scaffold)
 
-Structure:
-- app/
-- routes/
-- database/migrations/
+This backend now includes a minimal runnable API surface that proxies to File Engine:
+
+- `POST /login`
+- `POST /folders`
+- `POST /uploads/initiate`
+- `POST /uploads/complete`
+- `GET /tasks/{id}`
+
+## Local checks
+
+```bash
+cd backend
+composer install
+composer test
+```
+
+These tests validate controller behavior for the thin vertical slice contract.

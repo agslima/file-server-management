@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Services\FileEngineService;
+use Illuminate\Http\JsonResponse;
 
 class TaskController extends Controller
 {
-    public function __construct(private FileEngineService $engine) {}
-
-    public function show(string $id)
+    public function __construct(private readonly FileEngineService $engine)
     {
-        return $this->engine->getTask($id);
+    }
+
+    public function show(string $id): JsonResponse
+    {
+        return new JsonResponse($this->engine->getTask($id));
     }
 }
