@@ -7,8 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
+	"github.com/example/file-engine/internal/logger"
+	"github.com/example/file-engine/internal/observability"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -29,11 +33,19 @@ type TaskStatus struct {
 }
 
 type RedisQueue struct {
-	client *redis.Client
+	client              *redis.Client
+	log                 *logger.Logger
+	queueAlertThreshold int64
 }
 
 func NewRedisQueue(client *redis.Client) *RedisQueue {
-	return &RedisQueue{client: client}
+	threshold := int64(100)
+	if raw := os.Getenv("ALERT_QUEUE_DEPTH_THRESHOLD"); raw != "" {
+		if parsed, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			threshold = parsed
+		}
+	}
+	return &RedisQueue{client: client, log: logger.New(os.Getenv("LOG_LEVEL")), queueAlertThreshold: threshold}
 }
 
 func (q *RedisQueue) Pop(ctx context.Context) (*TaskPayload, error) {
@@ -48,6 +60,7 @@ func (q *RedisQueue) Pop(ctx context.Context) (*TaskPayload, error) {
 	if err := json.Unmarshal([]byte(res[1]), &t); err != nil {
 		return nil, err
 	}
+	q.observeQueueDepth(ctx, t.ID, t.Params["correlation_id"])
 	return &t, nil
 }
 
@@ -67,7 +80,11 @@ func (q *RedisQueue) SetStatus(ctx context.Context, id, status, correlationID, m
 	if err != nil {
 		return err
 	}
-	return q.client.Set(ctx, "task:"+id, string(b), 0).Err()
+	if err := q.client.Set(ctx, "task:"+id, string(b), 0).Err(); err != nil {
+		return err
+	}
+	observability.DefaultMetrics.ObserveStatus(status)
+	return nil
 }
 
 func (q *RedisQueue) GetStatus(ctx context.Context, id string) (*TaskStatus, error) {
@@ -94,7 +111,29 @@ func (q *RedisQueue) Enqueue(ctx context.Context, payload *TaskPayload) error {
 	if err != nil {
 		return err
 	}
-	return q.client.RPush(ctx, "tasks", string(b)).Err()
+	if err := q.client.RPush(ctx, "tasks", string(b)).Err(); err != nil {
+		return err
+	}
+	observability.DefaultMetrics.IncEnqueued()
+	q.observeQueueDepth(ctx, payload.ID, payload.Params["correlation_id"])
+	return nil
+}
+
+func (q *RedisQueue) observeQueueDepth(ctx context.Context, taskID, correlationID string) {
+	depth, err := q.client.LLen(ctx, "tasks").Result()
+	if err != nil {
+		return
+	}
+	observability.DefaultMetrics.SetQueueDepth(depth)
+	if depth >= q.queueAlertThreshold {
+		q.log.Event("warn", "queue depth alert threshold exceeded", map[string]any{
+			"event":          "queue.depth.alert",
+			"task_id":        taskID,
+			"correlation_id": correlationID,
+			"queue_depth":    depth,
+			"threshold":      q.queueAlertThreshold,
+		})
+	}
 }
 
 // Convenience helper used by the gRPC handler.

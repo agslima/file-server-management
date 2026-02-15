@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/example/file-engine/internal/observability"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -96,6 +98,10 @@ func (h *HTTPServer) Start() error {
 	}
 
 	root := http.NewServeMux()
+	root.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		_, _ = w.Write([]byte(observability.DefaultMetrics.SnapshotPrometheus()))
+	})
 	// Raw download endpoint (REST-friendly): streams bytes directly.
 	root.HandleFunc("/v1/objects:download", h.handleDownload)
 

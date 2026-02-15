@@ -2,14 +2,16 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"log"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/authz"
+	"github.com/example/file-engine/internal/logger"
 	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
 	"google.golang.org/grpc/codes"
@@ -29,13 +31,17 @@ type GRPCHandler struct {
 	objects        *services.ObjectService
 	acl            auth.ACLStore
 	tenantResolver auth.TenantResolver
+	log            *logger.Logger
 }
 
-func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, acl auth.ACLStore, tenantResolver auth.TenantResolver) *GRPCHandler {
+func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, acl auth.ACLStore, tenantResolver auth.TenantResolver, logg *logger.Logger) *GRPCHandler {
 	if tenantResolver == nil {
 		tenantResolver = auth.NewDenyAllTenantResolver()
 	}
-	return &GRPCHandler{queue: q, objects: obj, acl: acl, tenantResolver: tenantResolver}
+	if logg == nil {
+		logg = logger.New("info")
+	}
+	return &GRPCHandler{queue: q, objects: obj, acl: acl, tenantResolver: tenantResolver, log: logg}
 }
 
 // CreateFolder stays async via task queue (worker executes).
@@ -83,8 +89,16 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("request=create_folder actor=%s tenant=%s correlation_id=%s task_id=%s parent=%s folder=%s", requestedBy, tenantID, correlationID, taskID, parentPath, folderName)
-	log.Printf("audit_event=task.queued task_id=%s correlation_id=%s message=%q", taskID, correlationID, "folder creation queued")
+	h.log.Event("info", "create folder task queued", map[string]any{
+		"event":          "task.queued",
+		"request":        "create_folder",
+		"actor":          requestedBy,
+		"tenant":         tenantID,
+		"correlation_id": correlationID,
+		"task_id":        taskID,
+		"parent":         parentPath,
+		"folder":         folderName,
+	})
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
 }
 
@@ -110,7 +124,13 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 	if correlationID == "" {
 		correlationID = requestCorrelationID
 	}
-	log.Printf("request=get_task_status correlation_id=%s task_id=%s status=%s", correlationID, taskStatus.TaskID, taskStatus.Status)
+	h.log.Event("info", "task status queried", map[string]any{
+		"event":          "task.status.read",
+		"request":        "get_task_status",
+		"correlation_id": correlationID,
+		"task_id":        taskStatus.TaskID,
+		"status":         taskStatus.Status,
+	})
 
 	return &pb.TaskStatusResponse{
 		TaskId:   taskStatus.TaskID,
@@ -190,7 +210,7 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 func correlationIDFromContext(ctx context.Context) string {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return ""
+		return fallbackCorrelationID()
 	}
 	if vals := md.Get("x-request-id"); len(vals) > 0 {
 		return vals[0]
@@ -198,5 +218,9 @@ func correlationIDFromContext(ctx context.Context) string {
 	if vals := md.Get("x-correlation-id"); len(vals) > 0 {
 		return vals[0]
 	}
-	return ""
+	return fallbackCorrelationID()
+}
+
+func fallbackCorrelationID() string {
+	return fmt.Sprintf("corr-%d", time.Now().UTC().UnixNano())
 }

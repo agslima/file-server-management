@@ -52,7 +52,7 @@ func tenantResolverForTests() auth.TenantResolver {
 }
 
 func TestCreateFolderRequiresAuthContext(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
 
 	_, err := h.CreateFolder(context.Background(), &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
 	if status.Code(err) != codes.Unauthenticated {
@@ -61,7 +61,7 @@ func TestCreateFolderRequiresAuthContext(t *testing.T) {
 }
 
 func TestCreateFolderRejectsNonTenantPath(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/projects/shared", FolderName: "reports"})
@@ -71,7 +71,7 @@ func TestCreateFolderRejectsNonTenantPath(t *testing.T) {
 }
 
 func TestCreateFolderRejectsUnauthorizedTenant(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/beta", FolderName: "reports"})
@@ -82,7 +82,7 @@ func TestCreateFolderRejectsUnauthorizedTenant(t *testing.T) {
 
 func TestCreateFolderEnqueuesWithCorrelationAndActorFallback(t *testing.T) {
 	q := &fakeTaskQueue{}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
 
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("x-request-id", "req-123"))
@@ -107,7 +107,7 @@ func TestCreateFolderEnqueuesWithCorrelationAndActorFallback(t *testing.T) {
 
 func TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus(t *testing.T) {
 	q := &fakeTaskQueue{statuses: map[string]*redisq.TaskStatus{"task-abc": {TaskID: "task-abc", Status: "success", Message: "done"}}}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
 
 	_, err := h.GetTaskStatus(context.Background(), &pb.TaskStatusRequest{TaskId: "task-abc"})
 	if status.Code(err) != codes.Unauthenticated {
@@ -126,7 +126,7 @@ func TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus(t *testing.T) {
 
 func TestCreateFolderEnqueuesNormalizedPath(t *testing.T) {
 	q := &fakeTaskQueue{}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests())
+	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
 
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: `tenants\acme\projects//`, FolderName: "reports"})
@@ -145,7 +145,7 @@ func TestCreateFolderEnqueuesNormalizedPath(t *testing.T) {
 }
 
 func TestCreateFolderWithNilResolverDefaultsToDenyAll(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), nil, nil)
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
