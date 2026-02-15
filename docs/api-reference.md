@@ -19,6 +19,7 @@ Filesystem mutations run **asynchronously** via a worker, so the API returns a *
 
 - `CreateFolder` (gRPC + HTTP/JSON) → async task enqueued
 - `GetTaskStatus` (gRPC + HTTP/JSON) → task status polling
+- `ListObjects` (gRPC-only) → list results + size/timestamps/ownership metadata
 
 Uploads and other routes remain target-state until implemented.
 
@@ -75,6 +76,35 @@ See `docs/auth.md` for details.
   "message": "Moving object to final destination"
 }
 ```
+
+### 3) ListObjects
+**Purpose**: List immediate children under a prefix (read path; gRPC-only baseline).
+
+**Request**
+```json
+{
+  "prefix": "/tenants/123/projects"
+}
+```
+**Response**
+```json
+{
+  "items": [
+    {
+      "path": "/tenants/123/projects/report.txt",
+      "size": 2,
+      "isDir": false,
+      "modifiedAt": "2026-02-15T12:00:00Z",
+      "createdAt": "2026-02-15T12:00:00Z",
+      "owner": "1000",
+      "group": "1000"
+    }
+  ]
+}
+```
+
+Notes:
+- `modifiedAt`/`createdAt` and `owner`/`group` are best-effort and may be unset depending on the backend.
 
 ## HTTP/JSON mapping
 

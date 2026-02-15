@@ -5,6 +5,9 @@ import (
     "io"
     "os"
     "path/filepath"
+    "strconv"
+    "syscall"
+    "time"
 
     "github.com/example/file-engine/internal/storage"
 )
@@ -96,10 +99,29 @@ func (l *LocalStorage) List(ctx context.Context, prefix string) ([]storage.Objec
     out := make([]storage.ObjectInfo, 0, len(entries))
     for _, e := range entries {
         info, _ := e.Info()
+        var size int64
+        var modifiedAt time.Time
+        var createdAt time.Time
+        var owner string
+        var group string
+        if info != nil {
+            size = info.Size()
+            modifiedAt = info.ModTime()
+            createdAt = modifiedAt
+            if stat, ok := info.Sys().(*syscall.Stat_t); ok {
+                createdAt = time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec))
+                owner = strconv.FormatUint(uint64(stat.Uid), 10)
+                group = strconv.FormatUint(uint64(stat.Gid), 10)
+            }
+        }
         out = append(out, storage.ObjectInfo{
-            Path: filepath.Join(prefix, e.Name()),
-            Size: func() int64 { if info != nil { return info.Size() }; return 0 }(),
-            IsDir: e.IsDir(),
+            Path:       filepath.Join(prefix, e.Name()),
+            Size:       size,
+            IsDir:      e.IsDir(),
+            ModifiedAt: modifiedAt,
+            CreatedAt:  createdAt,
+            Owner:      owner,
+            Group:      group,
         })
     }
     return out, nil

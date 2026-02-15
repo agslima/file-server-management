@@ -1,11 +1,17 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"os"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
+	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
 	"github.com/example/file-engine/internal/auth"
+	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -151,5 +157,59 @@ func TestCreateFolderWithNilResolverDefaultsToDenyAll(t *testing.T) {
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected permission denied for deny-all default, got %v", err)
+	}
+}
+
+func TestListObjectsReturnsEntries(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+
+	start := time.Now().Add(-time.Second)
+	ctx := context.Background()
+	if err := st.CreateFolder(ctx, "/tenants/acme/projects"); err != nil {
+		t.Fatalf("create folder: %v", err)
+	}
+	if err := st.AtomicWrite(ctx, "/tenants/acme/projects/report.txt", bytes.NewBufferString("ok")); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if err := st.CreateFolder(ctx, "/tenants/acme/projects/reports"); err != nil {
+		t.Fatalf("create subdir: %v", err)
+	}
+
+	resp, err := h.ListObjects(ctx, &pb.ListObjectsRequest{Prefix: `tenants\acme\projects//`})
+	if err != nil {
+		t.Fatalf("ListObjects returned error: %v", err)
+	}
+	if len(resp.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(resp.Items))
+	}
+	seen := map[string]*pb.ObjectInfo{}
+	for _, it := range resp.Items {
+		seen[it.Path] = it
+	}
+	file := seen["/tenants/acme/projects/report.txt"]
+	if file == nil || file.IsDir {
+		t.Fatalf("expected file /tenants/acme/projects/report.txt, got %+v", resp.Items)
+	}
+	if file.Size != 2 {
+		t.Fatalf("expected size 2 for /tenants/acme/projects/report.txt, got %d", file.Size)
+	}
+	if file.ModifiedAt == nil || file.ModifiedAt.AsTime().Before(start) {
+		t.Fatalf("expected modified_at after %v, got %+v", start, file.ModifiedAt)
+	}
+	if file.CreatedAt == nil || file.CreatedAt.AsTime().Before(start) {
+		t.Fatalf("expected created_at after %v, got %+v", start, file.CreatedAt)
+	}
+	if file.Owner != strconv.Itoa(os.Getuid()) {
+		t.Fatalf("expected owner %d, got %q", os.Getuid(), file.Owner)
+	}
+	if file.Group != strconv.Itoa(os.Getgid()) {
+		t.Fatalf("expected group %d, got %q", os.Getgid(), file.Group)
+	}
+	dir := seen["/tenants/acme/projects/reports"]
+	if dir == nil || !dir.IsDir {
+		t.Fatalf("expected dir /tenants/acme/projects/reports, got %+v", resp.Items)
 	}
 }

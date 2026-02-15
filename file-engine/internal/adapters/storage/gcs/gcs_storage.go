@@ -139,7 +139,13 @@ func (g *GCSStorage) List(ctx context.Context, prefix string) ([]istorage.Object
         if g.prefix != "" {
             p = strings.TrimPrefix(p, g.prefix+"/")
         }
-        out = append(out, istorage.ObjectInfo{Path: "/" + p, Size: obj.Size, IsDir: false})
+        out = append(out, istorage.ObjectInfo{
+            Path:       "/" + p,
+            Size:       obj.Size,
+            IsDir:      false,
+            ModifiedAt: obj.Updated,
+            CreatedAt:  obj.Created,
+        })
     }
     return out, nil
 }

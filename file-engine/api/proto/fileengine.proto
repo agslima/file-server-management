@@ -3,6 +3,7 @@ package fileengine;
 option go_package = "github.com/example/file-engine/pkg/generated;generated";
 
 import "annotations.proto";
+import "google/protobuf/timestamp.proto";
 
 service FileEngine {
   rpc CreateFolder(CreateFolderRequest) returns (CreateFolderResponse) {
@@ -68,6 +69,10 @@ message ObjectInfo {
   string path = 1;
   int64 size = 2;
   bool is_dir = 3;
+  google.protobuf.Timestamp modified_at = 4;
+  google.protobuf.Timestamp created_at = 5;
+  string owner = 6;
+  string group = 7;
 }
 
 message ListObjectsRequest {

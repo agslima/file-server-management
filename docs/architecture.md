@@ -2,6 +2,8 @@
 
 This document describes the platform-level architecture: components, trust boundaries, data flows, and operational characteristics.
 
+Baseline onboarding is `./file-engine/scripts/dev.sh`; the root `docker-compose.yml` is experimental until validated end-to-end. See `docs/setup.md` for the canonical paths.
+
 ---
 
 ## Goals

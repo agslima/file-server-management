@@ -33,6 +33,7 @@ Use the canonical onboarding guide in `docs/setup.md`. Baseline-validated path i
 ```
 
 If you need a full stack compose, note that the root `docker-compose.yml` is **experimental** until validated end-to-end.
+Treat it as container-build validation only, not a baseline-validated runtime path.
 
 ---
 

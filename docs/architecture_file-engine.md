@@ -6,7 +6,9 @@
 The File Engine is the data-plane service that performs filesystem mutations and enforces **final authorization** at the execution boundary.
 It operates directly on storage backends while enforcing **tenant membership**, **RBAC**, and **path-based ACLs**.
 
-The system is built in Go and is **gRPC-first**. HTTP/JSON via gRPC-Gateway is **target-state** until generated gateway code is committed.
+Baseline onboarding is `./file-engine/scripts/dev.sh`; the root `docker-compose.yml` is experimental until validated end-to-end. See `docs/setup.md` for canonical paths.
+
+The system is built in Go and is **gRPC-first**. HTTP/JSON via gRPC-Gateway is **baseline** for `CreateFolder` and `GetTaskStatus`; upload and expanded read/write routes remain target-state.
 Filesystem mutations run **asynchronously** through a worker model.
 
 
@@ -17,6 +19,7 @@ Filesystem mutations run **asynchronously** through a worker model.
 **Baseline (validated)**
 
 - gRPC-first API boundary with async task execution
+- HTTP/JSON via gRPC-Gateway for `CreateFolder` + `GetTaskStatus`
 - Real filesystem operations (mkdir) via worker
 - RBAC + path-based ACLs with inheritance
 - Tenant membership enforcement at File Engine boundary
@@ -282,8 +285,8 @@ scripts/generate_grpc_docker.sh
 Generates (when run):
 
 - gRPC server/client stubs
-- HTTP gateway (target-state)
-- OpenAPI spec (target-state)
+- HTTP gateway (baseline for `CreateFolder` + `GetTaskStatus`; other routes target-state)
+- OpenAPI spec (baseline for `CreateFolder` + `GetTaskStatus`; other routes target-state)
 
 
 This avoids local dependency issues and ensures CI reproducibility.
@@ -312,7 +315,7 @@ This avoids local dependency issues and ensures CI reproducibility.
 
 ## 14. Future Enhancements
 
-- Promote gRPC-Gateway + OpenAPI to baseline (real generated code)
+- Promote additional gRPC-Gateway routes (uploads + expanded read/write) to baseline once validated
 - Upload quarantine → scan → promote pipeline
 - Expand audit coverage beyond task lifecycle
 - Quota management

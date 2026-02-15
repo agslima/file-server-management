@@ -7,6 +7,21 @@ This project supports multiple storage backends behind the same `storage.Storage
 Authorization is performed **before** issuing operations (API / interceptor / service layer).
 The storage backend simply executes the operation.
 
+## Metadata coverage (list results)
+
+List responses include `size`, `is_dir`, and best-effort metadata fields (`modified_at`, `created_at`, `owner`, `group`). Coverage varies by backend:
+
+| Backend | size | is_dir | modified_at | created_at | owner | group |
+| :-- | :--: | :--: | :--: | :--: | :--: | :--: |
+| `local` | ✅ | ✅ | ✅ | ✅ | ✅ (uid) | ✅ (gid) |
+| `s3` | ✅ | ✅ | ✅ (LastModified) | 🟡 (fallback to modified) | 🟡 (DisplayName if available) | ❌ |
+| `gcs` | ✅ | ✅ | ✅ (Updated) | ✅ (Created) | ❌ | ❌ |
+
+Baseline guarantees:
+
+- Local backend metadata is validated in `TestLocalStorageListMetadata` and `TestListObjectsReturnsEntries`.
+- S3 and GCS metadata fields are best-effort and should remain labeled as such until they have dedicated tests.
+
 Backends:
 - `local`: POSIX filesystem under `FILE_BASE_ROOT`
 - `s3`: AWS S3 (or MinIO) bucket + optional prefix

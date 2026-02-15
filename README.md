@@ -26,7 +26,7 @@ A multi-tenant, governance-first file management platform that operates on **rea
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
-- **Async mutations:** create/move/upload return a `taskId`; clients poll task status.
+- **Async mutations:** create (baseline) returns a `taskId`; move/upload are target-state; clients poll task status.
 - **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
 - **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
 - **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
@@ -112,7 +112,8 @@ This platform provides a centralized, permissioned interface that **controls and
 ### Read path
 
 - Browse folders (tree navigation, directory listing)
-- Metadata display (size, timestamps, ownership, etc.) *(as applicable per backend)*
+- Metadata display (size, timestamps, ownership) with backend-specific best-effort fields
+- **Baseline-validated read path:** list results + size/timestamps/ownership metadata + download path normalization validated by [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented) and `TestListObjectsReturnsEntries` in [`file-engine/internal/handlers/grpc_handler_test.go`](file-engine/internal/handlers/grpc_handler_test.go)
 
 ### Write path (async)
 
@@ -430,7 +431,7 @@ cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 
 ### 3) Optional: local File Engine run (scaffold-level, for debugging)
 
-This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are still scaffold-level until generated gateway code is in place, so treat this as a debug path rather than a validated contract.
+This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are baseline for `CreateFolder` + `GetTaskStatus`; uploads remain target-state. Treat this path as a debug path beyond baseline behavior.
 
 ```bash
 cd file-engine

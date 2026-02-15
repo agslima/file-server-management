@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type TaskQueue interface {
@@ -172,10 +173,22 @@ func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsReques
 	}
 	out := &pb.ListObjectsResponse{}
 	for _, it := range items {
+		var modifiedAt *timestamppb.Timestamp
+		if !it.ModifiedAt.IsZero() {
+			modifiedAt = timestamppb.New(it.ModifiedAt)
+		}
+		var createdAt *timestamppb.Timestamp
+		if !it.CreatedAt.IsZero() {
+			createdAt = timestamppb.New(it.CreatedAt)
+		}
 		out.Items = append(out.Items, &pb.ObjectInfo{
-			Path:  it.Path,
-			Size:  it.Size,
-			IsDir: it.IsDir,
+			Path:       it.Path,
+			Size:       it.Size,
+			IsDir:      it.IsDir,
+			ModifiedAt: modifiedAt,
+			CreatedAt:  createdAt,
+			Owner:      it.Owner,
+			Group:      it.Group,
 		})
 	}
 	return out, nil

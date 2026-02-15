@@ -184,6 +184,20 @@
         },
         "isDir": {
           "type": "boolean"
+        },
+        "modifiedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string"
         }
       }
     },

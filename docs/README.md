@@ -21,6 +21,8 @@ The `docs/` directory contains project-wide documentation for the File Server Ma
 
 ### Getting Started
 
+Baseline onboarding is `./file-engine/scripts/dev.sh`; the root `docker-compose.yml` is experimental until validated end-to-end.
+
 - [Setup & Developer Onboarding](setup.md)
 
 ### Architecture & Design
