@@ -13,7 +13,8 @@ services:
   # ------------ FILE ENGINE API (Go) ---------------
   file-engine:
     build:
-      context: ./file-engine-api
+      context: ./file-engine
+      dockerfile: build/docker/server.Dockerfile
     container_name: file-engine
     environment:
       - PORT=8080
@@ -27,14 +28,18 @@ services:
   # ------------ FILE ENGINE WORKER (Go) ---------------
   file-engine-worker:
     build:
-      context: ./file-engine-worker
+      context: ./file-engine
+      dockerfile: build/docker/worker.Dockerfile
     container_name: file-engine-worker
     environment:
-      - REDIS_HOST=redis:6379
-      - FILE_ENGINE_URL=http://file-engine:8080
+      - REDIS_ADDR=redis:6379
+      - FILE_BASE_ROOT=/mnt/files
+      - STORAGE_BACKEND=local
     depends_on:
       - redis
       - file-engine
+    volumes:
+      - file_data:/mnt/files
 
   # ------------ BACKEND LARAVEL API ---------------
   backend:
