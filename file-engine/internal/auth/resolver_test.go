@@ -57,6 +57,39 @@ func TestRoleDenyPrecedesRoleAllowAtSameLevel(t *testing.T) {
 	}
 }
 
+func TestClosestPathACLWinsBeforeParentACLs(t *testing.T) {
+	store := NewInMemoryACLStore()
+	_ = store.SetACL(ACL{Path: "/tenants/acme", PrincipalID: "user:alice", Permissions: map[Permission]bool{PermWrite: true}})
+	_ = store.SetACL(ACL{Path: "/tenants/acme/projects", PrincipalID: "role:editor", Permissions: map[Permission]bool{PermWrite: false}})
+
+	ctx := AuthContext{UserID: "alice", Roles: []string{"editor"}}
+	if CanAccess(ctx, "/tenants/acme/projects/q1", PermWrite, store) {
+		t.Fatal("closer role deny should win over farther parent user allow")
+	}
+}
+
+func TestUserACLPrecedenceOnSamePath(t *testing.T) {
+	store := NewInMemoryACLStore()
+	_ = store.SetACL(ACL{Path: "/tenants/acme/projects", PrincipalID: "user:alice", Permissions: map[Permission]bool{PermWrite: true}})
+	_ = store.SetACL(ACL{Path: "/tenants/acme/projects", PrincipalID: "role:editor", Permissions: map[Permission]bool{PermWrite: false}})
+
+	ctx := AuthContext{UserID: "alice", Roles: []string{"editor"}}
+	if !CanAccess(ctx, "/tenants/acme/projects/q1", PermWrite, store) {
+		t.Fatal("user ACL on same path must precede role ACL")
+	}
+}
+
+func TestUserACLWithoutPermissionFallsThroughToRoleACL(t *testing.T) {
+	store := NewInMemoryACLStore()
+	_ = store.SetACL(ACL{Path: "/tenants/acme/projects", PrincipalID: "user:alice", Permissions: map[Permission]bool{PermRead: true}})
+	_ = store.SetACL(ACL{Path: "/tenants/acme/projects", PrincipalID: "role:editor", Permissions: map[Permission]bool{PermWrite: true}})
+
+	ctx := AuthContext{UserID: "alice", Roles: []string{"editor"}}
+	if !CanAccess(ctx, "/tenants/acme/projects/q1", PermWrite, store) {
+		t.Fatal("missing user permission should fall through to role decision")
+	}
+}
+
 func TestDenyByDefault(t *testing.T) {
 	store := NewInMemoryACLStore()
 	ctx := AuthContext{UserID: "13", Roles: nil}

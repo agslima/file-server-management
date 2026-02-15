@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"log"
+	"path"
+	"strings"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
 	"github.com/example/file-engine/internal/auth"
@@ -31,7 +33,7 @@ type GRPCHandler struct {
 
 func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, acl auth.ACLStore, tenantResolver auth.TenantResolver) *GRPCHandler {
 	if tenantResolver == nil {
-		tenantResolver = auth.NewAllowAllTenantResolver()
+		tenantResolver = auth.NewDenyAllTenantResolver()
 	}
 	return &GRPCHandler{queue: q, objects: obj, acl: acl, tenantResolver: tenantResolver}
 }
@@ -65,11 +67,23 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 		requestedBy = authCtx.UserID
 	}
 
-	taskID, err := h.queue.EnqueueCreateFolder(ctx, req.ParentPath, req.FolderName, requestedBy, correlationID)
+	parentPath := path.Dir(fullPath)
+	if parentPath == "." {
+		parentPath = "/"
+	}
+	folderName := strings.TrimPrefix(fullPath, parentPath+"/")
+	if parentPath == "/" {
+		folderName = strings.TrimPrefix(fullPath, "/")
+	}
+	if folderName == "" || strings.Contains(folderName, "/") {
+		return nil, status.Error(codes.InvalidArgument, "invalid folder name")
+	}
+
+	taskID, err := h.queue.EnqueueCreateFolder(ctx, parentPath, folderName, requestedBy, correlationID)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("request=create_folder actor=%s tenant=%s correlation_id=%s task_id=%s parent=%s folder=%s", requestedBy, tenantID, correlationID, taskID, req.ParentPath, req.FolderName)
+	log.Printf("request=create_folder actor=%s tenant=%s correlation_id=%s task_id=%s parent=%s folder=%s", requestedBy, tenantID, correlationID, taskID, parentPath, folderName)
 	log.Printf("audit_event=task.queued task_id=%s correlation_id=%s message=%q", taskID, correlationID, "folder creation queued")
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
 }
@@ -107,7 +121,11 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 }
 
 func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsRequest) (*pb.ListObjectsResponse, error) {
-	items, err := h.objects.List(ctx, req.Prefix)
+	prefix, err := authz.NormalizePath(req.Prefix)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid path")
+	}
+	items, err := h.objects.List(ctx, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +141,11 @@ func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsReques
 }
 
 func (h *GRPCHandler) UploadObject(ctx context.Context, req *pb.UploadObjectRequest) (*pb.UploadObjectResponse, error) {
-	if err := h.objects.Upload(ctx, req.Path, req.Content); err != nil {
+	normalizedPath, err := authz.NormalizePath(req.Path)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid path")
+	}
+	if err := h.objects.Upload(ctx, normalizedPath, req.Content); err != nil {
 		return nil, err
 	}
 	return &pb.UploadObjectResponse{Success: true}, nil
@@ -142,7 +164,7 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 		return status.Error(codes.PermissionDenied, "access denied")
 	}
 
-	r, err := h.objects.Open(stream.Context(), req.Path)
+	r, err := h.objects.Open(stream.Context(), path)
 	if err != nil {
 		return err
 	}

@@ -53,6 +53,19 @@ func (r *InMemoryTenantResolver) UserHasTenant(_ context.Context, userID, tenant
 	return ok, nil
 }
 
+// DenyAllTenantResolver is the secure default when source-of-truth mappings are unavailable.
+type DenyAllTenantResolver struct{}
+
+func NewDenyAllTenantResolver() *DenyAllTenantResolver { return &DenyAllTenantResolver{} }
+
+func (r *DenyAllTenantResolver) ResolveTenants(_ context.Context, _ string) ([]string, error) {
+	return nil, nil
+}
+
+func (r *DenyAllTenantResolver) UserHasTenant(_ context.Context, _, _ string) (bool, error) {
+	return false, nil
+}
+
 // AllowAllTenantResolver is a compatibility fallback for environments
 // that have not configured source-of-truth tenant mappings yet.
 type AllowAllTenantResolver struct{}
