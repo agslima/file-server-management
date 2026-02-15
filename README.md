@@ -55,6 +55,9 @@ Legend:
 | File Engine baseline CI | ✅ | CI runs strict tests for baseline modules (`internal/config`, `internal/logger`, `internal/worker`) and contract sync checks. |
 | Async folder flow (enqueue → worker → folder created) | ✅ | Covered by `TestAsyncCreateFolderFlow` integration test using Redis queue + worker + local storage adapter. |
 | Known-working local dev script | ✅ | Run `./file-engine/scripts/dev.sh`; CI executes the same script to keep the baseline green. |
+| Task status persistence (queued/success/failed) | ✅ | Task status now persists as structured payload including `task_id`, `status`, `message`, `correlation_id`, and transition timestamp. |
+| Basic audit event emission | ✅ | Create-folder enqueue and worker completion emit audit-style task events in logs for traceability. |
+| Correlation ID observability minimum | ✅ | `x-request-id`/`x-correlation-id` is propagated to task payload/status and worker logs. |
 | Backend runtime/API features | 🟡 | Backend remains scaffold-level; CI validates `composer.json` integrity only. |
 | Frontend runtime build | 🔒 | Frontend remains placeholder; CI validates scaffold expectations only. |
 

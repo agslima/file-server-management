@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"io"
+	"log"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
 	"github.com/example/file-engine/internal/auth"
@@ -10,6 +11,7 @@ import (
 	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -27,12 +29,31 @@ func NewGRPCHandler(q *redisq.RedisQueue, obj *services.ObjectService, acl auth.
 
 // CreateFolder stays async via task queue (worker executes).
 func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequest) (*pb.CreateFolderResponse, error) {
-	// minimal enqueue (task payload shape in your queue package)
-	taskID, err := h.queue.EnqueueCreateFolder(ctx, req.ParentPath, req.FolderName, req.RequestedBy)
+	correlationID := correlationIDFromContext(ctx)
+	taskID, err := h.queue.EnqueueCreateFolder(ctx, req.ParentPath, req.FolderName, req.RequestedBy, correlationID)
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("request=create_folder correlation_id=%s task_id=%s parent=%s folder=%s", correlationID, taskID, req.ParentPath, req.FolderName)
+	log.Printf("audit_event=task.queued task_id=%s correlation_id=%s message=%q", taskID, correlationID, "folder creation queued")
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
+}
+
+func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusRequest) (*pb.TaskStatusResponse, error) {
+	taskStatus, err := h.queue.GetStatus(ctx, req.TaskId)
+	if err != nil {
+		if err == redisq.ErrTaskNotFound {
+			return nil, status.Error(codes.NotFound, "task not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to load task status")
+	}
+
+	return &pb.TaskStatusResponse{
+		TaskId:   taskStatus.TaskID,
+		Status:   taskStatus.Status,
+		Message:  taskStatus.Message,
+		Progress: 100,
+	}, nil
 }
 
 func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsRequest) (*pb.ListObjectsResponse, error) {
@@ -92,4 +113,18 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 			return err
 		}
 	}
+}
+
+func correlationIDFromContext(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	if vals := md.Get("x-request-id"); len(vals) > 0 {
+		return vals[0]
+	}
+	if vals := md.Get("x-correlation-id"); len(vals) > 0 {
+		return vals[0]
+	}
+	return ""
 }
