@@ -44,7 +44,7 @@ func (q *inMemoryQueue) Complete(_ context.Context, id, status, correlationID, m
 	return nil
 }
 
-func (q *inMemoryQueue) EnqueueCreateFolder(parentPath, folderName, requestedBy, correlationID string) string {
+func (q *inMemoryQueue) EnqueueCreateFolder(_ context.Context, parentPath, folderName, requestedBy, correlationID string) (string, error) {
 	id := fmt.Sprintf("task-%d", time.Now().UnixNano())
 	q.mu.Lock()
 	q.statuses[id] = redisq.TaskStatus{TaskID: id, Status: "queued", CorrelationID: correlationID, Message: "task accepted"}
@@ -60,7 +60,7 @@ func (q *inMemoryQueue) EnqueueCreateFolder(parentPath, folderName, requestedBy,
 			"correlation_id": correlationID,
 		},
 	}
-	return id
+	return id, nil
 }
 
 func (q *inMemoryQueue) Status(id string) (redisq.TaskStatus, bool) {
@@ -92,6 +92,8 @@ func (a *inMemoryAuditor) Contains(prefix string) bool {
 	return false
 }
 
+// TestAsyncCreateFolderFlow validates one end-to-end async folder flow:
+// enqueue -> worker process -> status success -> folder created.
 func TestAsyncCreateFolderFlow(t *testing.T) {
 	t.Parallel()
 
@@ -109,7 +111,14 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 	const parentPath = "tenants/acme/projects"
 	const folderName = "week2-e2e"
 	const correlationID = "req-week3-123"
-	taskID := queue.EnqueueCreateFolder(parentPath, folderName, "integration-test", correlationID)
+	taskID, err := queue.EnqueueCreateFolder(context.Background(), parentPath, folderName, "integration-test", correlationID)
+	if err != nil {
+		t.Fatalf("enqueue failed: %v", err)
+	}
+
+	if status, ok := queue.Status(taskID); !ok || status.Status != "queued" {
+		t.Fatalf("expected queued task status right after enqueue, got: %+v", status)
+	}
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
@@ -122,9 +131,9 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 				t.Fatalf("expected completion message to be persisted")
 			}
 			expectedPath := filepath.Join(rootDir, parentPath, folderName)
-			info, err := os.Stat(expectedPath)
-			if err != nil {
-				t.Fatalf("expected folder to exist: %v", err)
+			info, statErr := os.Stat(expectedPath)
+			if statErr != nil {
+				t.Fatalf("expected folder to exist: %v", statErr)
 			}
 			if !info.IsDir() {
 				t.Fatalf("expected %s to be a directory", expectedPath)
