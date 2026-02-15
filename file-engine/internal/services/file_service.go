@@ -1,3 +1,4 @@
 package services
 
-// FileService is intentionally deferred; ObjectService is the active baseline service.
+// File service orchestration lives in ObjectService for the current baseline.
+// Keep this file to preserve package layout stability while the API surface evolves.

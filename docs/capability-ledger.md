@@ -1,29 +1,34 @@
 # Capability Ledger
 
-This ledger is the source of truth for **what is currently implemented** and **how each claim is validated**.
+This ledger is the canonical claim-to-validation source for the repository.
 
-## Domain capability matrix
+## How to use
 
-| Domain | Current state | Owner | Acceptance tests / runnable validation | Target milestone |
-| :-- | :-- | :-- | :-- | :-- |
-| AuthZ (JWT + RBAC/ACL + tenant resolution source-of-truth + path normalization) | **Baseline implemented** for CreateFolder slice: auth context required, tenant membership resolved server-side, and tenant-scoped normalized paths enforced. ACL precedence is explicit (user ACL -> role ACL -> RBAC -> deny). | File Engine team (`file-engine/` maintainers) | `cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderRejectsNonTenantPath|TestCreateFolderRejectsUnauthorizedTenant" -v`<br>`cd file-engine && go test ./internal/auth ./internal/authz -v` | M1 - Thin vertical slice hardened (complete) |
-| Tasks (async enqueue/consume + status retrieval) | **Baseline implemented** for create-folder flow: queue enqueue/consume, persisted task status (`queued/success/failed`), and authenticated task status retrieval. | File Engine team (`file-engine/` maintainers) | `cd file-engine && go test ./internal/handlers -run TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus -v`<br>`cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | M1 - Thin vertical slice hardened (complete) |
-| Uploads (initiate/complete API and execution pipeline) | **Scaffold only / partial**: backend endpoints and service proxy exist; full malware-gated async upload pipeline is not baseline-validated. | Backend team (`backend/`) + File Engine team (`file-engine/`) | `cd backend && composer validate --strict`<br>`php -l backend/app/Http/Controllers/UploadController.php` | M2 - Upload flow parity with folder slice |
-| Audit (task lifecycle emission + durable audit sink) | **Baseline partial**: task lifecycle emits audit-style log events in worker/API path; durable append-only sink integration remains target state. | File Engine team (`file-engine/`) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` (asserts audit event emission in test flow) | M2 - Durable audit persistence |
-| Observability (correlation IDs + operational signals) | **Baseline partial**: request correlation IDs (`x-request-id`/`x-correlation-id`) propagate into task payload/status/logs for folder flow; metrics/alerts/tracing are still target-state. | Platform + File Engine teams | `cd file-engine && go test ./internal/handlers -run TestCreateFolderEnqueuesWithCorrelationAndActorFallback -v`<br>`cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | M2 - Metrics/tracing baseline |
+- Run commands from repository root unless a command explicitly changes directories.
+- If a validation command fails, treat that claim as **unverified**.
+- Claims marked **target-state** are intentionally excluded from current baseline CI.
 
-## Cross-cutting baseline checks
+## Baseline claims (implemented)
 
-Use this set for quick regression checks from repository root:
+| Claim ID | Capability claim | Status | Runnable validation | Expected result |
+| :-- | :-- | :--: | :-- | :-- |
+| `CL-001` | Canonical proto mirror is synchronized (`file-engine/api/proto` -> `file-engine/proto`) | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` | Exit code `0` |
+| `CL-002` | File Engine baseline module checks compile in baseline scope | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` | Tests pass (packages may report `[no test files]`) |
+| `CL-003` | Async create-folder flow works end-to-end (enqueue -> worker -> folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | `PASS` for `TestAsyncCreateFolderFlow` |
+| `CL-004` | Task status persistence is present for async flow (`queued -> running -> success`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts transition history and persisted status payload |
+| `CL-005` | Basic audit task events are emitted for async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts `task.processing` and `task.succeeded` events |
+| `CL-006` | Correlation IDs are propagated in async flow state and logs | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Test asserts persisted correlation ID; script output includes `correlation_id=` lines |
+| `CL-007` | Known-working local baseline script remains green | ✅ | `./file-engine/scripts/dev.sh` | Script completes with `[dev] all checks passed` |
+| `CL-008` | Backend scaffold baseline remains valid (composer metadata) | 🟡 | `cd backend && composer validate --strict` | Exit code `0` |
+| `CL-009` | Frontend is intentionally placeholder-level (no Node runtime scaffold yet) | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` | Exit code `0` |
 
-```bash
-cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto
-./file-engine/scripts/dev.sh
-cd backend && composer validate --strict
-```
+## Target-state claims (documented, not baseline-validated)
 
-## Notes on status labels
+The following areas remain target-state and are not currently baseline-gated by CI:
 
-- **Baseline implemented**: runnable and validated by at least one command above.
-- **Baseline partial**: implemented in a narrow slice; broader target-state promises are not fully validated.
-- **Scaffold only / partial**: API or structure exists, but end-to-end behavior is not yet validated to baseline standard.
+- Enterprise identity integrations (AD/LDAP/OIDC broker)
+- Malware-gated upload promotion pipeline end-to-end
+- Full OpenTelemetry backend export + alerting pipeline
+- Immutable external audit sink integration
+
+Promote these to baseline only when each has a dedicated runnable validation command.

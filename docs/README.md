@@ -2,11 +2,18 @@
 
 The `docs/` directory contains project-wide documentation for the File Server Management platform. It covers architecture and design references, API and auth guidance, storage behavior, operational practices, security reviews and threat modeling, contributor workflows, and the full set of Architecture Decision Records (ADRs). It also includes a Postman collection for API exploration.
 
+## Validation-first documentation rule
+
+- Baseline capability claims must be recorded in [`capability-ledger.md`](capability-ledger.md).
+- Each claim must include a runnable command and expected result.
+- README claim IDs should map back to the ledger (`CL-###`).
+- Target-state claims should not be presented as baseline-implemented until they have runnable validation.
+
 ## Table of Contents
 
 ### Index
 - [Documentation Overview (this file)](README.md)
-- [Capability Ledger (domain status + acceptance tests)](capability-ledger.md)
+- [Capability Ledger (claim -> validation mapping)](capability-ledger.md)
 
 ### Getting Started
 - [Setup & Developer Onboarding](setup.md)

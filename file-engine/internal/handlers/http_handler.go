@@ -1,3 +1,4 @@
 package handlers
 
-// HTTP handlers are provided by gRPC-Gateway wiring in internal/server.
+// HTTP transport behavior is currently served via gRPC-gateway wiring.
+// Keep this file to reserve package structure for future dedicated handlers.

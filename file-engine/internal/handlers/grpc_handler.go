@@ -70,6 +70,12 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 		return nil, err
 	}
 	log.Printf("request=create_folder actor=%s tenant=%s correlation_id=%s task_id=%s parent=%s folder=%s", requestedBy, tenantID, correlationID, taskID, req.ParentPath, req.FolderName)
+	correlationID := correlationIDFromContext(ctx)
+	taskID, err := h.queue.EnqueueCreateFolder(ctx, req.ParentPath, req.FolderName, req.RequestedBy, correlationID)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("request=create_folder correlation_id=%s task_id=%s parent=%s folder=%s", correlationID, taskID, req.ParentPath, req.FolderName)
 	log.Printf("audit_event=task.queued task_id=%s correlation_id=%s message=%q", taskID, correlationID, "folder creation queued")
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
 }
@@ -79,6 +85,7 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 		return nil, status.Error(codes.Unauthenticated, "missing auth context")
 	}
 
+	requestCorrelationID := correlationIDFromContext(ctx)
 	taskStatus, err := h.queue.GetStatus(ctx, req.TaskId)
 	if err != nil {
 		if err == redisq.ErrTaskNotFound {
@@ -91,12 +98,17 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 	if taskStatus.Status == "queued" || taskStatus.Status == "running" {
 		progress = 0
 	}
+	correlationID := taskStatus.CorrelationID
+	if correlationID == "" {
+		correlationID = requestCorrelationID
+	}
+	log.Printf("request=get_task_status correlation_id=%s task_id=%s status=%s", correlationID, taskStatus.TaskID, taskStatus.Status)
 
 	return &pb.TaskStatusResponse{
 		TaskId:   taskStatus.TaskID,
 		Status:   taskStatus.Status,
 		Message:  taskStatus.Message,
-		Progress: progress,
+		Progress: 100,
 	}, nil
 }
 

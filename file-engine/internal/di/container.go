@@ -36,6 +36,7 @@ func (c *Container) Servers() *Servers {
 	rdb := redis.NewClient(&redis.Options{Addr: c.Config.RedisAddr})
 	q := redisq.NewRedisQueue(rdb)
 
+	// Storage backend (same as worker)
 	st, err := storagefactory.NewFromConfig(context.Background(), storagefactory.Config{
 		Backend:           c.Config.StorageBackend,
 		LocalBase:         c.Config.FileBaseRoot,

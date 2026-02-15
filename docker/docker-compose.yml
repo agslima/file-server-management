@@ -1,4 +1,10 @@
 version: '3.8'
+
+# Legacy/alternate compose file.
+# Canonical onboarding paths are:
+# - repository root: docker-compose.yml
+# - file-engine scope: file-engine/docker-compose.yml
+
 services:
   postgres:
     image: postgres:15
@@ -8,8 +14,10 @@ services:
       POSTGRES_DB: appdb
     volumes:
       - pgdata:/var/lib/postgresql/data
+
   redis:
     image: redis:7
+
   backend:
     build: ../backend
     depends_on:
@@ -18,10 +26,13 @@ services:
     environment:
       DB_HOST: postgres
       REDIS_HOST: redis
+
   file-engine:
-    build: ../file-engine-go
+    build: ../file-engine
     depends_on:
       - backend
+      - redis
+
   minio:
     image: minio/minio
     command: server /data
@@ -30,5 +41,6 @@ services:
       MINIO_ROOT_PASSWORD: minio123
     ports:
       - 9000:9000
+
 volumes:
   pgdata:
