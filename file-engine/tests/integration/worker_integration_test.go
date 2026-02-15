@@ -16,15 +16,17 @@ import (
 )
 
 type inMemoryQueue struct {
-	ch       chan *redisq.TaskPayload
-	statuses map[string]redisq.TaskStatus
-	mu       sync.RWMutex
+	ch          chan *redisq.TaskPayload
+	statuses    map[string]redisq.TaskStatus
+	transitions map[string][]string
+	mu          sync.RWMutex
 }
 
 func newInMemoryQueue() *inMemoryQueue {
 	return &inMemoryQueue{
-		ch:       make(chan *redisq.TaskPayload, 1),
-		statuses: map[string]redisq.TaskStatus{},
+		ch:          make(chan *redisq.TaskPayload, 1),
+		statuses:    map[string]redisq.TaskStatus{},
+		transitions: map[string][]string{},
 	}
 }
 
@@ -41,13 +43,15 @@ func (q *inMemoryQueue) Complete(_ context.Context, id, status, correlationID, m
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.statuses[id] = redisq.TaskStatus{TaskID: id, Status: status, CorrelationID: correlationID, Message: message}
+	q.transitions[id] = append(q.transitions[id], status)
 	return nil
 }
 
-func (q *inMemoryQueue) EnqueueCreateFolder(parentPath, folderName, requestedBy, correlationID string) string {
+func (q *inMemoryQueue) EnqueueCreateFolder(_ context.Context, parentPath, folderName, requestedBy, correlationID string) (string, error) {
 	id := fmt.Sprintf("task-%d", time.Now().UnixNano())
 	q.mu.Lock()
 	q.statuses[id] = redisq.TaskStatus{TaskID: id, Status: "queued", CorrelationID: correlationID, Message: "task accepted"}
+	q.transitions[id] = append(q.transitions[id], "queued")
 	q.mu.Unlock()
 
 	q.ch <- &redisq.TaskPayload{
@@ -60,7 +64,7 @@ func (q *inMemoryQueue) EnqueueCreateFolder(parentPath, folderName, requestedBy,
 			"correlation_id": correlationID,
 		},
 	}
-	return id
+	return id, nil
 }
 
 func (q *inMemoryQueue) Status(id string) (redisq.TaskStatus, bool) {
@@ -68,6 +72,15 @@ func (q *inMemoryQueue) Status(id string) (redisq.TaskStatus, bool) {
 	defer q.mu.RUnlock()
 	status, ok := q.statuses[id]
 	return status, ok
+}
+
+func (q *inMemoryQueue) TransitionHistory(id string) []string {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	h := q.transitions[id]
+	cpy := make([]string, len(h))
+	copy(cpy, h)
+	return cpy
 }
 
 type inMemoryAuditor struct {
@@ -92,6 +105,8 @@ func (a *inMemoryAuditor) Contains(prefix string) bool {
 	return false
 }
 
+// TestAsyncCreateFolderFlow validates one end-to-end async folder flow:
+// enqueue -> worker process -> status success -> folder created.
 func TestAsyncCreateFolderFlow(t *testing.T) {
 	t.Parallel()
 
@@ -109,7 +124,14 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 	const parentPath = "tenants/acme/projects"
 	const folderName = "week2-e2e"
 	const correlationID = "req-week3-123"
-	taskID := queue.EnqueueCreateFolder(parentPath, folderName, "integration-test", correlationID)
+	taskID, err := queue.EnqueueCreateFolder(context.Background(), parentPath, folderName, "integration-test", correlationID)
+	if err != nil {
+		t.Fatalf("enqueue failed: %v", err)
+	}
+
+	if status, ok := queue.Status(taskID); !ok || status.Status != "queued" {
+		t.Fatalf("expected queued task status right after enqueue, got: %+v", status)
+	}
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
@@ -122,15 +144,29 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 				t.Fatalf("expected completion message to be persisted")
 			}
 			expectedPath := filepath.Join(rootDir, parentPath, folderName)
-			info, err := os.Stat(expectedPath)
-			if err != nil {
-				t.Fatalf("expected folder to exist: %v", err)
+			info, statErr := os.Stat(expectedPath)
+			if statErr != nil {
+				t.Fatalf("expected folder to exist: %v", statErr)
 			}
 			if !info.IsDir() {
 				t.Fatalf("expected %s to be a directory", expectedPath)
 			}
+			if !auditor.Contains("task.processing|" + taskID + "|" + correlationID) {
+				t.Fatalf("expected audit processing event for task %s", taskID)
+			}
 			if !auditor.Contains("task.succeeded|" + taskID + "|" + correlationID) {
 				t.Fatalf("expected audit success event for task %s", taskID)
+			}
+
+			history := queue.TransitionHistory(taskID)
+			expected := []string{"queued", "running", "success"}
+			if len(history) != len(expected) {
+				t.Fatalf("expected transition history %v, got %v", expected, history)
+			}
+			for i := range expected {
+				if history[i] != expected[i] {
+					t.Fatalf("expected transition history %v, got %v", expected, history)
+				}
 			}
 			return
 		}

@@ -27,9 +27,24 @@ A multi-tenant, governance-first file management platform that operates on **rea
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
 - **Async mutations:** create/move/upload return a `taskId`; clients poll task status.
-- **Secure uploads:** **quarantine → scan → promote** (only `tenants/<tenant>/...` is publishable).
-- **Auditing:** dual-layer — Postgres append-only + immutable external sink (SIEM/Loki/S3 WORM).
-- **Observability:** structured JSON logs + OpenTelemetry tracing + correlation across HTTP/gRPC/queue.
+- **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
+- **Auditing:** persisted task status + basic task audit events in async folder flow baseline.
+- **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
+
+---
+
+## Canonical doc map
+
+Use this map to avoid documentation drift and find the correct source of truth quickly:
+
+- **Project capability truth (implemented vs target):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Project alignment review and improvement plan:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Contributor/agent operating constraints (repo-wide governance notes):** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/Agents.md`](file-engine/Agents.md)
+- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
+- **Legacy compose reference (non-canonical):** [`docker/docker-compose.yml`](docker/docker-compose.yml)
+
+> If guidance conflicts, prefer this order: capability ledger → setup guide → scoped agent docs.
 
 ---
 
@@ -50,17 +65,21 @@ Legend:
 
 ### Implementation status (baseline)
 
-| Capability | Status | Validation |
-| :-- | :--: | :-- |
-| Canonical proto contract sync | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` |
-| File Engine baseline module checks | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` |
-| Async folder flow (enqueue → worker → folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| Task status persistence + audit + correlation IDs | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
-| Backend scaffold validation | 🟡 | `cd backend && composer validate --strict` |
-| Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
+Every baseline claim is mapped to a claim ID and runnable command in the capability ledger.
 
-For detailed claim-to-check mapping (including target-state exclusions), see the [capability ledger](docs/capability-ledger.md).
+| Claim ID | Capability | Status | Runnable validation |
+| :-- | :-- | :--: | :-- |
+| [`CL-001`](docs/capability-ledger.md#baseline-claims-implemented) | Canonical proto contract sync | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` |
+| [`CL-002`](docs/capability-ledger.md#baseline-claims-implemented) | File Engine baseline module checks | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` |
+| [`CL-003`](docs/capability-ledger.md#baseline-claims-implemented) | Async folder flow (enqueue -> worker -> folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| [`CL-004`](docs/capability-ledger.md#baseline-claims-implemented) | Task status persistence (`queued -> running -> success`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| [`CL-005`](docs/capability-ledger.md#baseline-claims-implemented) | Basic audit event emission (`task.processing`, `task.succeeded`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| [`CL-006`](docs/capability-ledger.md#baseline-claims-implemented) | Correlation ID propagation in async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
+| [`CL-008`](docs/capability-ledger.md#baseline-claims-implemented) | Backend scaffold validation | 🟡 | `cd backend && composer validate --strict` |
+| [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
+
+For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
 ---
 
