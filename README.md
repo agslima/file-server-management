@@ -78,6 +78,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
 | [`CL-008`](docs/capability-ledger.md#baseline-claims-implemented) | Backend scaffold validation | 🟡 | `cd backend && composer validate --strict` |
 | [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
+| [`CL-010`](docs/capability-ledger.md#baseline-claims-implemented) | Structured logs + queue/task metrics baseline | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` |
 
 For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 

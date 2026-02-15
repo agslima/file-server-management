@@ -21,6 +21,7 @@ This ledger is the canonical claim-to-validation source for the repository.
 | `CL-007` | Known-working local baseline script remains green | ✅ | `./file-engine/scripts/dev.sh` | Script completes with `[dev] all checks passed` |
 | `CL-008` | Backend scaffold baseline remains valid (composer metadata) | 🟡 | `cd backend && composer validate --strict` | Exit code `0` |
 | `CL-009` | Frontend is intentionally placeholder-level (no Node runtime scaffold yet) | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` | Exit code `0` |
+| `CL-010` | Structured JSON logs with correlation IDs and baseline queue/task metrics exposure are wired for API + worker | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` | Tests pass; handler logs include `correlation_id` and metrics snapshot assertions pass |
 
 ## Target-state claims (documented, not baseline-validated)
 

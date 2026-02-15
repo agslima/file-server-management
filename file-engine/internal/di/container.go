@@ -73,7 +73,7 @@ func (c *Container) Servers() *Servers {
 	tenantResolver := buildTenantResolverFromEnv()
 
 	objSvc := services.NewObjectService(st)
-	grpcHandler := handlers.NewGRPCHandler(q, objSvc, aclStore, tenantResolver)
+	grpcHandler := handlers.NewGRPCHandler(q, objSvc, aclStore, tenantResolver, c.Logger)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
 	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore)
