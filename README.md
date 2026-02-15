@@ -45,6 +45,19 @@ Legend:
 
 > **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
 
+
+### Implementation status (baseline)
+
+| Capability | Status | Notes |
+| :-- | :--: | :-- |
+| Root Docker Compose service paths | ✅ | Root `docker-compose.yml` now points to `./file-engine` for both API and worker builds. |
+| Canonical proto contract | ✅ | Canonical file is `file-engine/api/proto/fileengine.proto`; `file-engine/proto/fileengine.proto` is kept synchronized as a mirror. |
+| File Engine baseline CI | ✅ | CI runs strict tests for baseline modules (`internal/config`, `internal/logger`, `internal/worker`) and contract sync checks. |
+| Async folder flow (enqueue → worker → folder created) | ✅ | Covered by `TestAsyncCreateFolderFlow` integration test using Redis queue + worker + local storage adapter. |
+| Known-working local dev script | ✅ | Run `./file-engine/scripts/dev.sh`; CI executes the same script to keep the baseline green. |
+| Backend runtime/API features | 🟡 | Backend remains scaffold-level; CI validates `composer.json` integrity only. |
+| Frontend runtime build | 🔒 | Frontend remains placeholder; CI validates scaffold expectations only. |
+
 ---
 
 ## Why this exists
@@ -194,6 +207,11 @@ Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 ## File Engine API
 
 > Full reference: docs/api-reference.md
+
+**Contract source of truth**
+
+- Canonical proto: `file-engine/api/proto/fileengine.proto`
+- Compatibility mirror (kept in sync): `file-engine/proto/fileengine.proto`
 
 Base URLs:
 
