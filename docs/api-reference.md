@@ -105,6 +105,22 @@ See `docs/auth.md` for details.
 
 Notes:
 - `modifiedAt`/`createdAt` and `owner`/`group` are best-effort and may be unset depending on the backend.
+- Request path must be tenant-scoped (`/tenants/<tenant_id>/...`).
+- File Engine applies final authz checks for reads: auth context present, server-side tenant membership allowed, and ACL/RBAC allows `list` on the path.
+
+### 4) DownloadObject
+**Purpose**: Stream file bytes for a tenant-scoped object path.
+
+**Request**
+```json
+{
+  "path": "/tenants/123/projects/report.txt"
+}
+```
+
+Notes:
+- `DownloadObject` is gRPC server-streaming and enforces the same final tenant + ACL/RBAC checks as `ListObjects`, but with `read` permission.
+- Non-tenant-scoped or unauthorized tenant paths are rejected with permission/validation errors.
 
 ## HTTP/JSON mapping
 
