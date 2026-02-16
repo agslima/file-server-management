@@ -56,6 +56,7 @@ The project clearly distinguishes baseline vs target-state claims and anchors va
 - The control-plane (Laravel) vs data-plane (Go File Engine) split remains coherent.
 - Asynchronous mutation design is a solid fit for filesystem operations and security gates.
 - The baseline async create-folder flow provides a credible, testable vertical slice.
+- Worker-side performance guardrails for async flow (bounded status retries + per-task processing timeout) are now implemented and covered by focused unit tests.
 
 **Risks**
 
