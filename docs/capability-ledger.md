@@ -28,6 +28,7 @@ This ledger is the canonical claim-to-validation source for the repository.
 | `CL-014` | AuthZ precedence (ACL vs RBAC) behaves as specified | ✅ | `cd file-engine && go test ./internal/auth -run "TestRBACFallback|TestUserACLOverridesRBAC|TestACLPathInheritance|TestUserDenyPrecedesRoleAllowAndRBAC|TestRoleDenyPrecedesRoleAllowAtSamePath|TestClosestPathACLWinsBeforeParentACLs|TestUserACLPrecedenceOnSamePath|TestUserACLWithoutPermissionFallsThroughToRoleACL" -v` | Tests pass |
 | `CL-015` | Path normalization guarantees (traversal rejection + canonicalization) | ✅ | `cd file-engine && go test ./internal/authz -run "TestExtractPathNormalizesCreateFolder|TestExtractPathRejectsTraversal|TestNormalizePathHandlesWindowsAndWhitespace|TestNormalizePathAllowsDotContainingNames|TestTenantFromPath|TestTenantFromPathRejectsNonTenantRoot" -v` | Tests pass |
 | `CL-016` | Generated gateway artifacts are in sync with proto | ✅ | `cd file-engine && ./scripts/generate_grpc_docker.sh && cd .. && git diff --exit-code && test -z "$(git status --porcelain)"` | No diff after generation |
+| `CL-017` | Worker performance guardrails for async create-folder are enforced (bounded status retries + processing timeout) | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` | Tests pass |
 
 ## Domain capability ledger (by area)
 
@@ -36,7 +37,7 @@ This section summarizes capability status by domain with ownership, acceptance t
 | Domain | Current state | Owner | Acceptance tests | Target milestone |
 | :-- | :-- | :-- | :-- | :-- |
 | AuthZ | Baseline RBAC + path-based ACL with inheritance is implemented; tenant scoping enforced at File Engine boundary. | Unassigned (TBD) | `cd file-engine && go test ./internal/auth -v` | Phase 1 (read authz baseline) |
-| Tasks | Async task enqueue + worker execution + status persistence validated for create-folder flow. | Unassigned (TBD) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Phase 2 (folder creation + audit) |
+| Tasks | Async task enqueue + worker execution + status persistence validated for create-folder flow, with worker guardrails for bounded retries and processing timeout. | Unassigned (TBD) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` and `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` | Phase 2 (folder creation + audit) |
 | Uploads | Quarantine → scan → promote is target-state only; no baseline validation yet. | Unassigned (TBD) | TBD (promote to ledger when runnable) | Phase 3 (upload + scan + observability) |
 | Audit | Baseline task audit events are emitted for async folder flow; external sink is target-state. | Unassigned (TBD) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Phase 2 baseline; Phase 3 for sink |
 | Observability | Structured logs + queue/task metrics baseline in place; OTEL export is target-state. | Unassigned (TBD) | `cd file-engine && go test ./internal/handlers ./internal/observability -v` | Phase 3 (observability baseline) |
