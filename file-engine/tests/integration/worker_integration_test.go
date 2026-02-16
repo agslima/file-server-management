@@ -85,24 +85,27 @@ func (q *inMemoryQueue) TransitionHistory(id string) []string {
 
 type inMemoryAuditor struct {
 	mu     sync.Mutex
-	events []string
+	events []auditEvent
+}
+
+type auditEvent struct {
+	event         string
+	taskID        string
+	correlationID string
 }
 
 func (a *inMemoryAuditor) EmitTaskEvent(_ context.Context, event, taskID, correlationID, _ string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.events = append(a.events, fmt.Sprintf("%s|%s|%s", event, taskID, correlationID))
+	a.events = append(a.events, auditEvent{event: event, taskID: taskID, correlationID: correlationID})
 }
 
-func (a *inMemoryAuditor) Contains(prefix string) bool {
+func (a *inMemoryAuditor) Snapshot() []auditEvent {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, e := range a.events {
-		if len(e) >= len(prefix) && e[:len(prefix)] == prefix {
-			return true
-		}
-	}
-	return false
+	out := make([]auditEvent, len(a.events))
+	copy(out, a.events)
+	return out
 }
 
 // TestAsyncCreateFolderFlow validates one end-to-end async folder flow:
@@ -151,13 +154,6 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 			if !info.IsDir() {
 				t.Fatalf("expected %s to be a directory", expectedPath)
 			}
-			if !auditor.Contains("task.processing|" + taskID + "|" + correlationID) {
-				t.Fatalf("expected audit processing event for task %s", taskID)
-			}
-			if !auditor.Contains("task.succeeded|" + taskID + "|" + correlationID) {
-				t.Fatalf("expected audit success event for task %s", taskID)
-			}
-
 			history := queue.TransitionHistory(taskID)
 			expected := []string{"queued", "running", "success"}
 			if len(history) != len(expected) {
@@ -167,6 +163,17 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 				if history[i] != expected[i] {
 					t.Fatalf("expected transition history %v, got %v", expected, history)
 				}
+			}
+
+			auditEvents := auditor.Snapshot()
+			if len(auditEvents) != 2 {
+				t.Fatalf("expected exactly 2 audit events, got %d (%+v)", len(auditEvents), auditEvents)
+			}
+			if auditEvents[0] != (auditEvent{event: "task.processing", taskID: taskID, correlationID: correlationID}) {
+				t.Fatalf("expected first audit event to be task.processing for task %s, got %+v", taskID, auditEvents[0])
+			}
+			if auditEvents[1] != (auditEvent{event: "task.succeeded", taskID: taskID, correlationID: correlationID}) {
+				t.Fatalf("expected second audit event to be task.succeeded for task %s, got %+v", taskID, auditEvents[1])
 			}
 			return
 		}

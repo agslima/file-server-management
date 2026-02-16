@@ -85,6 +85,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-004`](docs/capability-ledger.md#baseline-claims-implemented) | Task status persistence (`queued -> running -> success`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-005`](docs/capability-ledger.md#baseline-claims-implemented) | Basic audit event emission (`task.processing`, `task.succeeded`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-006`](docs/capability-ledger.md#baseline-claims-implemented) | Correlation ID propagation in async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| [`CL-017`](docs/capability-ledger.md#baseline-claims-implemented) | Worker performance guardrails (status retries + task timeout) for async create-folder | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` |
 | [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
 | [`CL-008`](docs/capability-ledger.md#baseline-claims-implemented) | Backend scaffold validation | 🟡 | `cd backend && composer validate --strict` |
 | [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
@@ -444,6 +445,11 @@ export STORAGE_BACKEND="local"
 export FILE_BASE_ROOT="$PWD/data"
 export JWT_SECRET="dev-secret"
 export TENANT_MEMBERSHIPS="dev-admin=dev-tenant"
+
+# Optional worker guardrails (defaults shown in parentheses):
+# export WORKER_STATUS_RETRY_ATTEMPTS="3"
+# export WORKER_STATUS_RETRY_DELAY_MS="25"
+# export WORKER_TASK_PROCESS_TIMEOUT_MS="30000"
 
 go run ./cmd/migrate
 ```
