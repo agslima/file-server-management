@@ -163,10 +163,19 @@ func (h *GRPCHandler) GetTask(ctx context.Context, _ *pb.GetTaskRequest) (*pb.Ge
 }
 
 func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsRequest) (*pb.ListObjectsResponse, error) {
+	authCtx, ok := auth.FromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+
 	prefix, err := authz.NormalizePath(req.Prefix)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid path")
 	}
+	if err := h.ensureTenantAccess(ctx, authCtx, prefix, auth.PermList); err != nil {
+		return nil, err
+	}
+
 	items, err := h.objects.List(ctx, prefix)
 	if err != nil {
 		return nil, err
@@ -210,15 +219,15 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 	if !ok {
 		return status.Error(codes.Unauthenticated, "missing auth context")
 	}
-	path, err := authz.ExtractPath(req)
+	objectPath, err := authz.ExtractPath(req)
 	if err != nil {
 		return status.Error(codes.InvalidArgument, "cannot extract path")
 	}
-	if !auth.CanAccess(authCtx, path, auth.PermRead, h.acl) {
-		return status.Error(codes.PermissionDenied, "access denied")
+	if err := h.ensureTenantAccess(stream.Context(), authCtx, objectPath, auth.PermRead); err != nil {
+		return err
 	}
 
-	r, err := h.objects.Open(stream.Context(), path)
+	r, err := h.objects.Open(stream.Context(), objectPath)
 	if err != nil {
 		return err
 	}
@@ -239,6 +248,24 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 			return err
 		}
 	}
+}
+
+func (h *GRPCHandler) ensureTenantAccess(ctx context.Context, authCtx auth.AuthContext, p string, perm auth.Permission) error {
+	tenantID, err := authz.TenantFromPath(p)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, "path must be tenant-scoped")
+	}
+	allowed, err := h.tenantResolver.UserHasTenant(ctx, authCtx.UserID, tenantID)
+	if err != nil {
+		return status.Error(codes.Internal, "tenant resolution failed")
+	}
+	if !allowed {
+		return status.Error(codes.PermissionDenied, "tenant access denied")
+	}
+	if !auth.CanAccess(authCtx, p, perm, h.acl) {
+		return status.Error(codes.PermissionDenied, "access denied")
+	}
+	return nil
 }
 
 func correlationIDFromContext(ctx context.Context) string {

@@ -13,6 +13,7 @@ import (
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -167,7 +168,7 @@ func TestListObjectsReturnsEntries(t *testing.T) {
 	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
 
 	start := time.Now().Add(-time.Second)
-	ctx := context.Background()
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"viewer"}})
 	if err := st.CreateFolder(ctx, "/tenants/acme/projects"); err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
@@ -211,5 +212,54 @@ func TestListObjectsReturnsEntries(t *testing.T) {
 	dir := seen["/tenants/acme/projects/reports"]
 	if dir == nil || !dir.IsDir {
 		t.Fatalf("expected dir /tenants/acme/projects/reports, got %+v", resp.Items)
+	}
+}
+
+func TestListObjectsRequiresAuthContext(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+
+	_, err := h.ListObjects(context.Background(), &pb.ListObjectsRequest{Prefix: "/tenants/acme/projects"})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("expected unauthenticated, got %v", err)
+	}
+}
+
+func TestListObjectsRejectsUnauthorizedTenant(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"viewer"}})
+	_, err := h.ListObjects(ctx, &pb.ListObjectsRequest{Prefix: "/tenants/beta/projects"})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected permission denied, got %v", err)
+	}
+}
+
+type fakeDownloadStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (f *fakeDownloadStream) Context() context.Context { return f.ctx }
+func (f *fakeDownloadStream) Send(*pb.DownloadChunk) error {
+	return nil
+}
+
+func TestDownloadObjectRejectsUnauthorizedTenant(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"viewer"}})
+	stream := &fakeDownloadStream{ctx: ctx}
+	err := h.DownloadObject(&pb.DownloadObjectRequest{Path: "/tenants/beta/projects/report.txt"}, stream)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected permission denied, got %v", err)
 	}
 }
