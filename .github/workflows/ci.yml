@@ -46,6 +46,15 @@ jobs:
           go-version: 1.24.x
       - name: Run known-working file-engine dev checks
         run: ./file-engine/scripts/dev.sh
+      - name: Run gateway route test (explicit)
+        run: cd file-engine && go test ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v
+      - name: Ensure generated gateway artifacts are in sync
+        run: |
+          cd file-engine
+          ./scripts/generate_grpc_docker.sh
+          cd ..
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
 
   doc-drift:
     permissions:

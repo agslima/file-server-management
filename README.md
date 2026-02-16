@@ -26,7 +26,7 @@ A multi-tenant, governance-first file management platform that operates on **rea
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
-- **Async mutations:** create/move/upload return a `taskId`; clients poll task status.
+- **Async mutations:** create (baseline) returns a `taskId`; move/upload are target-state; clients poll task status.
 - **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
 - **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
 - **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
@@ -35,14 +35,6 @@ A multi-tenant, governance-first file management platform that operates on **rea
 
 ## Canonical doc map
 
-**Governance & Status:**
-
-- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
-- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
-- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
-- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
-
 **Architecture & Implementation:**
 
 - **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
@@ -50,8 +42,18 @@ A multi-tenant, governance-first file management platform that operates on **rea
 - **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
 - **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
 - **Observability:** [`docs/observability.md`](docs/observability.md)
+- **Roadmap (staged milestones):** [`docs/roadmap.md`](docs/roadmap.md)
 - **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
 - **Decisions and rationale:** [`docs/adr`](docs/adr)
+
+**Governance & Status:**
+
+- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
+- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
+- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
 
 > If guidance conflicts, prefer this order: capability ledger → architecture docs → setup guide.
 
@@ -110,7 +112,8 @@ This platform provides a centralized, permissioned interface that **controls and
 ### Read path
 
 - Browse folders (tree navigation, directory listing)
-- Metadata display (size, timestamps, ownership, etc.) *(as applicable per backend)*
+- Metadata display (size, timestamps, ownership) with backend-specific best-effort fields
+- **Baseline-validated read path:** list results + size/timestamps/ownership metadata + download path normalization validated by [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented) and `TestListObjectsReturnsEntries` in [`file-engine/internal/handlers/grpc_handler_test.go`](file-engine/internal/handlers/grpc_handler_test.go)
 
 ### Write path (async)
 
@@ -140,7 +143,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway *(target-state until gateway code is generated)*
+- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder + GetTaskStatus; uploads target-state)
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
 - Enqueues tasks; worker executes storage operations with least privilege
 
@@ -245,9 +248,9 @@ Contract source of truth
 - Canonical proto: `file-engine/api/proto/fileengine.proto`
 - Compatibility mirror (kept in sync): `file-engine/proto/fileengine.proto`
 
-Base URLs (when HTTP/gateway is enabled):
+Base URLs:
 
-- HTTP: `http://<host>:8080` *(target-state)*
+- HTTP (gRPC-Gateway): `http://<host>:8080`
 - gRPC: `<host>:50051`
 
 Core gRPC methods (canonical):
@@ -256,7 +259,12 @@ Core gRPC methods (canonical):
 - `GetTaskStatus` → poll task status
 - `InitiateUpload` / `CompleteUpload` *(target-state)*
 
-HTTP/JSON routes are **target-state** until gateway code is generated and validated.
+HTTP/JSON routes (baseline for CreateFolder + GetTaskStatus):
+
+- `POST /v1/folders` → `CreateFolder`
+- `GET /v1/tasks/{taskId}` → `GetTaskStatus`
+
+Upload HTTP routes remain target-state until the upload pipeline is implemented.
 
 Task state model (canonical):
 
@@ -361,7 +369,7 @@ Known gaps / planned hardening (examples):
 
 ## Auditing
 
-**Dual-layer audit (target-state):**
+**Dual-layer audit (target-state vision):**
 
 - **Primary (queryable)**: Postgres `audit_events` table (append-only, target-state)
 - **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM, target-state)
@@ -423,7 +431,7 @@ cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 
 ### 3) Optional: local File Engine run (scaffold-level, for debugging)
 
-This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are still scaffold-level until generated gateway code is in place, so treat this as a debug path rather than a validated contract.
+This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are baseline for `CreateFolder` + `GetTaskStatus`; uploads remain target-state. Treat this path as a debug path beyond baseline behavior.
 
 ```bash
 cd file-engine
@@ -457,12 +465,19 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
+### 4) Root `docker-compose.yml` (experimental)
+
+The root compose file is **experimental** until it is validated end-to-end. Use it only for container build validation, not as a baseline-validated runtime.
+
 **Default ports:**
 
 - HTTP: `8080`
 - gRPC: `50051`
 - Redis: `6379`
 - Postgres: `5432`
+
+> [!Note]
+> All setup flows (local File Engine run, experimental root compose, dev JWT) are documented in `docs/setup.md`.
 
 ---
 
@@ -483,20 +498,6 @@ file-server-management/
    ├─ threat-model.md         # Security model + STRIDE notes
    └─ setup.md                # Local development setup
 ```
-
----
-
-## Roadmap
-
-| Phase | Goal | Status |
-| :---- | :---- | :---- |
-| Phase 1 | Browse directories + read authz baseline | 🟡 |
-| Phase 2 | Folder creation (async) + audit events | 🟡 |
-| Phase 3 | Quarantine → scan → promote + observability baseline | 🟡 |
-| Phase 4 | Advanced governance (fine-grained ACL, workflows, notifications) | 🔒 |
-| Phase 5 | Enterprise features (retention, eDiscovery-friendly audit, versioning) | 🔒 |
-
-> See ADRs in `docs/adr/`.
 
 ---
 

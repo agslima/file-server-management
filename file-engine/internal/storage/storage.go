@@ -3,6 +3,7 @@ package storage
 import (
     "context"
     "io"
+    "time"
 )
 
 // Storage is an abstraction over a file-like backend.
@@ -12,6 +13,7 @@ import (
 // - CreateFolder creates a logical folder (for object storage, it may create a placeholder prefix object).
 // - AtomicWrite writes content atomically: either full object exists at target, or it doesn't.
 // - Move performs an atomic/consistent move when possible; for object storage it typically becomes Copy+Delete.
+// - List returns best-effort metadata (timestamps/ownership may be partial depending on backend).
 type Storage interface {
     CreateFolder(ctx context.Context, path string) error
     AtomicWrite(ctx context.Context, path string, r io.Reader) error
@@ -23,7 +25,11 @@ type Storage interface {
 }
 
 type ObjectInfo struct {
-    Path string
-    Size int64
-    IsDir bool
+    Path       string
+    Size       int64
+    IsDir      bool
+    ModifiedAt time.Time
+    CreatedAt  time.Time
+    Owner      string
+    Group      string
 }

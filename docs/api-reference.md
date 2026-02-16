@@ -1,7 +1,7 @@
 # File Engine API Reference (gRPC + HTTP)
 
 ## Overview
-The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is **target-state** until real generated gateway code is committed.
+The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is available for the baseline `CreateFolder` and `GetTaskStatus` routes.
 Filesystem mutations run **asynchronously** via a worker, so the API returns a **Task ID** you can poll.
 
 **Core domains**
@@ -17,10 +17,11 @@ Filesystem mutations run **asynchronously** via a worker, so the API returns a *
 
 ## Baseline support (validated)
 
-- `CreateFolder` (gRPC) → async task enqueued
-- `GetTaskStatus` (gRPC) → task status polling
+- `CreateFolder` (gRPC + HTTP/JSON) → async task enqueued
+- `GetTaskStatus` (gRPC + HTTP/JSON) → task status polling
+- `ListObjects` (gRPC-only) → list results + size/timestamps/ownership metadata
 
-HTTP/JSON routes are **illustrative** until gateway code is generated and validated.
+Uploads and other routes remain target-state until implemented.
 
 ## Base URLs
 ### HTTP
@@ -76,15 +77,46 @@ See `docs/auth.md` for details.
 }
 ```
 
-## HTTP/JSON mapping (target-state)
+### 3) ListObjects
+**Purpose**: List immediate children under a prefix (read path; gRPC-only baseline).
 
-These routes represent a **recommended mapping** for gRPC-Gateway once `google.api.http` annotations and generated gateway code are committed.
-Do **not** assume availability until they are promoted to baseline.
+**Request**
+```json
+{
+  "prefix": "/tenants/123/projects"
+}
+```
+**Response**
+```json
+{
+  "items": [
+    {
+      "path": "/tenants/123/projects/report.txt",
+      "size": 2,
+      "isDir": false,
+      "modifiedAt": "2026-02-15T12:00:00Z",
+      "createdAt": "2026-02-15T12:00:00Z",
+      "owner": "1000",
+      "group": "1000"
+    }
+  ]
+}
+```
+
+Notes:
+- `modifiedAt`/`createdAt` and `owner`/`group` are best-effort and may be unset depending on the backend.
+
+## HTTP/JSON mapping
+
+Baseline routes:
 
 - `POST /v1/folders` → `CreateFolder`
 - `GET /v1/tasks/{taskId}` → `GetTaskStatus`
-- `POST /v1/uploads:initiate` → `InitiateUpload` (target-state)
-- `POST /v1/uploads/{uploadId}:complete` → `CompleteUpload` (target-state)
+
+Target-state routes:
+
+- `POST /v1/uploads:initiate` → `InitiateUpload`
+- `POST /v1/uploads/{uploadId}:complete` → `CompleteUpload`
 
 ## Errors
 See `docs/errors.md`.

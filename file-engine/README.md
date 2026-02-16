@@ -36,7 +36,7 @@ Key validations included:
 
 ## Local run (scaffold-level)
 
-For debugging the API/worker locally, follow `../docs/setup.md`. Note that HTTP gateway wiring is still scaffold-level until real generated gateway code is committed. Use this path for debugging, not as a validated REST contract.
+For debugging the API/worker locally, follow `../docs/setup.md`. HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder` and `GetTaskStatus`; upload routes remain target-state.
 
 ---
 

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package google.api;
+option go_package = "google.golang.org/genproto/googleapis/api/annotations;annotations";
+
+import "google/protobuf/descriptor.proto";
+
+// Defines the HTTP configuration for an API service. It is used by
+// gRPC-Gateway and other HTTP/JSON transcoding tools.
+message Http {
+  repeated HttpRule rules = 1;
+  bool fully_decode_reserved_expansion = 2;
+}
+
+// A single HTTP rule for a gRPC method.
+message HttpRule {
+  string selector = 1;
+
+  oneof pattern {
+    string get = 2;
+    string put = 3;
+    string post = 4;
+    string delete = 5;
+    string patch = 6;
+    CustomHttpPattern custom = 8;
+  }
+
+  string body = 7;
+  string response_body = 12;
+
+  repeated HttpRule additional_bindings = 11;
+}
+
+message CustomHttpPattern {
+  string kind = 1;
+  string path = 2;
+}

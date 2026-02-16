@@ -175,9 +175,10 @@ func (s *S3Storage) List(ctx context.Context, prefix string) ([]storage.ObjectIn
 
     out := []storage.ObjectInfo{}
     paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
-        Bucket: aws.String(s.bucket),
-        Prefix: aws.String(keyPrefix),
-        Delimiter: aws.String("/"),
+        Bucket:      aws.String(s.bucket),
+        Prefix:      aws.String(keyPrefix),
+        Delimiter:   aws.String("/"),
+        FetchOwner:  aws.Bool(true),
     })
 
     for paginator.HasMorePages() {
@@ -190,7 +191,10 @@ func (s *S3Storage) List(ctx context.Context, prefix string) ([]storage.ObjectIn
                 continue
             }
             p := strings.TrimPrefix(*cp.Prefix, s.prefix+"/")
-            out = append(out, storage.ObjectInfo{Path: "/" + strings.TrimSuffix(p, "/"), IsDir: true})
+            out = append(out, storage.ObjectInfo{
+                Path:  "/" + strings.TrimSuffix(p, "/"),
+                IsDir: true,
+            })
         }
         for _, obj := range page.Contents {
             if obj.Key == nil {
@@ -202,7 +206,20 @@ func (s *S3Storage) List(ctx context.Context, prefix string) ([]storage.ObjectIn
                 continue
             }
             p := strings.TrimPrefix(k, s.prefix+"/")
-            out = append(out, storage.ObjectInfo{Path: "/" + p, Size: aws.ToInt64(obj.Size), IsDir: false})
+            modifiedAt := aws.ToTime(obj.LastModified)
+            createdAt := modifiedAt
+            owner := ""
+            if obj.Owner != nil {
+                owner = aws.ToString(obj.Owner.DisplayName)
+            }
+            out = append(out, storage.ObjectInfo{
+                Path:       "/" + p,
+                Size:       aws.ToInt64(obj.Size),
+                IsDir:      false,
+                ModifiedAt: modifiedAt,
+                CreatedAt:  createdAt,
+                Owner:      owner,
+            })
         }
     }
     return out, nil

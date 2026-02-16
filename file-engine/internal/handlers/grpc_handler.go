@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type TaskQueue interface {
@@ -102,6 +103,20 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	return &pb.CreateFolderResponse{TaskId: taskID, Status: "queued", Message: "Folder creation scheduled"}, nil
 }
 
+func (h *GRPCHandler) InitiateUpload(ctx context.Context, _ *pb.InitiateUploadRequest) (*pb.InitiateUploadResponse, error) {
+	if _, ok := auth.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+	return nil, status.Error(codes.Unimplemented, "upload initiation not implemented")
+}
+
+func (h *GRPCHandler) CompleteUpload(ctx context.Context, _ *pb.CompleteUploadRequest) (*pb.CompleteUploadResponse, error) {
+	if _, ok := auth.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+	return nil, status.Error(codes.Unimplemented, "upload completion not implemented")
+}
+
 func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusRequest) (*pb.TaskStatusResponse, error) {
 	if _, ok := auth.FromContext(ctx); !ok {
 		return nil, status.Error(codes.Unauthenticated, "missing auth context")
@@ -140,6 +155,13 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 	}, nil
 }
 
+func (h *GRPCHandler) GetTask(ctx context.Context, _ *pb.GetTaskRequest) (*pb.GetTaskResponse, error) {
+	if _, ok := auth.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+	return nil, status.Error(codes.Unimplemented, "GetTask not implemented")
+}
+
 func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsRequest) (*pb.ListObjectsResponse, error) {
 	prefix, err := authz.NormalizePath(req.Prefix)
 	if err != nil {
@@ -151,10 +173,22 @@ func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsReques
 	}
 	out := &pb.ListObjectsResponse{}
 	for _, it := range items {
+		var modifiedAt *timestamppb.Timestamp
+		if !it.ModifiedAt.IsZero() {
+			modifiedAt = timestamppb.New(it.ModifiedAt)
+		}
+		var createdAt *timestamppb.Timestamp
+		if !it.CreatedAt.IsZero() {
+			createdAt = timestamppb.New(it.CreatedAt)
+		}
 		out.Items = append(out.Items, &pb.ObjectInfo{
-			Path:  it.Path,
-			Size:  it.Size,
-			IsDir: it.IsDir,
+			Path:       it.Path,
+			Size:       it.Size,
+			IsDir:      it.IsDir,
+			ModifiedAt: modifiedAt,
+			CreatedAt:  createdAt,
+			Owner:      it.Owner,
+			Group:      it.Group,
 		})
 	}
 	return out, nil
