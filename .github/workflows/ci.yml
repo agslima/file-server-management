@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
         with:
           php-version: 8.2
       - name: Validate backend baseline
@@ -76,20 +76,24 @@ jobs:
   file-engine:
     permissions:
       contents: read
-    if: ${{ needs.changes.outputs.file-engine == 'true' }}
+    if: ${{ needs.changes.outputs['file-engine'] == 'true' }}
     runs-on: ubuntu-latest
     needs:
       - changes
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      
       - name: Setup Go
-        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
+          
       - name: Run known-working file-engine dev checks
         run: ./file-engine/scripts/dev.sh
+        
       - name: Run gateway route test (explicit)
         run: cd file-engine && go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v
+    
       - name: Ensure generated gateway artifacts are in sync
         run: |
           cd file-engine
@@ -106,6 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      
       - name: Doc drift check
         run: ./scripts/doc-drift-check.sh
 
@@ -121,12 +126,14 @@ jobs:
       checks: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+     
       - name: Setup Golang
-        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}        
           cache: false 
+     
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
