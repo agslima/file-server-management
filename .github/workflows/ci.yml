@@ -6,11 +6,45 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  GOLANG_VERSION: '1.24.x'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend_any_changed }}
+      frontend: ${{ steps.filter.outputs.frontend_any_changed }}
+      file-engine: ${{ steps.filter.outputs.file_engine_any_changed }}
+      docs: ${{ steps.filter.outputs.docs_any_changed }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: tj-actions/changed-files@8cba46e29c11878d930bca7870bb54394d3e8b21 # v47.0.2
+        id: filter
+        with:
+          files_yaml: |
+            backend:
+              - 'backend/**' 
+            frontend:
+              - 'frontend/**'
+              - 'ui/**'
+            file-engine:
+              - 'file-engine/**'
+            docs:
+              - 'docs/**'
+              - '**.md'
+              
   backend:
     permissions:
       contents: read
+    if: ${{ needs.changes.outputs.backend == 'true' }} 
     runs-on: ubuntu-latest
+    needs:
+      - changes
     steps:
       - uses: actions/checkout@v6
       - name: Setup PHP
@@ -26,9 +60,12 @@ jobs:
   frontend:
     permissions:
       contents: read
+    if: ${{ needs.changes.outputs.frontend == 'true' }} 
     runs-on: ubuntu-latest
+    needs:
+      - changes
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate frontend scaffold baseline
         run: |
           test -f frontend/README.md
@@ -37,17 +74,20 @@ jobs:
   file-engine:
     permissions:
       contents: read
+    if: ${{ needs.changes.outputs.file-engine == 'true' }}
     runs-on: ubuntu-latest
+    needs:
+      - changes
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
         with:
-          go-version: 1.24.x
+          go-version: ${{ env.GOLANG_VERSION }}
       - name: Run known-working file-engine dev checks
         run: ./file-engine/scripts/dev.sh
       - name: Run gateway route test (explicit)
-        run: cd file-engine && go test ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v
+        run: cd file-engine && go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v
       - name: Ensure generated gateway artifacts are in sync
         run: |
           cd file-engine
@@ -57,10 +97,42 @@ jobs:
           test -z "$(git status --porcelain)"
 
   doc-drift:
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Doc drift check
         run: ./scripts/doc-drift-check.sh
+
+  lint-go:
+    name: Lint Go code
+    if: ${{ needs.changes.outputs.file-engine == 'true' }}
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+    
+    # Permissions required for the action to annotate code in the PR
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: write 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Setup Golang
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}        
+          cache: false 
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: v2.9.0 
+          args: --timeout=5m --color=always # Prevent CI hanging on heavy lint jobs
+          working-directory: file-engine
