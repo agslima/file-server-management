@@ -16,7 +16,7 @@ Primary sources reviewed:
 - `docs/project-alignment-review.md` (previous baseline)
 - `docs/capability-ledger.md`
 - `.github/AGENTS.md`
-- `file-engine/Agents.md` (requested as `file-engine/AGENTS.md`; actual file name is `Agents.md`)
+- `file-engine/AGENTS.md`
 - `backend/AGENTS.md`
 
 Validation commands executed for this review are listed in [Appendix A](#appendix-a-validation-checks-run).
@@ -36,7 +36,7 @@ The project has a mature claim model (baseline vs target-state) and a strong cla
 1. **Baseline claims are explicit and runnable.**
    - README status claims are tied to capability IDs and runnable commands, and those IDs are concretely defined in `docs/capability-ledger.md`.
 2. **Governance-first framing is consistent across top-level guidance.**
-   - README, `.github/AGENTS.md`, and `file-engine/Agents.md` all reinforce deny-by-default authz boundary and server-side tenant scope.
+   - README, `.github/AGENTS.md`, and `file-engine/AGENTS.md` all reinforce deny-by-default authz boundary and server-side tenant scope.
 3. **Scope control is transparent.**
    - Target-state capabilities (uploads + malware gating + immutable sink + full OTEL) remain clearly marked in the ledger rather than being presented as already shipped.
 
@@ -47,7 +47,7 @@ The project has a mature claim model (baseline vs target-state) and a strong cla
    - `.github/AGENTS.md` says: capability ledger -> setup -> scoped guide -> older service READMEs.
    - This is subtle but important: contributors may follow different precedence in practice.
 2. **File-engine AGENTS discoverability friction.**
-   - `.github/AGENTS.md` references `file-engine/Agents.md` while many workflows/tooling conventions expect `AGENTS.md` naming.
+   - `.github/AGENTS.md` references `file-engine/AGENTS.md` while many workflows/tooling conventions expect `AGENTS.md` naming.
    - This can cause missed policy loading by humans and automation that search exact `AGENTS.md`.
 3. **README still markets some target-state outcomes prominently in top narrative.**
    - README does label these as target-state, but phrasing in headline/TL;DR can still be interpreted as currently operational without reading deeply.
@@ -92,7 +92,7 @@ Strengths:
 
 Inefficiencies:
 
-- **Naming inconsistency (`Agents.md` vs `AGENTS.md`) introduces avoidable lookup cost.**
+- **Historical naming inconsistency around `AGENTS.md` introduced avoidable lookup cost.**
 - **Guidance duplication:** precedence and setup authority are repeated in slightly different forms across README and AGENTS files.
 - **Owner model gaps:** domain ledger lists `Unassigned (TBD)` across major areas, which may slow prioritization and operational accountability.
 
