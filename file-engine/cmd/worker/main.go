@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
@@ -40,7 +41,19 @@ func main() {
 	}
 
 	proc := tasks.NewProcessorWithStorage(st)
-	worker := tasks.NewWorker(q, proc, logg)
+
+	var pgPool *pgxpool.Pool
+	if cfg.PostgresDSN != "" {
+		pool, err := pgxpool.New(context.Background(), cfg.PostgresDSN)
+		if err != nil {
+			logg.Fatalf("pg pool: %v", err)
+		}
+		pgPool = pool
+		defer pgPool.Close()
+	}
+
+	auditor := tasks.NewDualLayerAuditEmitter(logg, pgPool, os.Getenv("AUDIT_IMMUTABLE_SINK_PATH"))
+	worker := tasks.NewWorkerWithAudit(q, proc, logg, auditor)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

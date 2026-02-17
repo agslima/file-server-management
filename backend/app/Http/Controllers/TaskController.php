@@ -13,6 +13,10 @@ class TaskController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        return new JsonResponse($this->engine->getTask($id));
+        $payload = $this->engine->getTask($id);
+        $status = (int) ($payload['_engine_http_status'] ?? 200);
+        unset($payload['_engine_http_status']);
+
+        return new JsonResponse($payload, $status);
     }
 }

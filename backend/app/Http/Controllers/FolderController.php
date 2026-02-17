@@ -22,6 +22,10 @@ class FolderController extends Controller
 
         $requestedBy = (string) ($request->input('requestedBy') ?? optional($request->user())->email ?? 'system');
 
-        return new JsonResponse($this->engine->createFolder($path, $folderName, $requestedBy));
+        $payload = $this->engine->createFolder($path, $folderName, $requestedBy);
+        $status = (int) ($payload['_engine_http_status'] ?? 200);
+        unset($payload['_engine_http_status']);
+
+        return new JsonResponse($payload, $status);
     }
 }

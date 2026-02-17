@@ -3,12 +3,16 @@ package di
 import (
 	"context"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
+	adaptersecurity "github.com/example/file-engine/internal/adapters/security"
+	"github.com/example/file-engine/internal/app/tasks"
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/config"
 	"github.com/example/file-engine/internal/handlers"
@@ -35,6 +39,7 @@ func BuildContainer(cfg *config.Config, logg *logger.Logger) *Container {
 func (c *Container) Servers() *Servers {
 	rdb := redis.NewClient(&redis.Options{Addr: c.Config.RedisAddr})
 	q := redisq.NewRedisQueue(rdb)
+	var pgPool *pgxpool.Pool
 
 	// Storage backend (same as worker)
 	st, err := storagefactory.NewFromConfig(context.Background(), storagefactory.Config{
@@ -60,6 +65,7 @@ func (c *Container) Servers() *Servers {
 		if err != nil {
 			c.Logger.Fatalf("pg pool: %v", err)
 		}
+		pgPool = pool
 		aclStore = auth.NewPostgresACLStore(pool)
 	} else {
 		aclStore = auth.NewInMemoryACLStore()
@@ -70,18 +76,44 @@ func (c *Container) Servers() *Servers {
 		c.Logger.Fatalf("jwt verifier: %v", err)
 	}
 
-	tenantResolver := buildTenantResolverFromEnv()
+	tenantResolver := buildTenantResolver(pgPool)
+	auditor := tasks.NewDualLayerAuditEmitter(c.Logger, pgPool, getenv("AUDIT_IMMUTABLE_SINK_PATH"))
 
 	objSvc := services.NewObjectService(st)
-	grpcHandler := handlers.NewGRPCHandler(q, objSvc, aclStore, tenantResolver, c.Logger)
+	uploadSvc := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{
+		MaxObjectSizeBytes: envInt64("UPLOAD_MAX_OBJECT_SIZE_BYTES", 10*1024*1024),
+		TenantQuotaBytes:   envInt64("UPLOAD_TENANT_QUOTA_BYTES", 100*1024*1024),
+		RequestTimeout:     time.Duration(envInt64("UPLOAD_REQUEST_TIMEOUT_MS", 30000)) * time.Millisecond,
+		RequireCleanScan:   strings.EqualFold(getenv("UPLOAD_REQUIRE_CLEAN_SCAN"), "true"),
+	})
+	grpcHandler := handlers.NewGRPCHandler(q, objSvc, uploadSvc, aclStore, tenantResolver, c.Logger, auditor)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
-	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore)
+	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore, uploadSvc)
+	httpSrv.AddReadyCheck("storage", func(ctx context.Context) error {
+		_, err := st.List(ctx, "/")
+		return err
+	})
+	httpSrv.AddReadyCheck("queue", func(ctx context.Context) error {
+		return rdb.Ping(ctx).Err()
+	})
+	if pgPool != nil {
+		httpSrv.AddReadyCheck("postgres", func(ctx context.Context) error {
+			if err := pgPool.Ping(ctx); err != nil {
+				return err
+			}
+			return nil
+		})
+	}
 
 	return &Servers{GRPC: grpcSrv, HTTP: httpSrv}
 }
 
-func buildTenantResolverFromEnv() auth.TenantResolver {
+func buildTenantResolver(pool *pgxpool.Pool) auth.TenantResolver {
+	if pool != nil {
+		return auth.NewPostgresTenantResolver(pool)
+	}
+
 	raw := strings.TrimSpace(getenv("TENANT_MEMBERSHIPS"))
 	if raw == "" {
 		return auth.NewDenyAllTenantResolver()
@@ -106,4 +138,16 @@ func buildTenantResolverFromEnv() auth.TenantResolver {
 
 func getenv(k string) string {
 	return os.Getenv(k)
+}
+
+func envInt64(k string, d int64) int64 {
+	v := strings.TrimSpace(getenv(k))
+	if v == "" {
+		return d
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		return d
+	}
+	return n
 }
