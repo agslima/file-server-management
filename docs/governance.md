@@ -16,6 +16,7 @@ These checks are required for **all** merges to `main`:
      - File Engine gateway route race test (`go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v`)
      - File Engine generated gateway artifact drift check
      - Doc drift check
+     - Governance hygiene checks (README/AGENTS precedence + canonical guide links)
 2. **Lint (required category)**
    - **Status:** Implemented in CI for Go (`lint-go` job in `.github/workflows/ci.yml`, scoped to `file-engine/**` changes).
    - **Policy:** `lint-go` is required for merge when triggered by file-engine changes.
@@ -43,3 +44,4 @@ Before merging:
 
 1. All core merge gates are green.
 2. Docs are updated if behavior, contracts, or setup guidance changed.
+3. Governance hygiene check is green (precedence statement and canonical AGENTS link consistency across top-level docs).
