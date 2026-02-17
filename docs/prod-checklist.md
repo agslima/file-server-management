@@ -163,3 +163,22 @@ A minimal go-live gate you can treat as “definition of done”:
 - Add fine-grained permissions per operation (mkdir/move/write/delete/list)
 - Add antivirus scanning pipeline + quarantining
 - Add signed URLs / download tokens for controlled access
+
+---
+
+## 9) Automation hooks (implemented)
+
+Use these runtime checks as concrete deployment gates:
+
+- Readiness endpoint (`/readyz`) validates dependency connectivity:
+  - storage backend probe
+  - Redis queue probe (`PING`)
+  - Postgres probe (`Ping`) when `POSTGRES_DSN` is configured
+- Liveness endpoint (`/healthz`) remains process-level only.
+- Metrics endpoint (`/metrics`) exports RED counters/summaries for HTTP and gRPC, authz allow/deny reason counters, queue depth/lag, and upload duration.
+
+Suggested CI smoke checks:
+
+- `curl -fsS http://localhost:8080/healthz`
+- `curl -fsS http://localhost:8080/readyz`
+- `curl -fsS http://localhost:8080/metrics | rg "fileengine_(http_requests_total|grpc_requests_total|authz_decisions_total|queue_depth|queue_lag_ms|upload_duration_ms)"`

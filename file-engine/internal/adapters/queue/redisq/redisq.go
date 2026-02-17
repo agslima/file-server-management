@@ -61,6 +61,11 @@ func (q *RedisQueue) Pop(ctx context.Context) (*TaskPayload, error) {
 		return nil, err
 	}
 	q.observeQueueDepth(ctx, t.ID, t.Params["correlation_id"])
+	if enqRaw := t.Params["enqueued_at_unix_nano"]; enqRaw != "" {
+		if enq, err := strconv.ParseInt(enqRaw, 10, 64); err == nil {
+			observability.DefaultMetrics.ObserveQueueLagMs(time.Since(time.Unix(0, enq)).Milliseconds())
+		}
+	}
 	return &t, nil
 }
 
@@ -130,6 +135,7 @@ func (q *RedisQueue) observeQueueDepth(ctx context.Context, taskID, correlationI
 			"event":          "queue.depth.alert",
 			"task_id":        taskID,
 			"correlation_id": correlationID,
+			"request_id":     correlationID,
 			"queue_depth":    depth,
 			"threshold":      q.queueAlertThreshold,
 		})
@@ -147,6 +153,7 @@ func (q *RedisQueue) EnqueueCreateFolder(ctx context.Context, parentPath, folder
 			"name":           folderName,
 			"by":             requestedBy,
 			"correlation_id": correlationID,
+			"request_id":     correlationID,
 		},
 	}
 	if err := q.Enqueue(ctx, p); err != nil {

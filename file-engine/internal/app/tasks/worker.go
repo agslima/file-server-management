@@ -37,6 +37,7 @@ func (l *logAuditEmitter) EmitTaskEvent(_ context.Context, event, taskID, correl
 		"event":          event,
 		"task_id":        taskID,
 		"correlation_id": correlationID,
+		"request_id":     correlationID,
 		"audit_message":  message,
 	})
 }
@@ -102,15 +103,20 @@ func (w *Worker) Start(ctx context.Context) {
 			continue
 		}
 		correlationID := task.Params["correlation_id"]
+		if correlationID == "" {
+			correlationID = task.Params["request_id"]
+		}
+		w.auditor.EmitTaskEvent(ctx, "task.dequeued", task.ID, correlationID, fmt.Sprintf("task_type=%s", task.Type))
 		w.auditor.EmitTaskEvent(ctx, "task.processing", task.ID, correlationID, fmt.Sprintf("task_type=%s", task.Type))
 		w.log.Event("info", "worker task processing", map[string]any{
 			"event":          "task.processing",
 			"task_id":        task.ID,
 			"correlation_id": correlationID,
+			"request_id":     correlationID,
 			"task_type":      task.Type,
 		})
 		if err := w.persistStatus(ctx, task.ID, "running", correlationID, "task is running"); err != nil {
-			w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "error": err.Error()})
+			w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID, "error": err.Error()})
 		}
 
 		processCtx := ctx
@@ -126,18 +132,24 @@ func (w *Worker) Start(ctx context.Context) {
 			if errors.Is(err, context.DeadlineExceeded) {
 				msg = fmt.Sprintf("task processing timed out after %s", w.taskProcessTimeout)
 			}
-			w.log.Event("warn", "worker task failed", map[string]any{"event": "task.failed", "task_id": task.ID, "correlation_id": correlationID, "error": msg})
+			w.log.Event("warn", "worker task failed", map[string]any{"event": "task.failed", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID, "error": msg})
 			if completeErr := w.persistStatus(ctx, task.ID, "failed", correlationID, msg); completeErr != nil {
-				w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "error": completeErr.Error()})
+				w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID, "error": completeErr.Error()})
 			}
 			w.auditor.EmitTaskEvent(ctx, "task.failed", task.ID, correlationID, msg)
+			if task.Type == "create_folder" {
+				w.auditor.EmitTaskEvent(ctx, "folder.mutation.failed", task.ID, correlationID, msg)
+			}
 			w.maybeAlertOnFailures(correlationID)
 		} else {
-			w.log.Event("info", "worker task succeeded", map[string]any{"event": "task.succeeded", "task_id": task.ID, "correlation_id": correlationID})
+			w.log.Event("info", "worker task succeeded", map[string]any{"event": "task.succeeded", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID})
 			if completeErr := w.persistStatus(ctx, task.ID, "success", correlationID, "folder created"); completeErr != nil {
-				w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "error": completeErr.Error()})
+				w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID, "error": completeErr.Error()})
 			}
 			w.auditor.EmitTaskEvent(ctx, "task.succeeded", task.ID, correlationID, "task completed")
+			if task.Type == "create_folder" {
+				w.auditor.EmitTaskEvent(ctx, "folder.mutation.succeeded", task.ID, correlationID, "folder created")
+			}
 		}
 	}
 }
@@ -186,6 +198,7 @@ func (w *Worker) maybeAlertOnFailures(correlationID string) {
 		w.log.Event("warn", "task failure alert threshold reached", map[string]any{
 			"event":           "task.failure.alert",
 			"correlation_id":  correlationID,
+			"request_id":      correlationID,
 			"failed_tasks":    total,
 			"alert_threshold": w.failureAlertThreshold,
 		})

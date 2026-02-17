@@ -1,9 +1,16 @@
-version: '3.8'
+# Deprecated mirror for compatibility.
+# Canonical developer entry point is repository-root docker-compose.yml.
+# Keep this file in sync only as a compatibility fallback.
+
+version: "3.9"
+
 services:
   redis:
-    image: redis:7
+    image: redis:7.2
     ports:
-      - 6379:6379
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
   postgres:
     image: postgres:16
@@ -12,7 +19,7 @@ services:
       POSTGRES_USER: fileengine
       POSTGRES_PASSWORD: fileengine
     ports:
-      - 5432:5432
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -21,8 +28,8 @@ services:
       context: .
       dockerfile: build/docker/server.Dockerfile
     ports:
-      - 8080:8080
-      - 50051:50051
+      - "8080:8080"
+      - "50051:50051"
     environment:
       REDIS_ADDR: redis:6379
       POSTGRES_DSN: postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable
@@ -51,4 +58,5 @@ services:
       - file-engine
 
 volumes:
+  redis_data:
   pgdata:

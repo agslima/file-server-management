@@ -166,14 +166,19 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 			}
 
 			auditEvents := auditor.Snapshot()
-			if len(auditEvents) != 2 {
-				t.Fatalf("expected exactly 2 audit events, got %d (%+v)", len(auditEvents), auditEvents)
+			expectedAudit := []auditEvent{
+				{event: "task.dequeued", taskID: taskID, correlationID: correlationID},
+				{event: "task.processing", taskID: taskID, correlationID: correlationID},
+				{event: "task.succeeded", taskID: taskID, correlationID: correlationID},
+				{event: "folder.mutation.succeeded", taskID: taskID, correlationID: correlationID},
 			}
-			if auditEvents[0] != (auditEvent{event: "task.processing", taskID: taskID, correlationID: correlationID}) {
-				t.Fatalf("expected first audit event to be task.processing for task %s, got %+v", taskID, auditEvents[0])
+			if len(auditEvents) != len(expectedAudit) {
+				t.Fatalf("expected %d audit events, got %d (%+v)", len(expectedAudit), len(auditEvents), auditEvents)
 			}
-			if auditEvents[1] != (auditEvent{event: "task.succeeded", taskID: taskID, correlationID: correlationID}) {
-				t.Fatalf("expected second audit event to be task.succeeded for task %s, got %+v", taskID, auditEvents[1])
+			for i := range expectedAudit {
+				if auditEvents[i] != expectedAudit[i] {
+					t.Fatalf("expected audit event[%d]=%+v, got %+v", i, expectedAudit[i], auditEvents[i])
+				}
 			}
 			return
 		}
