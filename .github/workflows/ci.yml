@@ -36,17 +36,17 @@ jobs:
               - 'ui/**'
             file-engine:
               - 'file-engine/**'
+              - '**.go'
             docs:
               - 'docs/**'
               - '**.md'
               
   backend:
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }} 
     permissions:
       contents: read
-    if: ${{ needs.changes.outputs.backend == 'true' }} 
     runs-on: ubuntu-latest
-    needs:
-      - changes
     steps:
       - uses: actions/checkout@v6
       - name: Setup PHP
@@ -60,12 +60,11 @@ jobs:
           composer validate --strict
 
   frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     permissions:
       contents: read
-    if: ${{ needs.changes.outputs.frontend == 'true' }} 
     runs-on: ubuntu-latest
-    needs:
-      - changes
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate frontend scaffold baseline
@@ -74,12 +73,11 @@ jobs:
           test ! -f frontend/package.json
 
   file-engine:
+    needs: changes
+    if: ${{ needs.changes.outputs['file-engine'] == 'true' }}
     permissions:
       contents: read
-    if: ${{ needs.changes.outputs['file-engine'] == 'true' }}
     runs-on: ubuntu-latest
-    needs:
-      - changes
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       
