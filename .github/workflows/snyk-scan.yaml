@@ -14,6 +14,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend_any_changed }}
       frontend: ${{ steps.filter.outputs.frontend_any_changed }}
       file-engine: ${{ steps.filter.outputs.file_engine_any_changed }}
+      docs: ${{ steps.filter.outputs.docs_any_changed }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: tj-actions/changed-files@8cba46e29c11878d930bca7870bb54394d3e8b21 # v47.0.2
@@ -27,13 +28,17 @@ jobs:
               - 'ui/**'
             file-engine:
               - 'file-engine/**'
+              - '**.go'
+            docs:
+              - 'docs/**'
+              - '**.md'
               
   snyk-security:
     needs: [changes]
     if: >
       needs.changes.outputs.backend == 'true' ||
       needs.changes.outputs.frontend == 'true' ||
-      needs.changes.outputs['file-engine'] == 'true'
+      needs.changes.outputs.file-engine == 'true'
       
     runs-on: ubuntu-latest
     steps:
