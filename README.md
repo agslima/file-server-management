@@ -55,7 +55,7 @@ A multi-tenant, governance-first file management platform that operates on **rea
 - **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
 - **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
 
-> If guidance conflicts, prefer this order: capability ledger → architecture docs → setup guide.
+> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ---
 
