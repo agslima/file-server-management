@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
 env:
   GOLANG_VERSION: '1.24.x'
 
