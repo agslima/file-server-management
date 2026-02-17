@@ -29,6 +29,7 @@ This ledger is the canonical claim-to-validation source for the repository.
 | `CL-015` | Path normalization guarantees (traversal rejection + canonicalization) | ✅ | `cd file-engine && go test ./internal/authz -run "TestExtractPathNormalizesCreateFolder|TestExtractPathRejectsTraversal|TestNormalizePathHandlesWindowsAndWhitespace|TestNormalizePathAllowsDotContainingNames|TestTenantFromPath|TestTenantFromPathRejectsNonTenantRoot" -v` | Tests pass |
 | `CL-016` | Generated gateway artifacts are in sync with proto | ✅ | `cd file-engine && ./scripts/generate_grpc_docker.sh && cd .. && git diff --exit-code && test -z "$(git status --porcelain)"` | No diff after generation |
 | `CL-017` | Worker performance guardrails for async create-folder are enforced (bounded status retries + processing timeout) | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` | Tests pass |
+| `CL-018` | Backend vertical-slice VS-001 is explicitly tracked (create-folder control-plane forwarding + task status polling contract) with runnable scaffold validations | 🟡 | `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php` | Exit code `0` and `No syntax errors detected` for each file |
 
 ## Domain capability ledger (by area)
 
@@ -36,11 +37,12 @@ This section summarizes capability status by domain with ownership, acceptance t
 
 | Domain | Current state | Owner | Acceptance tests | Target milestone |
 | :-- | :-- | :-- | :-- | :-- |
-| AuthZ | Baseline RBAC + path-based ACL with inheritance is implemented; tenant scoping enforced at File Engine boundary. | Unassigned (TBD) | `cd file-engine && go test ./internal/auth -v` | Phase 1 (read authz baseline) |
-| Tasks | Async task enqueue + worker execution + status persistence validated for create-folder flow, with worker guardrails for bounded retries and processing timeout. | Unassigned (TBD) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` and `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` | Phase 2 (folder creation + audit) |
-| Uploads | Quarantine → scan → promote is target-state only; no baseline validation yet. | Unassigned (TBD) | TBD (promote to ledger when runnable) | Phase 3 (upload + scan + observability) |
-| Audit | Baseline task audit events are emitted for async folder flow; external sink is target-state. | Unassigned (TBD) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Phase 2 baseline; Phase 3 for sink |
-| Observability | Structured logs + queue/task metrics baseline in place; OTEL export is target-state. | Unassigned (TBD) | `cd file-engine && go test ./internal/handlers ./internal/observability -v` | Phase 3 (observability baseline) |
+| AuthZ | Baseline RBAC + path-based ACL with inheritance is implemented; tenant scoping enforced at File Engine boundary. | @agslima (Agnaldo Silva Lima) | `cd file-engine && go test ./internal/auth -v` | Phase 1 (read authz baseline) |
+| Tasks | Async task enqueue + worker execution + status persistence validated for create-folder flow, with worker guardrails for bounded retries and processing timeout. | @agslima (Agnaldo Silva Lima) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` and `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` | Phase 2 (folder creation + audit) |
+| Uploads | Quarantine → scan → promote is target-state only; no baseline validation yet. | @agslima (Agnaldo Silva Lima) | TBD (promote to ledger when runnable) | Phase 3 (upload + scan + observability) |
+| Audit | Baseline task audit events are emitted for async folder flow; external sink is target-state. | @agslima (Agnaldo Silva Lima) | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` | Phase 2 baseline; Phase 3 for sink |
+| Observability | Structured logs + queue/task metrics baseline in place; OTEL export is target-state. | @agslima (Agnaldo Silva Lima) | `cd file-engine && go test ./internal/handlers ./internal/observability -v` | Phase 3 (observability baseline) |
+| Backend control-plane | Vertical-slice delivery model in place; VS-001 targets create-folder forwarding + task status polling before broader backend expansion. | @agslima (Agnaldo Silva Lima) | `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php` | Phase 2 (first validated control-plane slice) |
 
 ## Target-state claims (documented, not baseline-validated)
 

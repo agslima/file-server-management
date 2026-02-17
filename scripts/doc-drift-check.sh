@@ -79,6 +79,48 @@ for doc in "${DOC_FILES[@]}"; do
   done < <(grep -oE 'go run ./cmd/[A-Za-z0-9_-]+' "$doc_path" || true)
 done
 
+
+
+check_precedence_consistency() {
+  local expected="If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives."
+  local readme_line
+  local agents_line
+
+  readme_line="$(grep -F "If guidance conflicts" "$ROOT_DIR/README.md" | head -n1 || true)"
+  agents_line="$(grep -F "If guidance conflicts" "$ROOT_DIR/.github/AGENTS.md" | head -n1 || true)"
+
+  if [[ "$readme_line" != "> $expected" ]]; then
+    echo "README.md: precedence statement drift detected"
+    fail=1
+  fi
+
+  if [[ "$agents_line" != "$expected" ]]; then
+    echo ".github/AGENTS.md: precedence statement drift detected"
+    fail=1
+  fi
+}
+
+check_canonical_agents_links() {
+  local readme_link
+  local github_agents_link
+
+  readme_link="$(grep -F "file-engine/AGENTS.md" "$ROOT_DIR/README.md" | head -n1 || true)"
+  github_agents_link="$(grep -F "file-engine/AGENTS.md" "$ROOT_DIR/.github/AGENTS.md" | head -n1 || true)"
+
+  if [[ -z "$readme_link" ]]; then
+    echo "README.md: missing canonical file-engine/AGENTS.md link"
+    fail=1
+  fi
+
+  if [[ -z "$github_agents_link" ]]; then
+    echo ".github/AGENTS.md: missing canonical file-engine/AGENTS.md reference"
+    fail=1
+  fi
+}
+
+check_precedence_consistency
+check_canonical_agents_links
+
 if [[ "$fail" -ne 0 ]]; then
   echo "doc drift check failed"
   exit 1

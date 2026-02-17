@@ -4,6 +4,8 @@
 The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is available for the baseline `CreateFolder` and `GetTaskStatus` routes.
 Filesystem mutations run **asynchronously** via a worker, so the API returns a **Task ID** you can poll.
 
+Route maturity and claim mapping: [`docs/route-maturity-matrix.md`](route-maturity-matrix.md).
+
 **Core domains**
 - Filesystem commands: create folders (baseline); uploads are target-state
 - Tasks: async status (`queued/running/success/failed/quarantined`)
@@ -123,6 +125,8 @@ Notes:
 - Non-tenant-scoped or unauthorized tenant paths are rejected with permission/validation errors.
 
 ## HTTP/JSON mapping
+
+For baseline vs target-state route maturity with claim IDs, see [`docs/route-maturity-matrix.md`](route-maturity-matrix.md).
 
 Baseline routes:
 
