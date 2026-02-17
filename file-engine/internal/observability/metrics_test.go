@@ -5,13 +5,23 @@ import (
 	"testing"
 )
 
-func TestSnapshotPrometheusIncludesQueueAndTaskCounters(t *testing.T) {
+func TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics(t *testing.T) {
 	m := NewMetrics()
 	m.SetQueueDepth(9)
 	m.IncEnqueued()
 	m.ObserveStatus("running")
 	m.ObserveStatus("success")
 	m.ObserveStatus("failed")
+	m.IncAuditEventEmitted()
+	m.IncAuditSinkFailure()
+	m.IncAuditDeadLetter()
+	m.ObserveAuthzDecision(true, "ok")
+	m.ObserveAuthzDecision(false, "tenant_membership")
+	m.ObserveHTTPRequest("post", "/v1/objects:upload", 201, 42)
+	m.ObserveGRPCRequest("/fileengine.FileEngine/ListObjects", "permission_denied", 7)
+	m.ObserveQueueLagMs(55)
+	m.SetAuditSinkLagMs(3)
+	m.ObserveUploadDurationMs(77)
 
 	snapshot := m.SnapshotPrometheus()
 	assertContains := func(expected string) {
@@ -27,4 +37,14 @@ func TestSnapshotPrometheusIncludesQueueAndTaskCounters(t *testing.T) {
 	assertContains("fileengine_tasks_succeeded_total 1")
 	assertContains("fileengine_tasks_failed_total 1")
 	assertContains("fileengine_task_status_transitions_total{status=\"failed\"} 1")
+	assertContains("fileengine_audit_events_total 1")
+	assertContains("fileengine_audit_sink_failures_total 1")
+	assertContains("fileengine_audit_dead_letters_total 1")
+	assertContains("fileengine_authz_decisions_total{decision=\"allow\",reason=\"ok\"} 1")
+	assertContains("fileengine_authz_decisions_total{decision=\"deny\",reason=\"tenant_membership\"} 1")
+	assertContains("fileengine_http_requests_total{method=\"POST\",route=\"/v1/objects:upload\",status=\"201\"} 1")
+	assertContains("fileengine_grpc_requests_total{method=\"/fileengine.FileEngine/ListObjects\",code=\"permission_denied\"} 1")
+	assertContains("fileengine_queue_lag_ms_sum 55")
+	assertContains("fileengine_audit_sink_lag_ms 3")
+	assertContains("fileengine_upload_duration_ms_max 77")
 }

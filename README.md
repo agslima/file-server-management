@@ -476,9 +476,11 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
-### 4) Root `docker-compose.yml` (experimental)
+### 4) Canonical compose entry point
 
-The root compose file is **experimental** until it is validated end-to-end. Use it only for container build validation, not as a baseline-validated runtime.
+Use **repository-root `docker-compose.yml`** as the primary developer compose entry point.
+
+`file-engine/docker-compose.yml` remains only as a compatibility mirror and should not be treated as the canonical source.
 
 **Default ports:**
 
@@ -488,7 +490,7 @@ The root compose file is **experimental** until it is validated end-to-end. Use 
 - Postgres: `5432`
 
 > [!Note]
-> All setup flows (local File Engine run, experimental root compose, dev JWT) are documented in `docs/setup.md`.
+> All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
 
 ---
 

@@ -32,7 +32,7 @@ Use the canonical onboarding guide in `docs/setup.md`. Baseline-validated path i
 ./file-engine/scripts/dev.sh
 ```
 
-If you need a full stack compose, note that the root `docker-compose.yml` is **experimental** until validated end-to-end.
+If you need a full stack compose, use root `docker-compose.yml` as the canonical developer entry point.
 Treat it as container-build validation only, not a baseline-validated runtime path.
 
 ---

@@ -59,7 +59,7 @@ func tenantResolverForTests() auth.TenantResolver {
 }
 
 func TestCreateFolderRequiresAuthContext(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	_, err := h.CreateFolder(context.Background(), &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
 	if status.Code(err) != codes.Unauthenticated {
@@ -68,7 +68,7 @@ func TestCreateFolderRequiresAuthContext(t *testing.T) {
 }
 
 func TestCreateFolderRejectsNonTenantPath(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/projects/shared", FolderName: "reports"})
@@ -78,7 +78,7 @@ func TestCreateFolderRejectsNonTenantPath(t *testing.T) {
 }
 
 func TestCreateFolderRejectsUnauthorizedTenant(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/beta", FolderName: "reports"})
@@ -89,7 +89,7 @@ func TestCreateFolderRejectsUnauthorizedTenant(t *testing.T) {
 
 func TestCreateFolderEnqueuesWithCorrelationAndActorFallback(t *testing.T) {
 	q := &fakeTaskQueue{}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(q, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("x-request-id", "req-123"))
@@ -114,7 +114,7 @@ func TestCreateFolderEnqueuesWithCorrelationAndActorFallback(t *testing.T) {
 
 func TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus(t *testing.T) {
 	q := &fakeTaskQueue{statuses: map[string]*redisq.TaskStatus{"task-abc": {TaskID: "task-abc", Status: "success", Message: "done"}}}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(q, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	_, err := h.GetTaskStatus(context.Background(), &pb.TaskStatusRequest{TaskId: "task-abc"})
 	if status.Code(err) != codes.Unauthenticated {
@@ -133,7 +133,7 @@ func TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus(t *testing.T) {
 
 func TestCreateFolderEnqueuesNormalizedPath(t *testing.T) {
 	q := &fakeTaskQueue{}
-	h := NewGRPCHandler(q, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(q, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: `tenants\acme\projects//`, FolderName: "reports"})
@@ -152,7 +152,7 @@ func TestCreateFolderEnqueuesNormalizedPath(t *testing.T) {
 }
 
 func TestCreateFolderWithNilResolverDefaultsToDenyAll(t *testing.T) {
-	h := NewGRPCHandler(&fakeTaskQueue{}, nil, auth.NewInMemoryACLStore(), nil, nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, nil, nil, auth.NewInMemoryACLStore(), nil, nil, nil)
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
 
 	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
@@ -165,7 +165,7 @@ func TestListObjectsReturnsEntries(t *testing.T) {
 	root := t.TempDir()
 	st := localstorage.New(root)
 	obj := services.NewObjectService(st)
-	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	start := time.Now().Add(-time.Second)
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"viewer"}})
@@ -219,7 +219,7 @@ func TestListObjectsRequiresAuthContext(t *testing.T) {
 	root := t.TempDir()
 	st := localstorage.New(root)
 	obj := services.NewObjectService(st)
-	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	_, err := h.ListObjects(context.Background(), &pb.ListObjectsRequest{Prefix: "/tenants/acme/projects"})
 	if status.Code(err) != codes.Unauthenticated {
@@ -231,7 +231,7 @@ func TestListObjectsRejectsUnauthorizedTenant(t *testing.T) {
 	root := t.TempDir()
 	st := localstorage.New(root)
 	obj := services.NewObjectService(st)
-	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"viewer"}})
 	_, err := h.ListObjects(ctx, &pb.ListObjectsRequest{Prefix: "/tenants/beta/projects"})
@@ -254,12 +254,109 @@ func TestDownloadObjectRejectsUnauthorizedTenant(t *testing.T) {
 	root := t.TempDir()
 	st := localstorage.New(root)
 	obj := services.NewObjectService(st)
-	h := NewGRPCHandler(&fakeTaskQueue{}, obj, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
 
 	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"viewer"}})
 	stream := &fakeDownloadStream{ctx: ctx}
 	err := h.DownloadObject(&pb.DownloadObjectRequest{Path: "/tenants/beta/projects/report.txt"}, stream)
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected permission denied, got %v", err)
+	}
+}
+
+func TestUploadObjectRequiresAuthContext(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
+
+	_, err := h.UploadObject(context.Background(), &pb.UploadObjectRequest{Path: "/tenants/acme/projects/new.txt", Content: []byte("ok")})
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("expected unauthenticated, got %v", err)
+	}
+}
+
+func TestUploadObjectRejectsUnauthorizedTenant(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
+
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+	_, err := h.UploadObject(ctx, &pb.UploadObjectRequest{Path: "/tenants/beta/projects/new.txt", Content: []byte("ok")})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected permission denied, got %v", err)
+	}
+}
+
+type auditSpyEvent struct {
+	event         string
+	taskID        string
+	correlationID string
+	message       string
+}
+
+type auditSpy struct {
+	events []auditSpyEvent
+}
+
+func (a *auditSpy) EmitTaskEvent(_ context.Context, event, taskID, correlationID, message string) {
+	a.events = append(a.events, auditSpyEvent{event: event, taskID: taskID, correlationID: correlationID, message: message})
+}
+
+func TestCreateFolderEmitsAuditForAuthDecisionAndEnqueue(t *testing.T) {
+	q := &fakeTaskQueue{}
+	auditor := &auditSpy{}
+	h := NewGRPCHandler(q, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, auditor)
+
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("x-request-id", "req-audit-1"))
+
+	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
+	if err != nil {
+		t.Fatalf("CreateFolder returned error: %v", err)
+	}
+
+	if len(auditor.events) < 3 {
+		t.Fatalf("expected at least 3 audit events, got %+v", auditor.events)
+	}
+	if auditor.events[0].event != "auth.decision.allowed" {
+		t.Fatalf("expected first event auth.decision.allowed, got %+v", auditor.events[0])
+	}
+	if auditor.events[1].event != "task.enqueued" {
+		t.Fatalf("expected second event task.enqueued, got %+v", auditor.events[1])
+	}
+	if auditor.events[2].event != "folder.mutation.requested" {
+		t.Fatalf("expected third event folder.mutation.requested, got %+v", auditor.events[2])
+	}
+}
+
+func TestUploadObjectEmitsAuditStartAndFinish(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	auditor := &auditSpy{}
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, auditor)
+
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("x-request-id", "req-upload-audit"))
+
+	_, err := h.UploadObject(ctx, &pb.UploadObjectRequest{Path: "/tenants/acme/projects/a.txt", Content: []byte("ok")})
+	if err != nil {
+		t.Fatalf("UploadObject returned error: %v", err)
+	}
+
+	seenStart := false
+	seenFinish := false
+	for _, ev := range auditor.events {
+		if ev.event == "upload.started" {
+			seenStart = true
+		}
+		if ev.event == "upload.completed" {
+			seenFinish = true
+		}
+	}
+	if !seenStart || !seenFinish {
+		t.Fatalf("expected upload.started and upload.completed events, got %+v", auditor.events)
 	}
 }
