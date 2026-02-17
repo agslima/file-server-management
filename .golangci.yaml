@@ -10,8 +10,6 @@ linters:
     - errorlint       # Checks for proper error wrapping (fmt.Errorf)
     - exptostd        # Detects libs that have moved to stdlib
     - gocritic        # Extensive checks for bugs and performance
-    - gofumpt         # Stricter gofmt
-    - goimports       # Fixes imports
     - gomodguard      # Blocks specific modules
     - gosec           # Security checker (hardcoded creds, weak crypto)
     - govet           # Official Go vetting
@@ -32,13 +30,17 @@ linters:
     - usetesting      # Suggests using testing.T features
     - whitespace      # Detection of leading and trailing whitespace
 
+  # v2: test exclusions live under linters.exclusions (NOT issues.*)
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - unparam
+          - gosec
+          - noctx
+          - bodyclose
+
   settings:
-    goimports:
-      local-prefixes: github.com/agslima/file-server-management
-
-    gofumpt:
-      extra-rules: true
-
     gocritic:
       enable-all: true
       disabled-checks:
@@ -97,7 +99,8 @@ linters:
           alias: utilio
 
     modernize:
-      ignore:
+      # v2: modernize uses "disable" (not ignore)
+      disable:
         - omitzero
         - newexpr
 
@@ -152,18 +155,18 @@ linters:
     usetesting:
       os-mkdir-temp: false
 
+# v2: gofumpt + goimports configuration moved under formatters.settings
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/agslima/file-server-management
+    gofumpt:
+      extra-rules: true
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
-  exclusions:
-    rules:
-      - path: _test\.go
-        linters:
-          - unparam
-          - gosec
-          - noctx
-          - bodyclose
-
-output:
-  sort_results: true
