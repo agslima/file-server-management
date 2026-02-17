@@ -32,139 +32,138 @@ linters:
     - usetesting      # Suggests using testing.T features
     - whitespace      # Detection of leading and trailing whitespace
 
-linters-settings:
-  # Formatting settings moved here
-  goimports:
-    local-prefixes: github.com/agslima/file-server-management
-  
-  gofumpt:
-    extra-rules: true
+  settings:
+    goimports:
+      local-prefixes: github.com/agslima/file-server-management
 
-  gocritic:
-    enable-all: true
-    disabled-checks:
-      - appendAssign
-      - commentedOutCode
-      - deferInLoop
-      - exitAfterDefer
-      - hugeParam      # often false positives on reasonable structs
-      - importShadow
-      - octalLiteral
-      - rangeValCopy
-      - unnamedResult
-      - whyNoLint
+    gofumpt:
+      extra-rules: true
 
-  gomodguard:
-    blocked:
-      modules:
-        - github.com/golang-jwt/jwt/v4:
-            recommendations:
-              - github.com/golang-jwt/jwt/v5
-        - github.com/imdario/mergo:
-            recommendations:
-              - dario.cat/mergo
-            reason: '`github.com/imdario/mergo` has been renamed.'
-        - github.com/pkg/errors:
-            recommendations:
-              - errors
+    gocritic:
+      enable-all: true
+      disabled-checks:
+        - appendAssign
+        - commentedOutCode
+        - deferInLoop
+        - exitAfterDefer
+        - hugeParam
+        - importShadow
+        - octalLiteral
+        - rangeValCopy
+        - unnamedResult
+        - whyNoLint
 
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment # Too strict for most business logic apps
-      - shadow        # Often noisy with 'err' variables
+    gomodguard:
+      blocked:
+        modules:
+          - github.com/golang-jwt/jwt/v4:
+              recommendations:
+                - github.com/golang-jwt/jwt/v5
+          - github.com/imdario/mergo:
+              recommendations:
+                - dario.cat/mergo
+              reason: "`github.com/imdario/mergo` has been renamed."
+          - github.com/pkg/errors:
+              recommendations:
+                - errors
 
-  importas:
-    alias:
-      - pkg: github.com/golang-jwt/jwt/v5
-        alias: jwtgo
-      - pkg: k8s.io/api/apps/v1
-        alias: appsv1
-      - pkg: k8s.io/api/core/v1
-        alias: corev1
-      - pkg: k8s.io/api/rbac/v1
-        alias: rbacv1
-      - pkg: k8s.io/apimachinery/pkg/api/errors
-        alias: apierrors
-      - pkg: k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
-        alias: apiextensionsv1
-      - pkg: k8s.io/apimachinery/pkg/apis/meta/v1
-        alias: metav1
-      - pkg: k8s.io/client-go/informers/core/v1
-        alias: informersv1
-      - pkg: errors
-        alias: stderrors
-      - pkg: github.com/argoproj/argo-cd/v3/util/io
-        alias: utilio
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
 
-  modernize:
-    ignore:
-      - omitzero # Too new/noisy for some codebases
-      - newexpr
+    importas:
+      alias:
+        - pkg: github.com/golang-jwt/jwt/v5
+          alias: jwtgo
+        - pkg: k8s.io/api/apps/v1
+          alias: appsv1
+        - pkg: k8s.io/api/core/v1
+          alias: corev1
+        - pkg: k8s.io/api/rbac/v1
+          alias: rbacv1
+        - pkg: k8s.io/apimachinery/pkg/api/errors
+          alias: apierrors
+        - pkg: k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
+          alias: apiextensionsv1
+        - pkg: k8s.io/apimachinery/pkg/apis/meta/v1
+          alias: metav1
+        - pkg: k8s.io/client-go/informers/core/v1
+          alias: informersv1
+        - pkg: errors
+          alias: stderrors
+        - pkg: github.com/argoproj/argo-cd/v3/util/io
+          alias: utilio
 
-  nolintlint:
-    require-explanation: false
-    require-specific: true
+    modernize:
+      ignore:
+        - omitzero
+        - newexpr
 
-  perfsprint:
-    int-conversion: true
-    err-error: true
-    errorf: true
-    sprintf1: true
-    strconcat: true
+    nolintlint:
+      require-explanation: false
+      require-specific: true
 
-  revive:
-    rules:
-      - name: blank-imports
-        disabled: true
-      - name: context-as-argument
-        arguments:
-          - allowTypesBefore: "*testing.T,testing.TB"
-      - name: early-return
-      - name: error-naming
-      - name: error-return
-      - name: error-strings
-      - name: errorf
-      - name: exported
-        disabled: true # Often annoying in internal application code
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: package-comments
-        disabled: true
-      - name: range
-      - name: receiver-naming
-      - name: redefines-builtin-id
-      - name: superfluous-else
-      - name: time-naming
-      - name: unexported-return
-      - name: unreachable-code
-      - name: unused-parameter
-      - name: var-declaration
-      - name: var-naming
+    perfsprint:
+      int-conversion: true
+      err-error: true
+      errorf: true
+      sprintf1: true
+      strconcat: true
 
-  staticcheck:
-    checks: ["all", "-SA5011", "-ST1003", "-ST1016"]
+    revive:
+      rules:
+        - name: blank-imports
+          disabled: true
+        - name: context-as-argument
+          arguments:
+            - allowTypesBefore: "*testing.T,testing.TB"
+        - name: early-return
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+          disabled: true
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+          disabled: true
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: var-declaration
+        - name: var-naming
 
-  testifylint:
-    enable-all: true
-    disable:
-      - go-require
+    staticcheck:
+      checks: ["all", "-SA5011", "-ST1003", "-ST1016"]
 
-  usetesting:
-    os-mkdir-temp: false
+    testifylint:
+      enable-all: true
+      disable:
+        - go-require
+
+    usetesting:
+      os-mkdir-temp: false
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  
-  # Ignore rules for test files
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - unparam
-        - gosec
-        - noctx
-        - bodyclose
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - unparam
+          - gosec
+          - noctx
+          - bodyclose
 
 output:
-  sort-results: true
+  sort_results: true
