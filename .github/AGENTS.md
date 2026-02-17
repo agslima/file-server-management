@@ -7,9 +7,9 @@ Project: File Server Management (PHP + Go hybrid skeleton)
 - Project overview/status: `README.md`
 - Capability truth table: `docs/capability-ledger.md`
 - Setup/onboarding: `docs/setup.md`
-- File-engine scoped guide: `file-engine/Agents.md`
+- File-engine scoped guide: `file-engine/AGENTS.md`
 
-If docs disagree, prefer: capability-ledger -> setup -> scoped guide -> older service READMEs.
+If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ## High-level flow
 

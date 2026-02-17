@@ -22,6 +22,8 @@
 
 A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
 
+**Current production baseline centers on async create-folder flow and read-path/authz validations; other capabilities in this section remain aspirational target-state until promoted in the capability ledger.**
+
 **Key points:**
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
@@ -49,13 +51,14 @@ A multi-tenant, governance-first file management platform that operates on **rea
 **Governance & Status:**
 
 - **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Route maturity matrix:** [`docs/route-maturity-matrix.md`](docs/route-maturity-matrix.md)
 - **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
 - **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
 - **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/Agents.md)
+- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
 - **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
 
-> If guidance conflicts, prefer this order: capability ledger → architecture docs → setup guide.
+> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ---
 
@@ -244,6 +247,7 @@ Inheritance walks up the path: `/a/b/c → /a/b → /a → /`
 ## File Engine API
 
 > Full reference: `docs/api-reference.md`
+> Route maturity by endpoint: `docs/route-maturity-matrix.md`
 
 Contract source of truth
 
