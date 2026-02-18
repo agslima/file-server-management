@@ -1,3 +1,7 @@
+<div align="center">
+
+<a name="back-to-top"></a>
+
 # Server File Manager Platform (PHP + Go File Engine)
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
@@ -16,10 +20,12 @@
 
 ## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads
 
-A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
+⚡ A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local) ⚡/
+It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
 
+</div>
 
-## TL;DR ⚡
+## TL;DR
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
@@ -77,6 +83,8 @@ Legend:
 
 Every baseline claim is mapped to a claim ID and runnable command in the capability ledger.
 
+<details><summary><b>See more details</b></summary>
+  
 | Claim ID | Capability | Status | Runnable validation |
 | :-- | :-- | :--: | :-- |
 | [`CL-001`](docs/capability-ledger.md#baseline-claims-implemented) | Canonical proto contract sync | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` |
@@ -99,6 +107,8 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-018`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 scaffold contract (create-folder forward + task polling wiring checks) | 🟡 | `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
+
+</details>
 
 ---
 
@@ -526,3 +536,6 @@ This project is a work in progress. Some controls are documented as “target st
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+<br><hr>
+[🔼 Back to top](#back-to-top)
