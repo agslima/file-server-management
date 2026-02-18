@@ -43,6 +43,7 @@ This ledger is the canonical claim-to-validation source for the repository.
 | `CL-031` | Backend baseline smoke suite runs via dependency install + PHPUnit smoke checks | ✅ | `cd backend && composer install --no-interaction && ./vendor/bin/phpunit -c phpunit.xml` | Exit code `0`; PHPUnit reports `OK`/`PASS` |
 | `CL-032` | Audit table append-only enforcement rejects UPDATE/DELETE for app DB user | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditEventsAppendOnlyEnforced -v` | `PASS`; test inserts seed row, then asserts UPDATE/DELETE fail and row remains |
 | `CL-033` | Upload malware gate enforces quarantine→scan→promote policy: dirty scan blocks promote, clean scan allows promote | ✅ | `cd file-engine && go test ./tests/integration -run TestUploadScanGateDirtyPreventsPromotion -v` | `PASS`; test asserts dirty verdict keeps file quarantined and final path absent |
+| `CL-034` | Ledger baseline gate runs curated baseline validations in CI and blocks regressions | ✅ | `./scripts/ledger-baseline.sh` | Exit code `0`; CI `Ledger Baseline Gate` job passes |
 
 ## Domain capability ledger (by area)
 
