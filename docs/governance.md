@@ -6,23 +6,24 @@ This document defines the **required checks for merge** and how advanced securit
 
 ## Core merge gates (required)
 
-These checks are required for **all** merges to `main`:
+These checks are required for merges to `main`, with explicit scope where applicable:
 
 1. **Build & tests (baseline)**
-   - `ci.yml`:
-     - Backend scaffold validation
-     - Frontend scaffold validation
-     - File Engine baseline checks (`./file-engine/scripts/dev.sh`)
-     - File Engine gateway route race test (`go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v`)
-     - File Engine generated gateway artifact drift check
-     - Doc drift check
-     - Governance hygiene checks (README/AGENTS precedence + canonical guide links)
+   - `ci.yml` path-scoped checks:
+     - Backend scaffold contract checks (`composer validate --strict` + PHP syntax checks for VS-001 files) when backend files change.
+     - Frontend scaffold validation when frontend files change.
+     - File Engine baseline checks (`./file-engine/scripts/dev.sh`) when file-engine files change.
+     - File Engine gateway route race test (`go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v`) when file-engine files change.
+     - File Engine generated gateway artifact drift check when file-engine files change.
+   - `ci.yml` always-on governance checks:
+     - Doc drift check.
+     - Governance hygiene checks (README/AGENTS precedence + canonical guide links).
 2. **Lint (required category)**
    - **Status:** Implemented in CI for Go (`lint-go` job in `.github/workflows/ci.yml`, scoped to `file-engine/**` changes).
    - **Policy:** `lint-go` is required for merge when triggered by file-engine changes.
 3. **Dependency scan (required category)**
    - **Status:** Snyk PR scan is active in `.github/workflows/snyk-scan.yaml`.
-   - **Policy:** Snyk is branch-protection gated for PR merges; merge is blocked until the scan is green.
+   - **Policy:** Snyk is branch-protection gated for PR merges when backend/frontend/file-engine scopes are touched.
 
 ---
 
@@ -45,3 +46,14 @@ Before merging:
 1. All core merge gates are green.
 2. Docs are updated if behavior, contracts, or setup guidance changed.
 3. Governance hygiene check is green (precedence statement and canonical AGENTS link consistency across top-level docs).
+
+---
+
+## Capability promotion policy (README and top-level claims)
+
+To move a capability from target-state to baseline (or to market it as currently operational in top-level docs), all of the following are required in the same change set:
+
+1. A claim ID in `docs/capability-ledger.md`.
+2. A runnable validation command with a clear expected result.
+3. Verification evidence in CI or PR checks.
+4. Matching updates in `README.md` and any route/status docs that reference the capability.

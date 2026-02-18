@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -12,6 +16,7 @@ import (
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/authz"
 	"github.com/example/file-engine/internal/logger"
+	"github.com/example/file-engine/internal/observability"
 	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
 	"google.golang.org/grpc/codes"
@@ -30,19 +35,32 @@ type GRPCHandler struct {
 
 	queue          TaskQueue
 	objects        *services.ObjectService
+	uploads        *services.UploadService
 	acl            auth.ACLStore
 	tenantResolver auth.TenantResolver
 	log            *logger.Logger
+	auditor        AuditEmitter
 }
 
-func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, acl auth.ACLStore, tenantResolver auth.TenantResolver, logg *logger.Logger) *GRPCHandler {
+type AuditEmitter interface {
+	EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string)
+}
+
+type noopAuditEmitter struct{}
+
+func (noopAuditEmitter) EmitTaskEvent(context.Context, string, string, string, string) {}
+
+func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, uploads *services.UploadService, acl auth.ACLStore, tenantResolver auth.TenantResolver, logg *logger.Logger, auditor AuditEmitter) *GRPCHandler {
 	if tenantResolver == nil {
 		tenantResolver = auth.NewDenyAllTenantResolver()
 	}
 	if logg == nil {
 		logg = logger.New("info")
 	}
-	return &GRPCHandler{queue: q, objects: obj, acl: acl, tenantResolver: tenantResolver, log: logg}
+	if auditor == nil {
+		auditor = noopAuditEmitter{}
+	}
+	return &GRPCHandler{queue: q, objects: obj, uploads: uploads, acl: acl, tenantResolver: tenantResolver, log: logg, auditor: auditor}
 }
 
 // CreateFolder stays async via task queue (worker executes).
@@ -62,11 +80,14 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	}
 	allowed, err := h.tenantResolver.UserHasTenant(ctx, authCtx.UserID, tenantID)
 	if err != nil {
+		h.auditor.EmitTaskEvent(ctx, "auth.decision.error", "", correlationIDFromContext(ctx), "tenant resolution failed")
 		return nil, status.Error(codes.Internal, "tenant resolution failed")
 	}
 	if !allowed {
+		h.auditor.EmitTaskEvent(ctx, "auth.decision.denied", "", correlationIDFromContext(ctx), "tenant access denied")
 		return nil, status.Error(codes.PermissionDenied, "tenant access denied")
 	}
+	h.auditor.EmitTaskEvent(ctx, "auth.decision.allowed", "", correlationIDFromContext(ctx), "tenant access allowed")
 
 	correlationID := correlationIDFromContext(ctx)
 	requestedBy := req.RequestedBy
@@ -90,6 +111,8 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	if err != nil {
 		return nil, err
 	}
+	h.auditor.EmitTaskEvent(ctx, "task.enqueued", taskID, correlationID, "create_folder queued")
+	h.auditor.EmitTaskEvent(ctx, "folder.mutation.requested", taskID, correlationID, "create_folder requested")
 	h.log.Event("info", "create folder task queued", map[string]any{
 		"event":          "task.queued",
 		"request":        "create_folder",
@@ -125,7 +148,7 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 	requestCorrelationID := correlationIDFromContext(ctx)
 	taskStatus, err := h.queue.GetStatus(ctx, req.TaskId)
 	if err != nil {
-		if err == redisq.ErrTaskNotFound {
+		if errors.Is(err, redisq.ErrTaskNotFound) {
 			return nil, status.Error(codes.NotFound, "task not found")
 		}
 		return nil, status.Error(codes.Internal, "failed to load task status")
@@ -204,13 +227,35 @@ func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsReques
 }
 
 func (h *GRPCHandler) UploadObject(ctx context.Context, req *pb.UploadObjectRequest) (*pb.UploadObjectResponse, error) {
+	authCtx, ok := auth.FromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing auth context")
+	}
+
 	normalizedPath, err := authz.NormalizePath(req.Path)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid path")
 	}
-	if err := h.objects.Upload(ctx, normalizedPath, req.Content); err != nil {
+	if err := h.ensureTenantAccess(ctx, authCtx, normalizedPath, auth.PermWrite); err != nil {
 		return nil, err
 	}
+	h.auditor.EmitTaskEvent(ctx, "upload.started", "", correlationIDFromContext(ctx), normalizedPath)
+	if h.uploads == nil {
+		if err := h.objects.Upload(ctx, normalizedPath, req.Content); err != nil {
+			return nil, err
+		}
+	} else {
+		idempotencyKey := ""
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			if vals := md.Get("x-idempotency-key"); len(vals) > 0 {
+				idempotencyKey = vals[0]
+			}
+		}
+		if _, err := h.uploads.UploadStream(ctx, normalizedPath, bytes.NewReader(req.Content), idempotencyKey); err != nil {
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		}
+	}
+	h.auditor.EmitTaskEvent(ctx, "upload.completed", "", correlationIDFromContext(ctx), normalizedPath)
 	return &pb.UploadObjectResponse{Success: true}, nil
 }
 
@@ -231,23 +276,31 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	buf := make([]byte, 64*1024)
+	hashr := sha256.New()
 	for {
 		n, err := r.Read(buf)
 		if n > 0 {
+			_, _ = hashr.Write(buf[:n])
 			if err2 := stream.Send(&pb.DownloadChunk{Data: buf[:n]}); err2 != nil {
 				return err2
 			}
 		}
 		if err == io.EOF {
-			return nil
+			break
 		}
 		if err != nil {
 			return err
 		}
 	}
+	if h.uploads != nil {
+		if err := h.uploads.VerifyIntegrityHash(objectPath, hex.EncodeToString(hashr.Sum(nil))); err != nil {
+			return status.Error(codes.DataLoss, "integrity validation failed")
+		}
+	}
+	return nil
 }
 
 func (h *GRPCHandler) ensureTenantAccess(ctx context.Context, authCtx auth.AuthContext, p string, perm auth.Permission) error {
@@ -257,14 +310,22 @@ func (h *GRPCHandler) ensureTenantAccess(ctx context.Context, authCtx auth.AuthC
 	}
 	allowed, err := h.tenantResolver.UserHasTenant(ctx, authCtx.UserID, tenantID)
 	if err != nil {
+		h.auditor.EmitTaskEvent(ctx, "auth.decision.error", "", correlationIDFromContext(ctx), "tenant resolution failed")
+		observability.DefaultMetrics.ObserveAuthzDecision(false, "tenant_resolver_error")
 		return status.Error(codes.Internal, "tenant resolution failed")
 	}
 	if !allowed {
+		h.auditor.EmitTaskEvent(ctx, "auth.decision.denied", "", correlationIDFromContext(ctx), "tenant access denied")
+		observability.DefaultMetrics.ObserveAuthzDecision(false, "tenant_membership")
 		return status.Error(codes.PermissionDenied, "tenant access denied")
 	}
 	if !auth.CanAccess(authCtx, p, perm, h.acl) {
+		h.auditor.EmitTaskEvent(ctx, "auth.decision.denied", "", correlationIDFromContext(ctx), "access denied")
+		observability.DefaultMetrics.ObserveAuthzDecision(false, "acl")
 		return status.Error(codes.PermissionDenied, "access denied")
 	}
+	h.auditor.EmitTaskEvent(ctx, "auth.decision.allowed", "", correlationIDFromContext(ctx), "access allowed")
+	observability.DefaultMetrics.ObserveAuthzDecision(true, "ok")
 	return nil
 }
 

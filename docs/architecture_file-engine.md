@@ -6,7 +6,7 @@
 The File Engine is the data-plane service that performs filesystem mutations and enforces **final authorization** at the execution boundary.
 It operates directly on storage backends while enforcing **tenant membership**, **RBAC**, and **path-based ACLs**.
 
-Baseline onboarding is `./file-engine/scripts/dev.sh`; the root `docker-compose.yml` is experimental until validated end-to-end. See `docs/setup.md` for canonical paths.
+Baseline onboarding is `./file-engine/scripts/dev.sh`; root `docker-compose.yml` is the canonical compose entry point. See `docs/setup.md` for canonical paths.
 
 The system is built in Go and is **gRPC-first**. HTTP/JSON via gRPC-Gateway is **baseline** for `CreateFolder` and `GetTaskStatus`; upload and expanded read/write routes remain target-state.
 Filesystem mutations run **asynchronously** through a worker model.

@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pb "github.com/example/file-engine/pkg/generated"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -19,11 +19,11 @@ type fakeGatewayServer struct {
 	pb.UnimplementedFileEngineServer
 }
 
-func (s *fakeGatewayServer) CreateFolder(ctx context.Context, _ *pb.CreateFolderRequest) (*pb.CreateFolderResponse, error) {
+func (s *fakeGatewayServer) CreateFolder(_ context.Context, _ *pb.CreateFolderRequest) (*pb.CreateFolderResponse, error) {
 	return &pb.CreateFolderResponse{TaskId: "task-1", Status: "queued", Message: "scheduled"}, nil
 }
 
-func (s *fakeGatewayServer) GetTaskStatus(ctx context.Context, req *pb.TaskStatusRequest) (*pb.TaskStatusResponse, error) {
+func (s *fakeGatewayServer) GetTaskStatus(_ context.Context, req *pb.TaskStatusRequest) (*pb.TaskStatusResponse, error) {
 	return &pb.TaskStatusResponse{TaskId: req.TaskId, Status: "success", Progress: 100, Message: "done"}, nil
 }
 
@@ -56,7 +56,7 @@ func TestGatewayCreateFolderAndGetTaskStatusRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post /v1/folders: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
@@ -72,7 +72,7 @@ func TestGatewayCreateFolderAndGetTaskStatusRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get /v1/tasks: %v", err)
 	}
-	defer getResp.Body.Close()
+	defer func() { _ = getResp.Body.Close() }()
 	if getResp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", getResp.StatusCode)
 	}

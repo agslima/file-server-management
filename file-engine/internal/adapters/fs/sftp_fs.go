@@ -1,7 +1,8 @@
-package fs
+package fsadapter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,11 +61,11 @@ func sftpAuth(password string, privateKey []byte) ([]ssh.AuthMethod, error) {
 	if password != "" {
 		return []ssh.AuthMethod{ssh.Password(password)}, nil
 	}
-	return nil, fmt.Errorf("no sftp auth provided")
+	return nil, errors.New("no sftp auth provided")
 }
 
 func hostKeyCallback() (ssh.HostKeyCallback, error) {
-	return nil, fmt.Errorf("host key verification is not configured")
+	return nil, errors.New("host key verification is not configured")
 }
 
 func (s *SftpFs) Close() {
@@ -102,7 +103,7 @@ func (s *SftpFs) AtomicWriteFile(_ context.Context, perm uint32, data []byte, pa
 	return s.client.Rename(tmp, target)
 }
 
-func (s *SftpFs) MoveUploadedFile(_ context.Context, src []string, dst []string) error {
+func (s *SftpFs) MoveUploadedFile(_ context.Context, src, dst []string) error {
 	return s.client.Rename(s.full(src...), s.full(dst...))
 }
 

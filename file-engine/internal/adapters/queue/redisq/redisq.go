@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -51,7 +50,7 @@ func NewRedisQueue(client *redis.Client) *RedisQueue {
 func (q *RedisQueue) Pop(ctx context.Context) (*TaskPayload, error) {
 	res, err := q.client.BLPop(ctx, 0*time.Second, "tasks").Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return nil, ErrTaskNotFound
 		}
 		return nil, err
@@ -61,6 +60,11 @@ func (q *RedisQueue) Pop(ctx context.Context) (*TaskPayload, error) {
 		return nil, err
 	}
 	q.observeQueueDepth(ctx, t.ID, t.Params["correlation_id"])
+	if enqRaw := t.Params["enqueued_at_unix_nano"]; enqRaw != "" {
+		if enq, err := strconv.ParseInt(enqRaw, 10, 64); err == nil {
+			observability.DefaultMetrics.ObserveQueueLagMs(time.Since(time.Unix(0, enq)).Milliseconds())
+		}
+	}
 	return &t, nil
 }
 
@@ -90,7 +94,7 @@ func (q *RedisQueue) SetStatus(ctx context.Context, id, status, correlationID, m
 func (q *RedisQueue) GetStatus(ctx context.Context, id string) (*TaskStatus, error) {
 	raw, err := q.client.Get(ctx, "task:"+id).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return nil, ErrTaskNotFound
 		}
 		return nil, err
@@ -130,15 +134,16 @@ func (q *RedisQueue) observeQueueDepth(ctx context.Context, taskID, correlationI
 			"event":          "queue.depth.alert",
 			"task_id":        taskID,
 			"correlation_id": correlationID,
+			"request_id":     correlationID,
 			"queue_depth":    depth,
 			"threshold":      q.queueAlertThreshold,
 		})
 	}
 }
 
-// Convenience helper used by the gRPC handler.
+// EnqueueCreateFolder enqueues a create-folder task for async processing.
 func (q *RedisQueue) EnqueueCreateFolder(ctx context.Context, parentPath, folderName, requestedBy, correlationID string) (string, error) {
-	id := fmt.Sprintf("task-%s", newID())
+	id := "task-" + newID()
 	p := &TaskPayload{
 		ID:   id,
 		Type: "create_folder",
@@ -147,6 +152,7 @@ func (q *RedisQueue) EnqueueCreateFolder(ctx context.Context, parentPath, folder
 			"name":           folderName,
 			"by":             requestedBy,
 			"correlation_id": correlationID,
+			"request_id":     correlationID,
 		},
 	}
 	if err := q.Enqueue(ctx, p); err != nil {

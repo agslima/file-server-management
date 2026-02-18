@@ -1,8 +1,10 @@
 package authz
 
 import (
+	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 
 	pb "github.com/example/file-engine/pkg/generated"
@@ -19,10 +21,8 @@ func normalize(p string) (string, error) {
 	for strings.Contains(p, "//") {
 		p = strings.ReplaceAll(p, "//", "/")
 	}
-	for _, seg := range strings.Split(p, "/") {
-		if seg == ".." {
-			return "", fmt.Errorf("invalid path traversal")
-		}
+	if slices.Contains(strings.Split(p, "/"), "..") {
+		return "", errors.New("invalid path traversal")
 	}
 	clean := path.Clean(p)
 	if clean == "." {
@@ -43,7 +43,7 @@ func TenantFromPath(p string) (string, error) {
 	}
 	parts := strings.Split(strings.TrimPrefix(n, "/"), "/")
 	if len(parts) < 2 || parts[0] != "tenants" || strings.TrimSpace(parts[1]) == "" {
-		return "", fmt.Errorf("path must be under /tenants/<tenant_id>")
+		return "", errors.New("path must be under /tenants/<tenant_id>")
 	}
 	return parts[1], nil
 }

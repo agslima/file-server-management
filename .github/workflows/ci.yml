@@ -17,49 +17,55 @@ concurrency:
 
 jobs:
   changes:
+    name: Change Detection
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend_any_changed }}
       frontend: ${{ steps.filter.outputs.frontend_any_changed }}
-      file-engine: ${{ steps.filter.outputs.file_engine_any_changed }}
-      docs: ${{ steps.filter.outputs.docs_any_changed }}
+      file_engine: ${{ steps.filter.outputs.file_engine_any_changed }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          
       - uses: tj-actions/changed-files@8cba46e29c11878d930bca7870bb54394d3e8b21 # v47.0.2
         id: filter
         with:
           files_yaml: |
             backend:
-              - 'backend/**' 
+              - 'backend/**'
+              - '**/*.php'
             frontend:
               - 'frontend/**'
               - 'ui/**'
-            file-engine:
+            file_engine:
               - 'file-engine/**'
-              - '**.go'
-            docs:
-              - 'docs/**'
-              - '**.md'
+              - '**/*.go'
               
   backend:
+    name: Test Backend
     needs: changes
     if: ${{ needs.changes.outputs.backend == 'true' }} 
     permissions:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup PHP
         uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
         with:
           php-version: 8.2
-      - name: Validate backend baseline
+      - name: Validate backend VS-001 baseline contract
         run: |
           cd backend
           test -f composer.json
           composer validate --strict
+          php -l app/Http/Controllers/FolderController.php
+          php -l app/Http/Controllers/TaskController.php
+          php -l app/Services/FileEngineService.php
 
   frontend:
+    name: Test Frontend
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     permissions:
@@ -73,8 +79,9 @@ jobs:
           test ! -f frontend/package.json
 
   file-engine:
+    name: File Engine Go Checks
     needs: changes
-    if: ${{ needs.changes.outputs['file-engine'] == 'true' }}
+    if: ${{ needs.changes.outputs.file_engine == 'true' }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -101,8 +108,8 @@ jobs:
           test -z "$(git status --porcelain)"
 
   doc-drift:
+    name: Doc Drift Check
     needs: changes
-    if: ${{ needs.changes.outputs.docs == 'true' }}
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -114,7 +121,7 @@ jobs:
 
   lint-go:
     name: Lint Go code
-    if: ${{ needs.changes.outputs.file-engine == 'true' }}
+    if: ${{ needs.changes.outputs.file_engine == 'true' }}
     runs-on: ubuntu-latest
     needs:
       - changes

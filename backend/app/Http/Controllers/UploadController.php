@@ -24,11 +24,15 @@ class UploadController extends Controller
 
         $requestedBy = (string) ($request->input('requestedBy') ?? optional($request->user())->email ?? 'system');
 
-        return new JsonResponse($this->engine->initiateUpload([
+        $payload = $this->engine->initiateUpload([
             'path' => $path,
             'filename' => $filename,
             'mimeType' => $mimeType,
-        ], $requestedBy));
+        ], $requestedBy);
+        $status = (int) ($payload['_engine_http_status'] ?? 200);
+        unset($payload['_engine_http_status']);
+
+        return new JsonResponse($payload, $status);
     }
 
     public function complete(Request $request): JsonResponse
@@ -38,6 +42,10 @@ class UploadController extends Controller
             return new JsonResponse(['message' => 'uploadId is required'], 422);
         }
 
-        return new JsonResponse($this->engine->completeUpload($uploadId));
+        $payload = $this->engine->completeUpload($uploadId);
+        $status = (int) ($payload['_engine_http_status'] ?? 200);
+        unset($payload['_engine_http_status']);
+
+        return new JsonResponse($payload, $status);
     }
 }

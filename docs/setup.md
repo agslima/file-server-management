@@ -6,7 +6,7 @@ This guide is the canonical setup reference for local development.
 
 - **Baseline validation (supported):** run `./file-engine/scripts/dev.sh` from repository root.
 - **File Engine local run (scaffold-level):** run Redis/Postgres in Docker, then run API/worker locally for debugging.
-- **Full stack compose (experimental):** `docker-compose.yml` builds containers, but backend/frontend are still scaffold-level and HTTP wiring is not yet a validated baseline.
+- **Primary compose entry point:** use repository-root `docker-compose.yml`.
 
 ---
 
@@ -84,6 +84,6 @@ This path is useful to validate container builds, but it is **not** a baseline-v
 
 ---
 
-## 4) Notes on legacy compose
+## 4) Notes on alternate compose files
 
-`docker/docker-compose.yml` is a legacy/alternate compose definition. It should not be treated as the primary onboarding path.
+- `file-engine/docker-compose.yml` is a compatibility mirror for file-engine-local workflows; the canonical source is root `docker-compose.yml`.

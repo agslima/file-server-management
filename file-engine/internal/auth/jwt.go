@@ -2,13 +2,14 @@ package auth
 
 import (
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
-	"crypto/x509"
-	jwt "github.com/golang-jwt/jwt/v5"
+	jwtgo "github.com/golang-jwt/jwt/v5"
 )
 
 // Claims shape.
@@ -18,7 +19,7 @@ import (
 // - iss, aud as needed
 type Claims struct {
 	Roles []string `json:"roles"`
-	jwt.RegisteredClaims
+	jwtgo.RegisteredClaims
 }
 
 // JWTVerifier validates JWTs using either:
@@ -31,7 +32,7 @@ type JWTVerifier struct {
 	audience string
 }
 
-func NewJWTVerifier(secret string, publicKeyPEM string, issuer string, audience string) (*JWTVerifier, error) {
+func NewJWTVerifier(secret, publicKeyPEM, issuer, audience string) (*JWTVerifier, error) {
 	v := &JWTVerifier{issuer: issuer, audience: audience}
 	if secret != "" {
 		v.secret = []byte(secret)
@@ -59,15 +60,15 @@ func (v *JWTVerifier) ParseAuthContext(authHeader string) (AuthContext, error) {
 	}
 
 	claims := &Claims{}
-	parsed, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
+	parsed, err := jwtgo.ParseWithClaims(token, claims, func(t *jwtgo.Token) (any, error) {
 		// enforce signing method
 		switch t.Method.(type) {
-		case *jwt.SigningMethodHMAC:
+		case *jwtgo.SigningMethodHMAC:
 			if len(v.secret) == 0 {
 				return nil, errors.New("hmac not configured")
 			}
 			return v.secret, nil
-		case *jwt.SigningMethodRSA:
+		case *jwtgo.SigningMethodRSA:
 			if v.pubKey == nil {
 				return nil, errors.New("rsa public key not configured")
 			}
@@ -85,18 +86,12 @@ func (v *JWTVerifier) ParseAuthContext(authHeader string) (AuthContext, error) {
 
 	// Optional issuer/audience checks
 	if v.issuer != "" && claims.Issuer != v.issuer {
-		return AuthContext{}, fmt.Errorf("invalid issuer")
+		return AuthContext{}, errors.New("invalid issuer")
 	}
 	if v.audience != "" {
-		audOK := false
-		for _, aud := range claims.Audience {
-			if aud == v.audience {
-				audOK = true
-				break
-			}
-		}
+		audOK := slices.Contains(claims.Audience, v.audience)
 		if !audOK {
-			return AuthContext{}, fmt.Errorf("invalid audience")
+			return AuthContext{}, errors.New("invalid audience")
 		}
 	}
 

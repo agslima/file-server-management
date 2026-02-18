@@ -2,20 +2,26 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/example/file-engine/internal/observability"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/authz"
 	"github.com/example/file-engine/internal/logger"
+	"github.com/example/file-engine/internal/services"
 	"github.com/example/file-engine/internal/storage"
 	pb "github.com/example/file-engine/pkg/generated"
 )
@@ -30,6 +36,11 @@ type GRPCServer struct {
 	Handler pb.FileEngineServer
 }
 
+type readinessCheck struct {
+	name string
+	fn   func(context.Context) error
+}
+
 type HTTPServer struct {
 	Addr     string
 	GRPCAddr string
@@ -39,60 +50,95 @@ type HTTPServer struct {
 	Storage  storage.Storage
 
 	ACLStore auth.ACLStore
+	Uploads  *services.UploadService
+	Tenants  auth.TenantResolver
+
+	ReadyChecks []readinessCheck
+
+	MaxUploadBytes int64
+	UploadTimeout  time.Duration
+	sem            chan struct{}
+	rateMu         sync.Mutex
+	rateByTenant   map[string]int
+	rateReset      time.Time
 }
 
 func NewGRPCServer(addr string, logg *logger.Logger, verifier *auth.JWTVerifier, store auth.ACLStore, handler pb.FileEngineServer) *GRPCServer {
-	return &GRPCServer{
-		Addr: addr, Log: logg,
-		Verifier: verifier, ACLStore: store,
-		Handler: handler,
+	return &GRPCServer{Addr: addr, Log: logg, Verifier: verifier, ACLStore: store, Handler: handler}
+}
+
+func NewHTTPServer(addr, grpcAddr string, logg *logger.Logger, verifier *auth.JWTVerifier, st storage.Storage, store auth.ACLStore, uploads *services.UploadService, tenants auth.TenantResolver) *HTTPServer {
+	if tenants == nil {
+		tenants = auth.NewDenyAllTenantResolver()
+	}
+	return &HTTPServer{
+		Addr: addr, GRPCAddr: grpcAddr, Log: logg, Verifier: verifier, Storage: st, ACLStore: store, Uploads: uploads, Tenants: tenants,
+		MaxUploadBytes: 20 * 1024 * 1024, UploadTimeout: 30 * time.Second,
+		sem: make(chan struct{}, 8), rateByTenant: map[string]int{}, rateReset: time.Now().Add(time.Minute),
 	}
 }
 
-func NewHTTPServer(addr, grpcAddr string, logg *logger.Logger, verifier *auth.JWTVerifier, st storage.Storage, store auth.ACLStore) *HTTPServer {
-	return &HTTPServer{Addr: addr, GRPCAddr: grpcAddr, Log: logg, Verifier: verifier, Storage: st, ACLStore: store}
+func (h *HTTPServer) AddReadyCheck(name string, check func(context.Context) error) {
+	if check == nil {
+		return
+	}
+	h.ReadyChecks = append(h.ReadyChecks, readinessCheck{name: name, fn: check})
 }
 
 func (g *GRPCServer) Start() error {
-	lis, err := net.Listen("tcp", g.Addr)
+	var lc net.ListenConfig
+	lis, err := lc.Listen(context.Background(), "tcp", g.Addr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
 
+	metricsUnary := func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		start := time.Now()
+		resp, err := handler(ctx, req)
+		grpcCode := codes.OK.String()
+		if err != nil {
+			grpcCode = status.Code(err).String()
+		}
+		observability.DefaultMetrics.ObserveGRPCRequest(info.FullMethod, grpcCode, time.Since(start).Milliseconds())
+		return resp, err
+	}
+	metricsStream := func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		start := time.Now()
+		err := handler(srv, ss)
+		grpcCode := codes.OK.String()
+		if err != nil {
+			grpcCode = status.Code(err).String()
+		}
+		observability.DefaultMetrics.ObserveGRPCRequest(info.FullMethod, grpcCode, time.Since(start).Milliseconds())
+		return err
+	}
+
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
+			metricsUnary,
 			auth.GRPCAuthInterceptor(g.Verifier),
 			authz.GRPCAuthZInterceptor(g.ACLStore),
 		),
-		// Stream interceptors are required for server-streaming RPCs like DownloadObject.
 		grpc.ChainStreamInterceptor(
+			metricsStream,
 			auth.GRPCStreamAuthInterceptor(g.Verifier),
 			authz.GRPCAuthZStreamInterceptor(g.ACLStore),
 		),
 	}
 	srv := grpc.NewServer(opts...)
-
 	pb.RegisterFileEngineServer(srv, g.Handler)
-
 	g.Log.Infof("gRPC listening on %s", g.Addr)
 	return srv.Serve(lis)
 }
 
 func (h *HTTPServer) Start() error {
 	ctx := context.Background()
-
 	mux := runtime.NewServeMux()
 
-	conn, err := grpc.DialContext(
-		ctx,
-		h.GRPCAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	conn, err := grpc.NewClient(h.GRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("dial grpc: %w", err)
 	}
-
-	// Register gateway handlers
 	if err := pb.RegisterFileEngineHandler(ctx, mux, conn); err != nil {
 		return fmt.Errorf("register gateway: %w", err)
 	}
@@ -102,18 +148,82 @@ func (h *HTTPServer) Start() error {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 		_, _ = w.Write([]byte(observability.DefaultMetrics.SnapshotPrometheus()))
 	})
-	// Raw download endpoint (REST-friendly): streams bytes directly.
+	root.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	root.HandleFunc("/readyz", h.handleReadyz)
 	root.HandleFunc("/v1/objects:download", h.handleDownload)
-
-	// Gateway endpoints (ListObjects, UploadObject, CreateFolder, TaskStatus, etc.)
+	root.HandleFunc("/v1/objects:upload", h.handleUpload)
 	root.Handle("/", auth.HTTPAuthMiddleware(h.Verifier, mux))
 
+	handler := h.instrumentHTTP(root)
 	srv := &http.Server{
 		Addr:              h.Addr,
-		Handler:           root,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	if len(h.ReadyChecks) == 0 {
+		h.Log.Warnf("no readiness checks configured; /readyz will report ready")
 	}
 
 	h.Log.Infof("HTTP listening on %s (proxying to %s)", h.Addr, h.GRPCAddr)
 	return srv.ListenAndServe()
+}
+
+func (h *HTTPServer) instrumentHTTP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := strings.TrimSpace(r.Header.Get("X-Request-Id"))
+		if requestID == "" {
+			requestID = fmt.Sprintf("req-%d", time.Now().UTC().UnixNano())
+		}
+		ww := &statusWriter{ResponseWriter: w, code: http.StatusOK}
+		ww.Header().Set("X-Request-Id", requestID)
+		start := time.Now()
+		next.ServeHTTP(ww, r)
+		route := r.URL.Path
+		if route == "" {
+			route = "/"
+		}
+		observability.DefaultMetrics.ObserveHTTPRequest(r.Method, route, ww.code, time.Since(start).Milliseconds())
+	})
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	code int
+}
+
+func (w *statusWriter) WriteHeader(statusCode int) {
+	w.code = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (h *HTTPServer) handleReadyz(w http.ResponseWriter, r *http.Request) {
+	if len(h.ReadyChecks) == 0 {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready"))
+		return
+	}
+	failed := map[string]string{}
+	for _, c := range h.ReadyChecks {
+		cctx, cancel := context.WithTimeout(r.Context(), 1500*time.Millisecond)
+		err := c.fn(cctx)
+		cancel()
+		if err != nil {
+			failed[c.name] = err.Error()
+		}
+	}
+	if len(failed) > 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ready": false, "failed": failed})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{"ready": true})
 }

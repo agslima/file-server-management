@@ -9,7 +9,7 @@ This guide is for developers contributing code: local setup, dev workflows, and 
 - `frontend/` — React/Next.js UI
 - `backend/` — Laravel API (auth, RBAC, audit, orchestration)
 - `file-engine/` — Go service (filesystem operations + workers)
-- `docker/` — container definitions (local + CI)
+- `file-engine/build/docker/` — file-engine image build definitions
 - `docs/` — architecture, ADRs, role-specific docs
 
 ---
@@ -32,7 +32,7 @@ Use the canonical onboarding guide in `docs/setup.md`. Baseline-validated path i
 ./file-engine/scripts/dev.sh
 ```
 
-If you need a full stack compose, note that the root `docker-compose.yml` is **experimental** until validated end-to-end.
+If you need a full stack compose, use root `docker-compose.yml` as the canonical developer entry point.
 Treat it as container-build validation only, not a baseline-validated runtime path.
 
 ---

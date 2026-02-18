@@ -88,11 +88,18 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-004`](docs/capability-ledger.md#baseline-claims-implemented) | Task status persistence (`queued -> running -> success`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-005`](docs/capability-ledger.md#baseline-claims-implemented) | Basic audit event emission (`task.processing`, `task.succeeded`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-006`](docs/capability-ledger.md#baseline-claims-implemented) | Correlation ID propagation in async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| [`CL-017`](docs/capability-ledger.md#baseline-claims-implemented) | Worker performance guardrails (status retries + task timeout) for async create-folder | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` |
 | [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
 | [`CL-008`](docs/capability-ledger.md#baseline-claims-implemented) | Backend scaffold validation | 🟡 | `cd backend && composer validate --strict` |
 | [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
 | [`CL-010`](docs/capability-ledger.md#baseline-claims-implemented) | Structured logs + queue/task metrics baseline | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` |
+| [`CL-011`](docs/capability-ledger.md#baseline-claims-implemented) | Documentation drift checks (links + governance hygiene) | ✅ | `./scripts/doc-drift-check.sh` |
+| [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented) | Read-path behavior + final authz (list/download + path normalization + tenant enforcement) | ✅ | `cd file-engine && go test ./internal/handlers -run "TestListObjectsReturnsEntries|TestListObjectsRequiresAuthContext|TestListObjectsRejectsUnauthorizedTenant|TestDownloadObjectRejectsUnauthorizedTenant" -v && go test ./internal/adapters/storage/local -run TestLocalStorageListMetadata -v && go test ./internal/authz -run "TestGRPCAuthZInterceptorListObjects" -v && go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal" -v && go test -tags integration_authz ./tests/integration -run TestReadListBehaviorAndAuthzRejection -v` |
+| [`CL-013`](docs/capability-ledger.md#baseline-claims-implemented) | HTTP gateway routes for `CreateFolder` + `GetTaskStatus` are generated and responsive | ✅ | `cd file-engine && go test ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v` |
+| [`CL-014`](docs/capability-ledger.md#baseline-claims-implemented) | AuthZ precedence behavior (ACL vs RBAC) | ✅ | `cd file-engine && go test ./internal/auth -run "TestRBACFallback|TestUserACLOverridesRBAC|TestACLPathInheritance|TestUserDenyPrecedesRoleAllowAndRBAC|TestRoleDenyPrecedesRoleAllowAtSamePath|TestClosestPathACLWinsBeforeParentACLs|TestUserACLPrecedenceOnSamePath|TestUserACLWithoutPermissionFallsThroughToRoleACL" -v` |
+| [`CL-015`](docs/capability-ledger.md#baseline-claims-implemented) | Path normalization guarantees (traversal rejection + canonicalization) | ✅ | `cd file-engine && go test ./internal/authz -run "TestExtractPathNormalizesCreateFolder|TestExtractPathRejectsTraversal|TestNormalizePathHandlesWindowsAndWhitespace|TestNormalizePathAllowsDotContainingNames|TestTenantFromPath|TestTenantFromPathRejectsNonTenantRoot" -v` |
+| [`CL-016`](docs/capability-ledger.md#baseline-claims-implemented) | Generated gateway artifacts remain in sync with proto | ✅ | `cd file-engine && ./scripts/generate_grpc_docker.sh && cd .. && git diff --exit-code && test -z "$(git status --porcelain)"` |
+| [`CL-017`](docs/capability-ledger.md#baseline-claims-implemented) | Worker performance guardrails (status retries + task timeout) for async create-folder | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` |
+| [`CL-018`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 scaffold contract (create-folder forward + task polling wiring checks) | 🟡 | `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
@@ -476,9 +483,11 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
-### 4) Root `docker-compose.yml` (experimental)
+### 4) Canonical compose entry point
 
-The root compose file is **experimental** until it is validated end-to-end. Use it only for container build validation, not as a baseline-validated runtime.
+Use **repository-root `docker-compose.yml`** as the primary developer compose entry point.
+
+`file-engine/docker-compose.yml` remains only as a compatibility mirror and should not be treated as the canonical source.
 
 **Default ports:**
 
@@ -488,7 +497,7 @@ The root compose file is **experimental** until it is validated end-to-end. Use 
 - Postgres: `5432`
 
 > [!Note]
-> All setup flows (local File Engine run, experimental root compose, dev JWT) are documented in `docs/setup.md`.
+> All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
 
 ---
 
@@ -499,7 +508,6 @@ file-server-management/
 ├─ frontend/                  # React / Next.js UI
 ├─ backend/                   # Laravel control plane
 ├─ file-engine/               # Go File Engine (API + Worker)
-├─ docker/                    # Dockerfiles / Compose helpers
 └─ docs/
    ├─ adr/                    # Architectural Decision Records
    ├─ architecture.md         # Platform architecture
