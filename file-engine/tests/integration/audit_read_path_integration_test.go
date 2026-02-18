@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"maps"
 	"sync"
 	"testing"
 
@@ -50,15 +51,13 @@ type auditEventStore struct {
 	rows []auditEventRow
 }
 
-func (s *auditEventStore) EmitTaskEvent(_ context.Context, event, _taskID, correlationID, _message string, metadata ...map[string]string) {
+func (s *auditEventStore) EmitTaskEvent(_ context.Context, event, _, correlationID, _ string, metadata ...map[string]string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	meta := map[string]string{}
 	if len(metadata) > 0 && metadata[0] != nil {
-		for k, v := range metadata[0] {
-			meta[k] = v
-		}
+		maps.Copy(meta, metadata[0])
 	}
 
 	s.rows = append(s.rows, auditEventRow{

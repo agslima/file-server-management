@@ -32,7 +32,7 @@ type logAuditEmitter struct {
 	log *logger.Logger
 }
 
-func (l *logAuditEmitter) EmitTaskEvent(_ context.Context, event, taskID, correlationID, message string, metadata ...map[string]string) {
+func (l *logAuditEmitter) EmitTaskEvent(_ context.Context, event, taskID, correlationID, message string, _ ...map[string]string) {
 	l.log.Event("info", "task audit event", map[string]any{
 		"event":          event,
 		"task_id":        taskID,
