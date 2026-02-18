@@ -1,6 +1,6 @@
 # Project Alignment & Improvement Review
 
-**Last verified:** 2026-02-17
+**Last verified:** 2026-02-18
 
 ## Scope and evidence base
 
@@ -13,7 +13,7 @@ This review evaluates the repository against three objectives:
 Primary sources reviewed:
 
 - `README.md`
-- `docs/project-alignment-review.md` (previous baseline)
+- `docs/project-alignment-review.md` (this updated baseline)
 - `docs/capability-ledger.md`
 - `.github/AGENTS.md`
 - `file-engine/AGENTS.md`
@@ -27,38 +27,35 @@ Validation commands executed for this review are listed in [Appendix A](#appendi
 
 ### Executive verdict
 
-**Overall alignment is strong for baseline capabilities, with three high-impact alignment gaps that should be corrected quickly.**
+**Current alignment is strong and materially improved, with core governance/doc-hygiene checks now aligned to CI behavior.**
 
-The project has a mature claim model (baseline vs target-state) and a strong claim-to-proof mechanism in the capability ledger. However, there are still places where discoverability and policy consistency could regress contributor behavior.
+The project is using a clear baseline-vs-target-state model with claim IDs and runnable verification commands. Top-level positioning now better matches the implemented baseline and reduces over-claim risk.
 
 ### What is well aligned
 
-1. **Baseline claims are explicit and runnable.**
-   - README status claims are tied to capability IDs and runnable commands, and those IDs are concretely defined in `docs/capability-ledger.md`.
-2. **Governance-first framing is consistent across top-level guidance.**
-   - README, `.github/AGENTS.md`, and `file-engine/AGENTS.md` all reinforce deny-by-default authz boundary and server-side tenant scope.
-3. **Scope control is transparent.**
-   - Target-state capabilities (uploads + malware gating + immutable sink + full OTEL) remain clearly marked in the ledger rather than being presented as already shipped.
+1. **README claims map clearly to ledger evidence.**
+   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-018`).
+2. **Governance policy and CI behavior are synchronized.**
+   - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
+   - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
+3. **Backend maturity contract is consistent across core control docs.**
+   - `CL-018` validation expectations (composer + PHP syntax checks) are aligned across capability ledger, backend scoped guidance, and CI backend job.
+4. **Target-state boundaries remain explicit.**
+   - Upload pipeline, immutable sink, and full OTEL remain documented as target-state unless promoted by claim evidence.
 
-### Misalignment and quality risks
+### Alignment corrections completed in this cycle
 
-1. **Instruction order conflict between docs.**
-   - README says conflicts should prefer: capability ledger -> architecture docs -> setup.
-   - `.github/AGENTS.md` says: capability ledger -> setup -> scoped guide -> older service READMEs.
-   - This is subtle but important: contributors may follow different precedence in practice.
-2. **File-engine AGENTS discoverability friction.**
-   - `.github/AGENTS.md` references `file-engine/AGENTS.md` while many workflows/tooling conventions expect `AGENTS.md` naming.
-   - This can cause missed policy loading by humans and automation that search exact `AGENTS.md`.
-3. **README still markets some target-state outcomes prominently in top narrative.**
-   - README does label these as target-state, but phrasing in headline/TL;DR can still be interpreted as currently operational without reading deeply.
-   - Risk is external over-claim in demos/proposals.
+1. **Resolved:** governance-vs-CI mismatch for doc/governance checks.
+2. **Resolved:** stale `docker/docker-compose.yml` references in canonical docs.
+3. **Resolved:** README maturity visibility gaps for higher claim IDs.
+4. **Resolved:** stale prior-review findings that no longer reflected repo reality.
 
-### Exceeds documented baseline (positive)
+### Residual alignment risks
 
-1. **Validation discipline is above average for maturity stage.**
-   - The capability ledger offers precise runnable checks (including authz precedence, path normalization, gateway artifact sync, and worker guardrails).
-2. **Documentation governance includes drift controls.**
-   - `CL-011` formalizes doc drift validation, which is a meaningful process quality multiplier.
+1. **Backend remains scaffold-level despite stronger contract checks.**
+   - Validation is better defined, but production-readiness is still intentionally limited.
+2. **Role-based backup reviewers are documented, but primary ownership is still concentrated.**
+   - Bus-factor risk is improved procedurally but still operationally sensitive.
 
 ---
 
@@ -70,113 +67,86 @@ The project has a mature claim model (baseline vs target-state) and a strong cla
 
 Strengths:
 
-- **Clear split of responsibilities:** Laravel control plane vs Go execution/data plane remains a clean trust-boundary architecture.
-- **Correct security boundary placement:** File Engine as final authz enforcement point is repeatedly and consistently documented.
-- **Async task model fit:** For filesystem mutations, queue + worker + persisted task state is appropriate for reliability/auditability.
+- Clear control-plane (Laravel) vs data-plane (Go File Engine + worker) trust-boundary split.
+- File Engine remains documented and tested as final authz enforcement point.
+- Async task lifecycle model is appropriate for filesystem mutation reliability and auditability.
 
-Risks:
+Architectural risks:
 
-- **Scaffold asymmetry:** File Engine has deep verification while backend is still scaffold-level (`CL-008`), creating product-surface imbalance.
-- **Potential policy drift through multi-source docs:** multiple “authoritative” texts can diverge unless precedence is singular and enforced.
-- **Feature expectation drift:** gRPC + limited gateway baseline may be mistaken for broad HTTP parity if route-by-route boundaries are not continuously emphasized.
+- Backend maturity asymmetry remains (scaffold control-plane vs stronger data-plane verification depth).
+- Target-state upload/security pipeline remains an architectural intent rather than baseline behavior.
 
 ### B) Process efficiency
 
-**Current state: efficient for core baseline, uneven for contributor onboarding.**
+**Current state: improved and pragmatic, with strong claim-to-proof mechanics.**
 
 Strengths:
 
-- Runnable command mapping in ledger reduces ambiguity during code reviews.
-- CI/governance emphasis appears focused on meaningful baseline checks.
-- Service-scoped AGENTS guidance provides useful guardrails where maturity differs by subsystem.
+- Capability ledger gives concrete, runnable proofs for baseline claims.
+- CI gates are aligned with governance language for baseline + doc hygiene.
+- SHA pinning across GitHub Actions reduces workflow supply-chain drift.
 
 Inefficiencies:
 
-- **Historical naming inconsistency around `AGENTS.md` introduced avoidable lookup cost.**
-- **Guidance duplication:** precedence and setup authority are repeated in slightly different forms across README and AGENTS files.
-- **Owner model gaps:** domain ledger lists `Unassigned (TBD)` across major areas, which may slow prioritization and operational accountability.
+- Multiple documentation surfaces still require careful synchronization.
+- Some role/ownership guidance is process-driven rather than backed by multi-person maintainer coverage.
 
 ### C) Sustainability
 
-**Current state: moderate-to-strong, contingent on governance hygiene.**
+**Current state: moderate-to-strong with disciplined governance; human redundancy remains the key gap.**
 
 What supports sustainability:
 
-- Explicit baseline/target-state boundary.
-- Claim-to-proof culture via capability ledger.
-- Security-first architecture direction.
+- Explicit baseline/target-state separation.
+- Runnable validation culture.
+- CI + governance hygiene checks protecting documentation consistency.
 
 What threatens sustainability:
 
-- Continued document precedence drift.
-- Missing explicit ownership for domain capabilities.
-- Risk of communications debt if public-facing README language outruns shipped capabilities.
+- Single-primary-owner concentration for critical domains.
+- Risk of future drift if promotion policy is not enforced continuously.
 
 ---
 
 ## 3) Prioritized, Actionable Recommendations
 
-### Priority 0 — Immediate (this sprint)
+### Priority 0 — Completed in this cycle
 
-1. **Unify conflict-resolution precedence in one canonical statement.**
-   - Decide one order (recommended: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives).
-   - Update README and `.github/AGENTS.md` to match exactly.
-2. **Normalize file-engine agent guidance naming for discoverability.**
-   - Add `file-engine/AGENTS.md` as canonical (or duplicate shim) pointing to the maintained guide to satisfy standard tooling expectations.
-3. **Tighten README top-copy wording for target-state features.**
-   - Keep aspirational architecture, but add one explicit sentence near TL;DR that production baseline currently centers on async create-folder + read-path/authz validations.
+1. **Governance/CI alignment:** doc/governance hygiene checks now run on all PR paths.
+2. **Backend maturity contract harmonization:** ledger, backend AGENTS, CI, and README now reference the same VS-001 scaffold expectations.
+3. **Review refresh:** this document now reflects current repository reality and removed already-resolved findings.
 
-### Priority 1 — Near-term (next 1-2 milestones)
+### Priority 1 — Next 1-2 milestones
 
-1. **Introduce ownership for each domain ledger row.**
-   - Replace `Unassigned (TBD)` with role/team handles to improve delivery accountability.
-2. **Add a “route maturity matrix” doc section.**
-   - Summarize each API route as baseline vs target-state with claim IDs; link from README and API reference.
-3. **Add periodic governance hygiene check in CI or release checklist.**
-   - Verify precedence statements and key links remain consistent across README/AGENTS/capability ledger.
+1. **Add executable backend behavior tests for VS-001.**
+   - Move beyond syntax/config checks into HTTP contract tests that exercise forwarding and error propagation.
+2. **Introduce branch-protection mapping docs for scoped jobs.**
+   - Document which required checks should be protected unconditionally vs conditionally by change scope.
+3. **Keep canonical setup references tight.**
+   - Continue pruning stale path references when structure changes.
 
 ### Priority 2 — Strategic (quarterly horizon)
 
-1. **Promote capabilities strictly via ledger-gated evidence.**
-   - Continue requiring dedicated runnable checks before moving any target-state item to baseline.
-2. **Evolve backend from scaffold by vertical slices, not broad scaffolding.**
-   - Ship one end-to-end control-plane workflow at a time with explicit claim IDs and validations.
-3. **Operationalize sustainability metrics.**
-   - Track: baseline claim pass rate, doc drift failures, mean time to align docs after feature merges, and ownership coverage ratio.
+1. **Convert role-based backup reviewers into named maintainers.**
+   - Add at least one additional named human owner/reviewer per domain.
+2. **Institutionalize claim-promotion discipline.**
+   - Keep the policy: no top-level baseline marketing before ledger claim ID + runnable evidence + CI proof.
+3. **Track sustainability metrics.**
+   - Baseline claim pass rate, doc-drift failure count, and ownership coverage ratio.
 
 ---
 
-## 4) Recommended execution plan
+## 4) Final assessment
 
-### Next 7 days
-
-- Align precedence statements.
-- Add file-engine AGENTS naming shim/canonical file.
-- Refine README target-state phrasing.
-
-### Next 30 days
-
-- Assign domain owners in ledger.
-- Publish route maturity matrix.
-- Add governance hygiene checks to CI or release template.
-
-### Next 90 days
-
-- Graduate next target-state capability only with claim + runnable validation.
-- Increment backend capabilities through validated vertical slices.
-
----
-
-## 5) Final assessment
-
-This project is **well-governed for its maturity** and already demonstrates stronger-than-average engineering discipline through explicit capability proofs. The highest-value improvements are not major architectural rewrites; they are **documentation governance hardening and expectation management** so contributors and stakeholders make decisions from one consistent truth surface.
+The project is **well-governed for its current maturity stage** and now has tighter policy-to-enforcement consistency than the previous baseline. The highest-value next step is to convert improved documentation/process rigor into broader multi-owner operational resilience and deeper backend executable validation.
 
 ---
 
 ## Appendix A: Validation checks run
 
 - `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto`
-- `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v`
-- `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v`
-- `cd backend && composer validate --strict`
 - `./scripts/doc-drift-check.sh`
+- `./file-engine/scripts/dev.sh`
+- `cd file-engine && go test ./internal/handlers -run "TestListObjectsReturnsEntries|TestListObjectsRequiresAuthContext|TestListObjectsRejectsUnauthorizedTenant|TestDownloadObjectRejectsUnauthorizedTenant" -v && go test ./internal/adapters/storage/local -run TestLocalStorageListMetadata -v && go test ./internal/authz -run "TestGRPCAuthZInterceptorListObjects" -v && go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal" -v && go test -tags integration_authz ./tests/integration -run TestReadListBehaviorAndAuthzRejection -v`
+- `cd backend && composer validate --strict`
+- `cd backend && php -l app/Http/Controllers/FolderController.php` (fails locally with PHP 8.0; CI enforces under PHP 8.2)

@@ -24,7 +24,7 @@ File Engine is the final execution boundary for async filesystem mutations.
 - `frontend/` UI placeholder
 - `docs/` architecture/setup/security/api references
 - `docker-compose.yml` root compose for multi-service local stack
-- `docker/docker-compose.yml` legacy/alternate compose reference
+- `file-engine/docker-compose.yml` compatibility mirror for file-engine-local workflows
 
 ## Baseline validation commands
 
@@ -34,7 +34,7 @@ Run from repository root unless noted:
 - `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v`
 - `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v`
 - `./file-engine/scripts/dev.sh`
-- `cd backend && composer validate --strict`
+- `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php`
 - `test -f frontend/README.md && test ! -f frontend/package.json`
 
 ## Current alignment notes (validated)
@@ -48,7 +48,7 @@ Run from repository root unless noted:
 
 - Some docs still describe target-state capabilities as implemented; verify with capability ledger commands before claiming support.
 - HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder` + `GetTaskStatus`; upload routes remain target-state.
-- `docker/docker-compose.yml` is a legacy/alternate compose path and should not override canonical setup guidance.
+- `file-engine/docker-compose.yml` is a compatibility mirror and should not override canonical setup guidance.
 - Root `docker-compose.yml` is the canonical developer compose entry point.
 
 ## Conventions
@@ -56,3 +56,4 @@ Run from repository root unless noted:
 - Go: keep imports/module usage clean, run `gofmt`, and preserve error context.
 - PHP/Laravel: follow PSR-4 and valid config return structures.
 - API contract: keep proto, generated artifacts, and API docs aligned.
+- Capability promotion: do not mark features as baseline in top-level docs without a claim ID + runnable validation in `docs/capability-ledger.md`.

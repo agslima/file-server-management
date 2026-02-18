@@ -9,7 +9,7 @@ This guide is for developers contributing code: local setup, dev workflows, and 
 - `frontend/` — React/Next.js UI
 - `backend/` — Laravel API (auth, RBAC, audit, orchestration)
 - `file-engine/` — Go service (filesystem operations + workers)
-- `docker/` — container definitions (local + CI)
+- `file-engine/build/docker/` — file-engine image build definitions
 - `docs/` — architecture, ADRs, role-specific docs
 
 ---

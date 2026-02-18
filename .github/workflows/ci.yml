@@ -23,7 +23,6 @@ jobs:
       backend: ${{ steps.filter.outputs.backend_any_changed }}
       frontend: ${{ steps.filter.outputs.frontend_any_changed }}
       file_engine: ${{ steps.filter.outputs.file_engine_any_changed }}
-      docs: ${{ steps.filter.outputs.docs_any_changed }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -42,9 +41,6 @@ jobs:
             file_engine:
               - 'file-engine/**'
               - '**/*.go'
-            docs:
-              - 'docs/**'
-              - '**.md'
               
   backend:
     name: Test Backend
@@ -54,16 +50,19 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup PHP
         uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
         with:
           php-version: 8.2
-      - name: Validate backend baseline
+      - name: Validate backend VS-001 baseline contract
         run: |
           cd backend
           test -f composer.json
           composer validate --strict
+          php -l app/Http/Controllers/FolderController.php
+          php -l app/Http/Controllers/TaskController.php
+          php -l app/Services/FileEngineService.php
 
   frontend:
     name: Test Frontend
@@ -111,7 +110,6 @@ jobs:
   doc-drift:
     name: Doc Drift Check
     needs: changes
-    if: ${{ needs.changes.outputs.docs == 'true' }}
     permissions:
       contents: read
     runs-on: ubuntu-latest

@@ -87,4 +87,3 @@ This path is useful to validate container builds, but it is **not** a baseline-v
 ## 4) Notes on alternate compose files
 
 - `file-engine/docker-compose.yml` is a compatibility mirror for file-engine-local workflows; the canonical source is root `docker-compose.yml`.
-- `docker/docker-compose.yml` is a legacy/alternate compose definition and should not be treated as primary onboarding.
