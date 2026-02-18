@@ -9,6 +9,7 @@ import (
 	"github.com/example/file-engine/internal/observability"
 
 	"github.com/example/file-engine/internal/auth"
+	"github.com/example/file-engine/internal/authz"
 	"github.com/example/file-engine/internal/security"
 )
 
@@ -18,6 +19,7 @@ func (h *HTTPServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	start := time.Now()
+	ctx := r.Context()
 	a, err := h.Verifier.ParseAuthContext(r.Header.Get("Authorization"))
 	if err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -33,6 +35,24 @@ func (h *HTTPServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
+	tenantID, err := authz.TenantFromPath(normalizedPath)
+	if err != nil {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	}
+	tenantResolver := h.Tenants
+	if tenantResolver == nil {
+		tenantResolver = auth.NewDenyAllTenantResolver()
+	}
+	allowed, err := tenantResolver.UserHasTenant(ctx, a.UserID, tenantID)
+	if err != nil {
+		http.Error(w, "tenant resolution failed", http.StatusInternalServerError)
+		return
+	}
+	if !allowed {
+		http.Error(w, "tenant access denied", http.StatusForbidden)
+		return
+	}
 	if !h.allowTenantRequest(tenantFromNormalizedPath(normalizedPath)) {
 		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return
@@ -46,7 +66,6 @@ func (h *HTTPServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, h.MaxUploadBytes)
-	ctx := r.Context()
 	if h.UploadTimeout > 0 {
 		var cancel func()
 		ctx, cancel = context.WithTimeout(ctx, h.UploadTimeout)

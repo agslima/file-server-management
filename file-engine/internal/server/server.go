@@ -51,6 +51,7 @@ type HTTPServer struct {
 
 	ACLStore auth.ACLStore
 	Uploads  *services.UploadService
+	Tenants  auth.TenantResolver
 
 	ReadyChecks []readinessCheck
 
@@ -66,9 +67,12 @@ func NewGRPCServer(addr string, logg *logger.Logger, verifier *auth.JWTVerifier,
 	return &GRPCServer{Addr: addr, Log: logg, Verifier: verifier, ACLStore: store, Handler: handler}
 }
 
-func NewHTTPServer(addr, grpcAddr string, logg *logger.Logger, verifier *auth.JWTVerifier, st storage.Storage, store auth.ACLStore, uploads *services.UploadService) *HTTPServer {
+func NewHTTPServer(addr, grpcAddr string, logg *logger.Logger, verifier *auth.JWTVerifier, st storage.Storage, store auth.ACLStore, uploads *services.UploadService, tenants auth.TenantResolver) *HTTPServer {
+	if tenants == nil {
+		tenants = auth.NewDenyAllTenantResolver()
+	}
 	return &HTTPServer{
-		Addr: addr, GRPCAddr: grpcAddr, Log: logg, Verifier: verifier, Storage: st, ACLStore: store, Uploads: uploads,
+		Addr: addr, GRPCAddr: grpcAddr, Log: logg, Verifier: verifier, Storage: st, ACLStore: store, Uploads: uploads, Tenants: tenants,
 		MaxUploadBytes: 20 * 1024 * 1024, UploadTimeout: 30 * time.Second,
 		sem: make(chan struct{}, 8), rateByTenant: map[string]int{}, rateReset: time.Now().Add(time.Minute),
 	}

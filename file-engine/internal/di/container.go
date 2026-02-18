@@ -89,7 +89,7 @@ func (c *Container) Servers() *Servers {
 	grpcHandler := handlers.NewGRPCHandler(q, objSvc, uploadSvc, aclStore, tenantResolver, c.Logger, auditor)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
-	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore, uploadSvc)
+	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore, uploadSvc, tenantResolver)
 	httpSrv.AddReadyCheck("storage", func(ctx context.Context) error {
 		_, err := st.List(ctx, "/")
 		return err
