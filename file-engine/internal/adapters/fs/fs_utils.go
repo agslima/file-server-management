@@ -1,7 +1,7 @@
-package fs
+package fsadapter
 
 import (
-	"fmt"
+	"errors"
 	"path/filepath"
 	"strings"
 )
@@ -18,7 +18,7 @@ func SafeJoin(base string, parts ...string) (string, error) {
 		return "", err
 	}
 	if strings.HasPrefix(rel, "..") {
-		return "", fmt.Errorf("outside base")
+		return "", errors.New("outside base")
 	}
 	return full, nil
 }

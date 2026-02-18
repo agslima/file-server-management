@@ -39,7 +39,7 @@ func TestUploadServiceStagesScansAndCommits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	b, _ := io.ReadAll(r)
 	if string(b) != "ok" {
 		t.Fatalf("unexpected content %q", string(b))

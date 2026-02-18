@@ -1,7 +1,6 @@
 package di
 
 import (
-	"os"
 	"testing"
 
 	"github.com/example/file-engine/internal/auth"
@@ -16,9 +15,7 @@ func TestBuildTenantResolverUsesPostgresWhenPoolConfigured(t *testing.T) {
 }
 
 func TestBuildTenantResolverFallsBackToDenyAllWithoutConfig(t *testing.T) {
-	prev := os.Getenv("TENANT_MEMBERSHIPS")
-	t.Cleanup(func() { _ = os.Setenv("TENANT_MEMBERSHIPS", prev) })
-	_ = os.Unsetenv("TENANT_MEMBERSHIPS")
+	t.Setenv("TENANT_MEMBERSHIPS", "")
 
 	resolver := buildTenantResolver(nil)
 	if _, ok := resolver.(*auth.DenyAllTenantResolver); !ok {
@@ -27,9 +24,7 @@ func TestBuildTenantResolverFallsBackToDenyAllWithoutConfig(t *testing.T) {
 }
 
 func TestBuildTenantResolverFallsBackToInMemoryWhenEnvConfigured(t *testing.T) {
-	prev := os.Getenv("TENANT_MEMBERSHIPS")
-	t.Cleanup(func() { _ = os.Setenv("TENANT_MEMBERSHIPS", prev) })
-	_ = os.Setenv("TENANT_MEMBERSHIPS", "alice=acme,beta")
+	t.Setenv("TENANT_MEMBERSHIPS", "alice=acme,beta")
 
 	resolver := buildTenantResolver(nil)
 	inmem, ok := resolver.(*auth.InMemoryTenantResolver)

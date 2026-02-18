@@ -37,7 +37,7 @@ func (h *HTTPServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	_, _ = io.Copy(w, rc)

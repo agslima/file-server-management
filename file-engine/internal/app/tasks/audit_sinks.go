@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -50,7 +51,7 @@ func (s *fileImmutableSink) WriteLine(_ context.Context, line []byte) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, err := f.Write(append(line, '\n')); err != nil {
 		return err
 	}
@@ -101,11 +102,11 @@ func (s *lokiSink) WriteLine(ctx context.Context, line []byte) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := s.client.Do(req)
+	resp, err := s.client.Do(req) // #nosec G704 -- endpoint is validated at sink construction and is operator-configured
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("loki returned status %d", resp.StatusCode)
 	}
@@ -127,7 +128,7 @@ func (w *fileDeadLetterWriter) Write(_ context.Context, envelope deadLetterEnvel
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	b, err := json.Marshal(envelope)
 	if err != nil {
 		return err
@@ -150,10 +151,7 @@ type retryingSink struct {
 func (s *retryingSink) Type() string { return s.sink.Type() }
 
 func (s *retryingSink) WriteLine(ctx context.Context, line []byte) error {
-	attempts := s.attempts
-	if attempts < 1 {
-		attempts = 1
-	}
+	attempts := max(s.attempts, 1)
 	delay := s.retryDelay
 	if delay <= 0 {
 		delay = 25 * time.Millisecond
@@ -218,6 +216,10 @@ func BuildImmutableSinkFromEnv(logg *logger.Logger, legacyPath string) Immutable
 	case "loki":
 		endpoint := strings.TrimSpace(os.Getenv("AUDIT_LOKI_ENDPOINT"))
 		if endpoint == "" {
+			return nil
+		}
+		u, err := url.Parse(endpoint)
+		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 			return nil
 		}
 		base = &lokiSink{endpoint: endpoint, client: &http.Client{Timeout: 5 * time.Second}}

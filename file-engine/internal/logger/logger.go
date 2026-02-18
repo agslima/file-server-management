@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"strings"
 	"time"
@@ -32,9 +33,7 @@ func (l *Logger) logStructured(level, message string, fields map[string]any) {
 	entry["ts"] = time.Now().UTC().Format(time.RFC3339Nano)
 	entry["level"] = level
 	entry["message"] = message
-	for k, v := range fields {
-		entry[k] = v
-	}
+	maps.Copy(entry, fields)
 	b, err := json.Marshal(entry)
 	if err != nil {
 		log.Printf("{\"level\":\"error\",\"message\":\"log marshal failed\",\"error\":%q}", err.Error())
@@ -57,19 +56,20 @@ func (l *Logger) Event(level, message string, fields map[string]any) {
 	}
 }
 
-func (l *Logger) Info(v ...interface{}) { l.Event("info", fmt.Sprint(v...), nil) }
-func (l *Logger) Infof(format string, v ...interface{}) {
+func (l *Logger) Info(v ...any) { l.Event("info", fmt.Sprint(v...), nil) }
+func (l *Logger) Infof(format string, v ...any) {
 	l.Event("info", fmt.Sprintf(format, v...), nil)
 }
-func (l *Logger) Warnf(format string, v ...interface{}) {
+
+func (l *Logger) Warnf(format string, v ...any) {
 	l.Event("warn", fmt.Sprintf(format, v...), nil)
 }
-func (l *Logger) Fatal(v ...interface{}) { l.Event("fatal", fmt.Sprint(v...), nil); os.Exit(1) }
-func (l *Logger) Fatalf(format string, v ...interface{}) {
+func (l *Logger) Fatal(v ...any) { l.Event("fatal", fmt.Sprint(v...), nil); os.Exit(1) }
+func (l *Logger) Fatalf(format string, v ...any) {
 	l.Event("fatal", fmt.Sprintf(format, v...), nil)
 	os.Exit(1)
 }
-func (l *Logger) Debug(v ...interface{}) { l.Event("debug", fmt.Sprint(v...), nil) }
-func (l *Logger) Debugf(format string, v ...interface{}) {
+func (l *Logger) Debug(v ...any) { l.Event("debug", fmt.Sprint(v...), nil) }
+func (l *Logger) Debugf(format string, v ...any) {
 	l.Event("debug", fmt.Sprintf(format, v...), nil)
 }

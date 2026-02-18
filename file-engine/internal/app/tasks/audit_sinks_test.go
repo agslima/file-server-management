@@ -90,7 +90,7 @@ func TestBuildImmutableSinkFromEnvBucketWritesJSONL(t *testing.T) {
 func TestBuildImmutableSinkFromEnvLokiPostsLine(t *testing.T) {
 	received := ""
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
+		defer func() { _ = r.Body.Close() }()
 		b, _ := io.ReadAll(r.Body)
 		received = string(b)
 		w.WriteHeader(http.StatusNoContent)

@@ -11,7 +11,7 @@ import (
 
 // GRPCAuthInterceptor extracts `authorization` metadata and stores AuthContext in context.
 func GRPCAuthInterceptor(verifier *JWTVerifier) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			return nil, status.Error(codes.Unauthenticated, "missing metadata")
@@ -46,7 +46,7 @@ func (w *wrappedServerStream) Context() context.Context {
 
 // GRPCStreamAuthInterceptor extracts `authorization` metadata and stores AuthContext in stream context.
 func GRPCStreamAuthInterceptor(verifier *JWTVerifier) grpc.StreamServerInterceptor {
-	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, stream grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		md, ok := metadata.FromIncomingContext(stream.Context())
 		if !ok {
 			return status.Error(codes.Unauthenticated, "missing metadata")

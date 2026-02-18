@@ -120,7 +120,7 @@ func buildTenantResolver(pool *pgxpool.Pool) auth.TenantResolver {
 	}
 	// format: "alice=acme,beta;bob=beta"
 	seed := map[string][]string{}
-	for _, entry := range strings.Split(raw, ";") {
+	for entry := range strings.SplitSeq(raw, ";") {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
 			continue

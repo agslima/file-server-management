@@ -1,9 +1,9 @@
 package storage
 
 import (
-    "context"
-    "io"
-    "time"
+	"context"
+	"io"
+	"time"
 )
 
 // Storage is an abstraction over a file-like backend.
@@ -15,21 +15,21 @@ import (
 // - Move performs an atomic/consistent move when possible; for object storage it typically becomes Copy+Delete.
 // - List returns best-effort metadata (timestamps/ownership may be partial depending on backend).
 type Storage interface {
-    CreateFolder(ctx context.Context, path string) error
-    AtomicWrite(ctx context.Context, path string, r io.Reader) error
-    Move(ctx context.Context, src string, dst string) error
-    Delete(ctx context.Context, path string) error
-    Exists(ctx context.Context, path string) (bool, error)
-    List(ctx context.Context, prefix string) ([]ObjectInfo, error)
-    Open(ctx context.Context, path string) (io.ReadCloser, error)
+	CreateFolder(ctx context.Context, path string) error
+	AtomicWrite(ctx context.Context, path string, r io.Reader) error
+	Move(ctx context.Context, src, dst string) error
+	Delete(ctx context.Context, path string) error
+	Exists(ctx context.Context, path string) (bool, error)
+	List(ctx context.Context, prefix string) ([]ObjectInfo, error)
+	Open(ctx context.Context, path string) (io.ReadCloser, error)
 }
 
 type ObjectInfo struct {
-    Path       string
-    Size       int64
-    IsDir      bool
-    ModifiedAt time.Time
-    CreatedAt  time.Time
-    Owner      string
-    Group      string
+	Path       string
+	Size       int64
+	IsDir      bool
+	ModifiedAt time.Time
+	CreatedAt  time.Time
+	Owner      string
+	Group      string
 }

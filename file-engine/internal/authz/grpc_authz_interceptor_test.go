@@ -14,7 +14,7 @@ import (
 func runListObjectsAuthz(ctx context.Context, req *pb.ListObjectsRequest, store auth.ACLStore) error {
 	interceptor := GRPCAuthZInterceptor(store)
 	info := &grpc.UnaryServerInfo{FullMethod: "/fileengine.FileEngine/ListObjects"}
-	handler := func(ctx context.Context, req any) (any, error) {
+	handler := func(_ context.Context, _ any) (any, error) {
 		return "ok", nil
 	}
 	_, err := interceptor(ctx, req, info, handler)

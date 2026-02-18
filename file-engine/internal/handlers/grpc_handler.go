@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -147,7 +148,7 @@ func (h *GRPCHandler) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReque
 	requestCorrelationID := correlationIDFromContext(ctx)
 	taskStatus, err := h.queue.GetStatus(ctx, req.TaskId)
 	if err != nil {
-		if err == redisq.ErrTaskNotFound {
+		if errors.Is(err, redisq.ErrTaskNotFound) {
 			return nil, status.Error(codes.NotFound, "task not found")
 		}
 		return nil, status.Error(codes.Internal, "failed to load task status")
@@ -275,7 +276,7 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	buf := make([]byte, 64*1024)
 	hashr := sha256.New()

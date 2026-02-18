@@ -106,8 +106,8 @@ func (w *Worker) Start(ctx context.Context) {
 		if correlationID == "" {
 			correlationID = task.Params["request_id"]
 		}
-		w.auditor.EmitTaskEvent(ctx, "task.dequeued", task.ID, correlationID, fmt.Sprintf("task_type=%s", task.Type))
-		w.auditor.EmitTaskEvent(ctx, "task.processing", task.ID, correlationID, fmt.Sprintf("task_type=%s", task.Type))
+		w.auditor.EmitTaskEvent(ctx, "task.dequeued", task.ID, correlationID, "task_type="+task.Type)
+		w.auditor.EmitTaskEvent(ctx, "task.processing", task.ID, correlationID, "task_type="+task.Type)
 		w.log.Event("info", "worker task processing", map[string]any{
 			"event":          "task.processing",
 			"task_id":        task.ID,
@@ -155,10 +155,7 @@ func (w *Worker) Start(ctx context.Context) {
 }
 
 func (w *Worker) persistStatus(ctx context.Context, id, status, correlationID, message string) error {
-	attempts := w.statusRetryAttempts
-	if attempts < 1 {
-		attempts = 1
-	}
+	attempts := max(w.statusRetryAttempts, 1)
 	var err error
 	for attempt := 1; attempt <= attempts; attempt++ {
 		err = w.q.Complete(ctx, id, status, correlationID, message)

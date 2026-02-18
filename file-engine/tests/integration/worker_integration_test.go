@@ -119,8 +119,7 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 	processor := tasks.NewProcessorWithStorage(localstorage.New(rootDir))
 	worker := tasks.NewWorkerWithAudit(queue, processor, logger.New("debug"), auditor)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go worker.Start(ctx)
 

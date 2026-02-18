@@ -3,14 +3,15 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/example/file-engine/internal/adapters/fs/local"
+	"github.com/redis/go-redis/v9"
 )
 
-// Reuse Task struct from previous design
+// Task represents a queued worker task payload.
 type Task struct {
 	ID     string            `json:"id"`
 	Type   string            `json:"type"`
@@ -38,7 +39,7 @@ func (q *RedisQueue) Pop(ctx context.Context) (*Task, error) {
 	return &t, nil
 }
 
-func (q *RedisQueue) Complete(ctx context.Context, id string, status string) error {
+func (q *RedisQueue) Complete(ctx context.Context, id, status string) error {
 	return q.Client.Set(ctx, "task:"+id, status, 0).Err()
 }
 
@@ -58,7 +59,7 @@ func (p *FSProcessor) Process(ctx context.Context, task *Task) error {
 		path := task.Params["path"]
 		folder := task.Params["folder"]
 		if path == "" || folder == "" {
-			return fmt.Errorf("missing params")
+			return errors.New("missing params")
 		}
 		// create folder under base: path/folder
 		return p.FS.CreateFolder(ctx, path, folder)
@@ -68,7 +69,7 @@ func (p *FSProcessor) Process(ctx context.Context, task *Task) error {
 		targetPath := task.Params["target_path"]
 		filename := task.Params["filename"]
 		if uploadTmp == "" || targetPath == "" || filename == "" {
-			return fmt.Errorf("missing params for complete_upload")
+			return errors.New("missing params for complete_upload")
 		}
 		// move file from tmp to final
 		return p.FS.MoveUploadedFile(ctx, []string{uploadTmp}, []string{targetPath, filename})

@@ -86,7 +86,8 @@ func (h *HTTPServer) AddReadyCheck(name string, check func(context.Context) erro
 }
 
 func (g *GRPCServer) Start() error {
-	lis, err := net.Listen("tcp", g.Addr)
+	var lc net.ListenConfig
+	lis, err := lc.Listen(context.Background(), "tcp", g.Addr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
@@ -134,7 +135,7 @@ func (h *HTTPServer) Start() error {
 	ctx := context.Background()
 	mux := runtime.NewServeMux()
 
-	conn, err := grpc.DialContext(ctx, h.GRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(h.GRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("dial grpc: %w", err)
 	}

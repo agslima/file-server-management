@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -66,7 +67,7 @@ func NewPostgresTenantResolver(pool *pgxpool.Pool) *PostgresTenantResolver {
 
 func (r *PostgresTenantResolver) ResolveTenants(ctx context.Context, userID string) ([]string, error) {
 	if r.pool == nil {
-		return nil, fmt.Errorf("postgres tenant resolver not configured")
+		return nil, errors.New("postgres tenant resolver not configured")
 	}
 	rows, err := r.pool.Query(ctx,
 		`SELECT tenant_id FROM user_tenants WHERE user_id = $1 ORDER BY tenant_id ASC`,
@@ -96,7 +97,7 @@ func (r *PostgresTenantResolver) ResolveTenants(ctx context.Context, userID stri
 
 func (r *PostgresTenantResolver) UserHasTenant(ctx context.Context, userID, tenantID string) (bool, error) {
 	if r.pool == nil {
-		return false, fmt.Errorf("postgres tenant resolver not configured")
+		return false, errors.New("postgres tenant resolver not configured")
 	}
 	var exists bool
 	err := r.pool.QueryRow(ctx,

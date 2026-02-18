@@ -65,7 +65,7 @@ func (s *authzServerStream) RecvMsg(m any) error {
 }
 
 func GRPCAuthZStreamInterceptor(store auth.ACLStore) grpc.StreamServerInterceptor {
-	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		perm, ok := MethodPermission[info.FullMethod]
 		if !ok {
 			if _, ok := auth.FromContext(stream.Context()); !ok {

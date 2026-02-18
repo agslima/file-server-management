@@ -77,7 +77,7 @@ type workerTestStorage struct {
 	processDelay time.Duration
 }
 
-func (s *workerTestStorage) CreateFolder(ctx context.Context, path string) error {
+func (s *workerTestStorage) CreateFolder(ctx context.Context, _ string) error {
 	if s.processDelay <= 0 {
 		return nil
 	}
@@ -117,8 +117,7 @@ func TestWorkerRetriesStatusPersistence(t *testing.T) {
 	q.setStatusFailures("running", 2)
 
 	worker := NewWorkerWithAudit(q, NewProcessorWithStorage(&workerTestStorage{}), logger.New("debug"), nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	go worker.Start(ctx)
 
 	select {
@@ -151,8 +150,7 @@ func TestWorkerMarksTaskFailedOnProcessingTimeout(t *testing.T) {
 	})
 
 	worker := NewWorkerWithAudit(q, NewProcessorWithStorage(&workerTestStorage{processDelay: 250 * time.Millisecond}), logger.New("debug"), nil)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	go worker.Start(ctx)
 
 	select {

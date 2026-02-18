@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -73,15 +74,15 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	}
 	tenantID := tenantFromPath(normalized)
 	if tenantID == "" {
-		return UploadMetadata{}, fmt.Errorf("invalid tenant path")
+		return UploadMetadata{}, errors.New("invalid tenant path")
 	}
 	if s.policy.TenantQuotaBytes > 0 {
 		used, objects := s.tenantUsage(tenantID)
 		if s.policy.TenantObjectLimit > 0 && objects >= s.policy.TenantObjectLimit {
-			return UploadMetadata{}, fmt.Errorf("tenant object count limit exceeded")
+			return UploadMetadata{}, errors.New("tenant object count limit exceeded")
 		}
 		if used >= s.policy.TenantQuotaBytes {
-			return UploadMetadata{}, fmt.Errorf("tenant quota exceeded")
+			return UploadMetadata{}, errors.New("tenant quota exceeded")
 		}
 	}
 
@@ -98,13 +99,13 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	}
 	if s.policy.MaxObjectSizeBytes > 0 && cr.n > s.policy.MaxObjectSizeBytes {
 		_ = s.st.Delete(tctx, stagePath)
-		return UploadMetadata{}, fmt.Errorf("max object size exceeded")
+		return UploadMetadata{}, errors.New("max object size exceeded")
 	}
 	if s.policy.TenantQuotaBytes > 0 {
 		used, _ := s.tenantUsage(tenantID)
 		if used+cr.n > s.policy.TenantQuotaBytes {
 			_ = s.st.Delete(tctx, stagePath)
-			return UploadMetadata{}, fmt.Errorf("tenant quota exceeded")
+			return UploadMetadata{}, errors.New("tenant quota exceeded")
 		}
 	}
 
@@ -123,7 +124,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	if s.policy.RequireCleanScan && scanStatus != ports.MalwareStatusClean {
 		meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: ports.MalwareStatusQuarantined, ScannedBy: scannedBy, CreatedAt: time.Now().UTC()}
 		s.storeMeta(meta, idempotencyKey)
-		return meta, fmt.Errorf("malware scan gate blocked commit")
+		return meta, errors.New("malware scan gate blocked commit")
 	}
 
 	if err := s.st.Move(tctx, stagePath, normalized); err != nil {
@@ -139,7 +140,7 @@ func (s *UploadService) VerifyIntegrity(path string, content []byte) error {
 	return s.VerifyIntegrityHash(path, hex.EncodeToString(sum[:]))
 }
 
-func (s *UploadService) VerifyIntegrityHash(path string, checksumHex string) error {
+func (s *UploadService) VerifyIntegrityHash(path, checksumHex string) error {
 	normalized, err := security.NormalizeTenantPath(path)
 	if err != nil {
 		return err
@@ -151,7 +152,7 @@ func (s *UploadService) VerifyIntegrityHash(path string, checksumHex string) err
 		return nil
 	}
 	if checksumHex != meta.Checksum {
-		return fmt.Errorf("checksum mismatch")
+		return errors.New("checksum mismatch")
 	}
 	return nil
 }

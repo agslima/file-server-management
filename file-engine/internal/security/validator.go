@@ -1,31 +1,30 @@
 package security
 
 import (
-	"fmt"
+	"errors"
 	"path"
+	"slices"
 	"strings"
 )
 
 func NormalizeTenantPath(raw string) (string, error) {
 	p := strings.TrimSpace(strings.ReplaceAll(raw, "\\", "/"))
 	if p == "" {
-		return "", fmt.Errorf("path is required")
+		return "", errors.New("path is required")
 	}
 	if !strings.HasPrefix(p, "/") {
 		p = "/" + p
 	}
-	for _, seg := range strings.Split(p, "/") {
-		if seg == ".." {
-			return "", fmt.Errorf("path traversal denied")
-		}
+	if slices.Contains(strings.Split(p, "/"), "..") {
+		return "", errors.New("path traversal denied")
 	}
 	clean := path.Clean(p)
 	if !strings.HasPrefix(clean, "/tenants/") {
-		return "", fmt.Errorf("path must be tenant scoped")
+		return "", errors.New("path must be tenant scoped")
 	}
 	parts := strings.Split(strings.TrimPrefix(clean, "/"), "/")
 	if len(parts) < 3 || parts[1] == "" {
-		return "", fmt.Errorf("invalid tenant path")
+		return "", errors.New("invalid tenant path")
 	}
 	return clean, nil
 }

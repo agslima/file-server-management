@@ -30,15 +30,15 @@ func (l *LocalFs) sanitizeAndJoin(parts ...string) (string, error) {
 	return fsadapter.SafeJoin(l.BaseRoot, parts...)
 }
 
-func (l *LocalFs) CreateFolder(ctx context.Context, parts ...string) error {
+func (l *LocalFs) CreateFolder(_ context.Context, parts ...string) error {
 	full, err := l.sanitizeAndJoin(parts...)
 	if err != nil {
 		return err
 	}
-	return os.MkdirAll(full, 0o755)
+	return os.MkdirAll(full, 0o750)
 }
 
-func (l *LocalFs) AtomicWriteFile(ctx context.Context, perm uint32, data []byte, parts ...string) error {
+func (l *LocalFs) AtomicWriteFile(_ context.Context, perm uint32, data []byte, parts ...string) error {
 	full, err := l.sanitizeAndJoin(parts...)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (l *LocalFs) AtomicWriteFile(ctx context.Context, perm uint32, data []byte,
 	return fsadapter.AtomicWriteFile(full, os.FileMode(perm), bytes.NewReader(data))
 }
 
-func (l *LocalFs) MoveUploadedFile(ctx context.Context, src []string, dst []string) error {
+func (l *LocalFs) MoveUploadedFile(_ context.Context, src, dst []string) error {
 	srcF, err := l.sanitizeAndJoin(src...)
 	if err != nil {
 		return err
@@ -57,23 +57,23 @@ func (l *LocalFs) MoveUploadedFile(ctx context.Context, src []string, dst []stri
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(dstF), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dstF), 0o750); err != nil {
 		return err
 	}
 	if err := os.Rename(srcF, dstF); err == nil {
 		return nil
 	}
 	// fallback copy
-	in, err := os.Open(srcF)
+	in, err := os.Open(srcF) // #nosec G304 -- srcF is sanitized via SafeJoin
 	if err != nil {
 		return err
 	}
-	defer in.Close()
-	out, err := os.Create(dstF)
+	defer func() { _ = in.Close() }()
+	out, err := os.Create(dstF) // #nosec G304 -- dstF is sanitized via SafeJoin
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	if _, err := io.Copy(out, in); err != nil {
 		return err
 	}

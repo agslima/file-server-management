@@ -11,7 +11,7 @@ import (
 
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/storage"
-	jwt "github.com/golang-jwt/jwt/v5"
+	jwtgo "github.com/golang-jwt/jwt/v5"
 )
 
 type fakeStorage struct {
@@ -31,7 +31,7 @@ func (f *fakeStorage) Open(_ context.Context, path string) (io.ReadCloser, error
 
 func signedToken(t *testing.T, secret string) string {
 	t.Helper()
-	tk := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	tk := jwtgo.NewWithClaims(jwtgo.SigningMethodHS256, jwtgo.MapClaims{
 		"sub":   "alice",
 		"roles": []string{"viewer"},
 		"exp":   time.Now().Add(time.Hour).Unix(),
@@ -54,7 +54,7 @@ func TestHandleDownloadNormalizesPath(t *testing.T) {
 	st := &fakeStorage{}
 	h := &HTTPServer{Verifier: verifier, ACLStore: acl, Storage: st}
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/objects:download?path=\\tenants\\acme\\docs\\q1.txt", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/objects:download?path=\\tenants\\acme\\docs\\q1.txt", http.NoBody)
 	req.Header.Set("Authorization", signedToken(t, secret))
 	rr := httptest.NewRecorder()
 
@@ -73,7 +73,7 @@ func TestHandleDownloadRejectsTraversal(t *testing.T) {
 	verifier, _ := auth.NewJWTVerifier(secret, "", "", "")
 	h := &HTTPServer{Verifier: verifier, ACLStore: auth.NewInMemoryACLStore(), Storage: &fakeStorage{}}
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/objects:download?path=/tenants/acme/../secrets", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/objects:download?path=/tenants/acme/../secrets", http.NoBody)
 	req.Header.Set("Authorization", signedToken(t, secret))
 	rr := httptest.NewRecorder()
 

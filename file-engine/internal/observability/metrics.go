@@ -186,10 +186,10 @@ func (m *Metrics) SnapshotPrometheus() string {
 		return true
 	})
 
-	count, sum, max := m.queueLagMs.snapshot()
+	count, sum, maxValue := m.queueLagMs.snapshot()
 	fmt.Fprintf(&b, "fileengine_queue_lag_ms_count %d\n", count)
 	fmt.Fprintf(&b, "fileengine_queue_lag_ms_sum %d\n", sum)
-	fmt.Fprintf(&b, "fileengine_queue_lag_ms_max %d\n", max)
+	fmt.Fprintf(&b, "fileengine_queue_lag_ms_max %d\n", maxValue)
 	fmt.Fprintf(&b, "fileengine_audit_sink_lag_ms %d\n", m.auditSinkLagMs.Load())
 	uCount, uSum, uMax := m.uploadDurationMs.snapshot()
 	fmt.Fprintf(&b, "fileengine_upload_duration_ms_count %d\n", uCount)
@@ -231,8 +231,8 @@ func emitDurationSummaries(b *strings.Builder, metric string, labels []string, m
 	mp.Range(func(k, v any) bool {
 		key, _ := k.(string)
 		s, _ := v.(*durationSummary)
-		count, sum, max := s.snapshot()
-		pairs[key] = [3]int64{count, sum, max}
+		count, sum, maxValue := s.snapshot()
+		pairs[key] = [3]int64{count, sum, maxValue}
 		return true
 	})
 	keys := make([]string, 0, len(pairs))
@@ -246,12 +246,14 @@ func emitDurationSummaries(b *strings.Builder, metric string, labels []string, m
 			continue
 		}
 		labelSet := ""
+		var labelSetSb249 strings.Builder
 		for i, label := range labels {
 			if i > 0 {
-				labelSet += ","
+				labelSetSb249.WriteString(",")
 			}
-			labelSet += fmt.Sprintf("%s=\"%s\"", label, sanitizeLabel(parts[i]))
+			fmt.Fprintf(&labelSetSb249, "%s=\"%s\"", label, sanitizeLabel(parts[i]))
 		}
+		labelSet += labelSetSb249.String()
 		v := pairs[key]
 		fmt.Fprintf(b, "%s_count{%s} %d\n", metric, labelSet, v[0])
 		fmt.Fprintf(b, "%s_sum{%s} %d\n", metric, labelSet, v[1])
