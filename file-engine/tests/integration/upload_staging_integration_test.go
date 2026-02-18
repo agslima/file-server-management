@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"sync"
 	"testing"
@@ -50,7 +51,7 @@ func (s *observableStagingStorage) AtomicWrite(ctx context.Context, path string,
 			}
 			<-s.allowComplete
 		}
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return err
 		}
 		remainder, err := io.ReadAll(r)

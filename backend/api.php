@@ -18,6 +18,7 @@ $path = '/' . ltrim($request->path(), '/');
 $service = new FileEngineService(
     new HttpFactory(),
     getenv('FILE_ENGINE_URL') ?: 'http://file-engine:8080/v1',
+    getenv('FILE_ENGINE_BEARER_TOKEN') ?: null,
 );
 
 if ($method === 'GET' && $path === '/healthz') {

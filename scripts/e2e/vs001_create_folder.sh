@@ -6,24 +6,36 @@ parent_path="${PARENT_PATH:-tenants/acme}"
 folder_name="${FOLDER_NAME:-vs001-$(date +%s)}"
 requested_by="${REQUESTED_BY:-vs001-e2e@example.com}"
 timeout_seconds="${TASK_TIMEOUT_SECONDS:-90}"
+create_timeout_seconds="${CREATE_TIMEOUT_SECONDS:-60}"
 
 payload="$(cat <<JSON
 {"path":"${parent_path}","folderName":"${folder_name}","requestedBy":"${requested_by}"}
 JSON
 )"
 
-create_response="$(curl -sS -X POST "${backend_url}/folders" -H 'Content-Type: application/json' -d "$payload")"
-
-task_id="$(python3 - <<'PY' "$create_response"
+create_deadline=$((SECONDS + create_timeout_seconds))
+task_id=""
+create_response=""
+while (( SECONDS < create_deadline )); do
+  create_response="$(curl -sS -X POST "${backend_url}/folders" -H 'Content-Type: application/json' -d "$payload" || true)"
+  task_id="$(python3 - <<'PY' "$create_response"
 import json,sys
 try:
     data=json.loads(sys.argv[1])
 except Exception:
     print("")
     raise SystemExit(0)
-print(data.get("taskId") or data.get("task_id") or "")
+if isinstance(data, dict):
+    print(data.get("taskId") or data.get("task_id") or "")
+else:
+    print("")
 PY
 )"
+  if [[ -n "$task_id" ]]; then
+    break
+  fi
+  sleep 2
+done
 
 if [[ -z "$task_id" ]]; then
   echo "failed_to_parse_task_id response=${create_response}" >&2
@@ -43,7 +55,10 @@ try:
 except Exception:
     print("unknown")
     raise SystemExit(0)
-print(data.get("status") or "unknown")
+if isinstance(data, dict):
+    print(data.get("status") or "unknown")
+else:
+    print("unknown")
 PY
 )"
   echo "task_status=${last_status}"

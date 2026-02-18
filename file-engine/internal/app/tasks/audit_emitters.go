@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"strings"
 	"time"
 
@@ -31,9 +32,7 @@ func (e *postgresAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID,
 	}
 	metadata := map[string]string{"source": "file-engine-worker"}
 	if len(extra) > 0 && extra[0] != nil {
-		for k, v := range extra[0] {
-			metadata[k] = v
-		}
+		maps.Copy(metadata, extra[0])
 	}
 	metaJSON, err := json.Marshal(metadata)
 	if err != nil {
@@ -59,9 +58,7 @@ type sinkAuditEmitter struct {
 func (e *sinkAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string, extra ...map[string]string) {
 	metadata := map[string]string{"source": "file-engine-worker", "sink": e.sink.Type()}
 	if len(extra) > 0 && extra[0] != nil {
-		for k, v := range extra[0] {
-			metadata[k] = v
-		}
+		maps.Copy(metadata, extra[0])
 	}
 	rec := auditEventRecord{
 		Event:         event,
