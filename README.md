@@ -1,15 +1,11 @@
 # Server File Manager Platform (PHP + Go File Engine)
 
-## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads
-
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/codeql.yml)
 ![Go Version](https://img.shields.io/badge/go-1.24+-blue)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20-5e5e5e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
 <!--
 ![Go Tests](https://github.com/<org>/<repo>/actions/workflows/go-test.yaml/badge.svg)
 ![Laravel Tests](https://github.com/<org>/<repo>/actions/workflows/phpunit.yaml/badge.svg)
@@ -18,13 +14,12 @@
 ![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
 -->
 
-## TL;DR
+## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads
 
 A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local, or S3/GCS via adapters). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
 
-**Current production baseline centers on async create-folder flow and read-path/authz validations; other capabilities in this section remain aspirational target-state until promoted in the capability ledger.**
 
-**Key points:**
+## TL;DR ⚡
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
@@ -33,6 +28,8 @@ A multi-tenant, governance-first file management platform that operates on **rea
 - **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
 - **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
 
+> [!Note]
+> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
 ---
 
 ## Canonical doc map
