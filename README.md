@@ -20,7 +20,7 @@
 
 ## Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads
 
-⚡ A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local) ⚡/
+⚡ A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local) ⚡\
 It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
 
 </div>
