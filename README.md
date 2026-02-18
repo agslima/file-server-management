@@ -110,6 +110,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-022`](docs/capability-ledger.md#baseline-claims-implemented) | Audit coverage for read/list/download actions (`object.list`, `object.read`, `object.download`) | 🟡 | `cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v` |
 | [`CL-025`](docs/capability-ledger.md#baseline-claims-implemented) | Upload pipeline baseline: staged quarantine write + atomic promote (no partial final object visibility) | 🟡 | `cd file-engine && go test ./tests/integration -run TestStagedUploadAtomicPromote -v` |
 | [`CL-031`](docs/capability-ledger.md#baseline-claims-implemented) | Backend baseline smoke suite (composer install + phpunit) | ✅ | `cd backend && composer install --no-interaction && ./vendor/bin/phpunit -c phpunit.xml` |
+| [`CL-032`](docs/capability-ledger.md#baseline-claims-implemented) | Audit table append-only enforcement (UPDATE/DELETE rejected for app DB user) | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditEventsAppendOnlyEnforced -v` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
