@@ -89,3 +89,29 @@ func TestUploadServiceChecksumMismatch(t *testing.T) {
 		t.Fatalf("expected checksum mismatch")
 	}
 }
+
+func TestUploadServiceIdempotencyKeyCannotBeReusedAcrossTargets(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second})
+
+	if _, err := svc.UploadStream(context.Background(), "/tenants/acme/docs/a.txt", bytes.NewReader([]byte("abc")), "same-key"); err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+
+	if _, err := svc.UploadStream(context.Background(), "/tenants/acme/docs/b.txt", bytes.NewReader([]byte("abc")), "same-key"); err == nil {
+		t.Fatalf("expected idempotency key target conflict")
+	}
+}
+
+func TestUploadServiceIdempotencyReplayPreservesFailure(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusInfected, Engine: "stub"}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second, RequireCleanScan: true})
+
+	if _, err := svc.UploadStream(context.Background(), "/tenants/acme/docs/eicar.txt", bytes.NewReader([]byte("eicar")), "scan-key"); err == nil {
+		t.Fatalf("expected malware scan failure")
+	}
+
+	if _, err := svc.UploadStream(context.Background(), "/tenants/acme/docs/eicar.txt", bytes.NewReader([]byte("different")), "scan-key"); err == nil {
+		t.Fatalf("expected replay to return prior failure")
+	}
+}
