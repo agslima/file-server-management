@@ -13,7 +13,7 @@ This backend now includes a minimal runnable API surface that proxies to File En
 ```bash
 cd backend
 composer install
-composer test
+./scripts/smoke.sh
 ```
 
 These tests validate controller behavior for the thin vertical slice contract.
