@@ -44,14 +44,20 @@ type UploadService struct {
 
 	mu          sync.RWMutex
 	metadata    map[string]UploadMetadata
-	idempotency map[string]UploadMetadata
+	idempotency map[string]idempotencyRecord
+}
+
+type idempotencyRecord struct {
+	Path       string
+	Meta       UploadMetadata
+	ErrMessage string
 }
 
 func NewUploadService(st storage.Storage, scanner ports.MalwareScanner, policy UploadPolicy) *UploadService {
 	if policy.RequestTimeout <= 0 {
 		policy.RequestTimeout = 10 * time.Second
 	}
-	return &UploadService{st: st, scanner: scanner, policy: policy, metadata: map[string]UploadMetadata{}, idempotency: map[string]UploadMetadata{}}
+	return &UploadService{st: st, scanner: scanner, policy: policy, metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}}
 }
 
 func (s *UploadService) Upload(ctx context.Context, targetPath string, content []byte) (UploadMetadata, error) {
@@ -59,19 +65,26 @@ func (s *UploadService) Upload(ctx context.Context, targetPath string, content [
 }
 
 func (s *UploadService) UploadStream(ctx context.Context, targetPath string, content io.Reader, idempotencyKey string) (UploadMetadata, error) {
-	if idempotencyKey != "" {
-		s.mu.RLock()
-		if m, ok := s.idempotency[idempotencyKey]; ok {
-			s.mu.RUnlock()
-			return m, nil
-		}
-		s.mu.RUnlock()
-	}
-
 	normalized, err := security.NormalizeTenantPath(targetPath)
 	if err != nil {
 		return UploadMetadata{}, err
 	}
+
+	if idempotencyKey != "" {
+		s.mu.RLock()
+		if r, ok := s.idempotency[idempotencyKey]; ok {
+			s.mu.RUnlock()
+			if r.Path != normalized {
+				return UploadMetadata{}, errors.New("idempotency key already used for a different target path")
+			}
+			if r.ErrMessage != "" {
+				return r.Meta, errors.New(r.ErrMessage)
+			}
+			return r.Meta, nil
+		}
+		s.mu.RUnlock()
+	}
+
 	tenantID := tenantFromPath(normalized)
 	if tenantID == "" {
 		return UploadMetadata{}, errors.New("invalid tenant path")
@@ -123,7 +136,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	}
 	if s.policy.RequireCleanScan && scanStatus != ports.MalwareStatusClean {
 		meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: ports.MalwareStatusQuarantined, ScannedBy: scannedBy, CreatedAt: time.Now().UTC()}
-		s.storeMeta(meta, idempotencyKey)
+		s.storeMeta(meta, idempotencyKey, "malware scan gate blocked commit")
 		return meta, errors.New("malware scan gate blocked commit")
 	}
 
@@ -131,7 +144,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 		return UploadMetadata{}, err
 	}
 	meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: scanStatus, ScannedBy: scannedBy, CreatedAt: time.Now().UTC()}
-	s.storeMeta(meta, idempotencyKey)
+	s.storeMeta(meta, idempotencyKey, "")
 	return meta, nil
 }
 
@@ -170,12 +183,12 @@ func (s *UploadService) tenantUsage(tenantID string) (int64, int64) {
 	return total, count
 }
 
-func (s *UploadService) storeMeta(m UploadMetadata, idempotencyKey string) {
+func (s *UploadService) storeMeta(m UploadMetadata, idempotencyKey, errMessage string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.metadata[m.Path] = m
 	if idempotencyKey != "" {
-		s.idempotency[idempotencyKey] = m
+		s.idempotency[idempotencyKey] = idempotencyRecord{Path: m.Path, Meta: m, ErrMessage: errMessage}
 	}
 }
 
