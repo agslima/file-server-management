@@ -68,7 +68,7 @@ services:
       context: ./backend
     container_name: backend
     ports:
-      - "9000:9000"
+      - "8081:8081"
     environment:
       FILE_ENGINE_URL: http://file-engine:8080/v1
       DB_CONNECTION: sqlite
@@ -76,6 +76,12 @@ services:
       - ./backend:/var/www
     depends_on:
       - file-engine
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8081/healthz >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   nginx:
     image: nginx:1.25

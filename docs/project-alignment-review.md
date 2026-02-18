@@ -34,12 +34,12 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-018`).
+   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-025`).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
 3. **Backend maturity contract is consistent across core control docs.**
-   - `CL-018` validation expectations (composer + PHP syntax checks) are aligned across capability ledger, backend scoped guidance, and CI backend job.
+   - `CL-018` scaffold checks remain aligned, and `CL-020` now adds executable backend↔file-engine VS-001 E2E validation.
 4. **Target-state boundaries remain explicit.**
    - Upload pipeline, immutable sink, and full OTEL remain documented as target-state unless promoted by claim evidence.
 
@@ -118,8 +118,8 @@ What threatens sustainability:
 
 ### Priority 1 — Next 1-2 milestones
 
-1. **Add executable backend behavior tests for VS-001.**
-   - Move beyond syntax/config checks into HTTP contract tests that exercise forwarding and error propagation.
+1. **Promote VS-001 executable backend behavior checks in CI.**
+   - `CL-020` now provides docker-compose E2E proof; next step is wiring it into stable CI coverage.
 2. **Introduce branch-protection mapping docs for scoped jobs.**
    - Document which required checks should be protected unconditionally vs conditionally by change scope.
 3. **Keep canonical setup references tight.**
