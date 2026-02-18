@@ -34,7 +34,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-032`).
+   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-033`).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
