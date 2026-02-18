@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   changes:
+    name: Change Detection
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend_any_changed }}
@@ -46,6 +47,7 @@ jobs:
               - '**.md'
               
   backend:
+    name: Test Backend
     needs: changes
     if: ${{ needs.changes.outputs.backend == 'true' }} 
     permissions:
@@ -64,6 +66,7 @@ jobs:
           composer validate --strict
 
   frontend:
+    name: Test Frontend
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     permissions:
@@ -77,6 +80,7 @@ jobs:
           test ! -f frontend/package.json
 
   file-engine:
+    name: File Engine Go Checks
     needs: changes
     if: ${{ needs.changes.outputs.file_engine == 'true' }}
     permissions:
@@ -105,6 +109,7 @@ jobs:
           test -z "$(git status --porcelain)"
 
   doc-drift:
+    name: Doc Drift Check
     needs: changes
     if: ${{ needs.changes.outputs.docs == 'true' }}
     permissions:
