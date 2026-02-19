@@ -1,5 +1,10 @@
 # Roadmap — Staged Milestones
 
+[//]: # (owner: Platform Engineering)
+[//]: # (review_cadence: Monthly)
+[//]: # (last_reviewed: 2026-02-19)
+
+
 A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
 
 ---

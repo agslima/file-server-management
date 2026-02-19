@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/example/file-engine/internal/app/ports"
+	"github.com/example/file-engine/internal/logger"
+	"github.com/example/file-engine/internal/observability"
 	"github.com/example/file-engine/internal/security"
 	"github.com/example/file-engine/internal/storage"
 )
@@ -41,6 +43,7 @@ type UploadService struct {
 	st      storage.Storage
 	scanner ports.MalwareScanner
 	policy  UploadPolicy
+	log     *logger.Logger
 
 	mu          sync.RWMutex
 	metadata    map[string]UploadMetadata
@@ -54,10 +57,14 @@ type idempotencyRecord struct {
 }
 
 func NewUploadService(st storage.Storage, scanner ports.MalwareScanner, policy UploadPolicy) *UploadService {
+	return NewUploadServiceWithLogger(st, scanner, policy, nil)
+}
+
+func NewUploadServiceWithLogger(st storage.Storage, scanner ports.MalwareScanner, policy UploadPolicy, logg *logger.Logger) *UploadService {
 	if policy.RequestTimeout <= 0 {
 		policy.RequestTimeout = 10 * time.Second
 	}
-	return &UploadService{st: st, scanner: scanner, policy: policy, metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}}
+	return &UploadService{st: st, scanner: scanner, policy: policy, log: logg, metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}}
 }
 
 func (s *UploadService) Upload(ctx context.Context, targetPath string, content []byte) (UploadMetadata, error) {
@@ -126,12 +133,24 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	scanStatus := ports.MalwareStatusUnknown
 	scannedBy := ""
 	if s.scanner != nil {
+		scanStart := time.Now()
 		result, err := s.scanner.Scan(tctx, stagePath)
+		scanDurationMs := time.Since(scanStart).Milliseconds()
 		if err != nil {
 			scanStatus = ports.MalwareStatusUnknown
+			observability.DefaultMetrics.ObserveMalwareScanDurationMs(scanDurationMs)
+			observability.DefaultMetrics.IncMalwareScanVerdict(string(scanStatus))
+			if s.log != nil {
+				s.log.Event("warn", "upload.scan.completed", map[string]any{"path": normalized, "stage_path": stagePath, "scan_duration_ms": scanDurationMs, "scan_verdict": scanStatus, "scan_engine": "", "scan_error": err.Error()})
+			}
 		} else {
 			scanStatus = result.Status
 			scannedBy = result.Engine
+			observability.DefaultMetrics.ObserveMalwareScanDurationMs(scanDurationMs)
+			observability.DefaultMetrics.IncMalwareScanVerdict(string(scanStatus))
+			if s.log != nil {
+				s.log.Event("info", "upload.scan.completed", map[string]any{"path": normalized, "stage_path": stagePath, "scan_duration_ms": scanDurationMs, "scan_verdict": scanStatus, "scan_engine": scannedBy})
+			}
 		}
 	}
 	if s.policy.RequireCleanScan && scanStatus != ports.MalwareStatusClean {

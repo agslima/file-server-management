@@ -4,6 +4,11 @@
 
 # Server File Manager Platform (PHP + Go File Engine)
 
+[//]: # (owner: Project Maintainers)
+[//]: # (review_cadence: Quarterly)
+[//]: # (last_reviewed: 2026-02-19)
+
+
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
 ![Go Version](https://img.shields.io/badge/go-1.24+-blue)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
@@ -18,8 +23,8 @@
 ![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
 -->
 
-⚡️ **A governance-focused, multi-tenant file management platform written in Go an PHP** ⚡️ \
-Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
+⚡️ **A governance-focused, multi-tenant file management platform written in Go and PHP** ⚡️ \
+Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a baseline-validated **quarantine -> scan -> promote** guardrail flow (local semantics).
 
 </div>
 
@@ -28,9 +33,9 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
 - **Async mutations:** create (baseline) returns a `taskId`; move/upload are target-state; clients poll task status.
-- **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
-- **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
-- **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
+- **Secure uploads:** staged quarantine write + scan-gated promote behavior are baseline-validated, including non-stub ClamAV scanner integration evidence (clean + quarantined paths).
+- **Auditing:** persisted task status + task audit events + append-only DB enforcement + external sink delivery are baseline-validated.
+- **Observability:** correlation IDs are baseline; OTEL export wiring is baseline-validated for API + worker entrypoints; full backend pipeline/alerting remains target-state.
 
 > [!Note]
 > **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
@@ -118,6 +123,10 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-035`](docs/capability-ledger.md#baseline-claims-implemented) | Audit external sink delivery covers S3 WORM/Loki/SIEM adapters with retries + DLQ + lag metric | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditExternalSinkDeliveryWithDLQAndLagMetrics -v` |
 | [`CL-036`](docs/capability-ledger.md#baseline-claims-implemented) | `/readyz` checks DB+queue+storage dependencies with deterministic per-check JSON output | ✅ | `cd file-engine && go test ./internal/server -run "TestHandleReadyzReturnsReadyWhenChecksPass|TestHandleReadyzReturnsServiceUnavailableWhenAnyCheckFails|TestHandleReadyzWithoutChecksReturnsDeterministicReadyPayload" -v` |
 | [`CL-037`](docs/capability-ledger.md#baseline-claims-implemented) | Storage contract suite passes for local baseline backend (optional S3/GCS adapters are env-gated) | ✅ | `cd file-engine && go test ./internal/adapters/storage/local -run TestLocalStorageContractSuite -v` |
+| [`CL-038`](docs/capability-ledger.md#baseline-claims-implemented) | OTEL export wiring initialized for API + worker with deterministic endpoint parsing + safe no-endpoint fallback | ✅ | `cd file-engine && go test ./internal/observability -run "TestResolveTracingConfigDefaultsAndExporterToggle|TestInitTracingRejectsUnsupportedEndpointScheme|TestInitTracingWithoutExporterIsDeterministic" -v` |
+| [`CL-039`](docs/capability-ledger.md#baseline-claims-implemented) | External audit sink minimal env wiring validated for bucket/Loki/SIEM/S3-WORM adapters | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestBuildImmutableSinkFromEnvBucketWritesJSONL|TestBuildImmutableSinkFromEnvLokiPostsLine|TestBuildImmutableSinkFromEnvSIEMPostsNDJSONWithAuth|TestBuildImmutableSinkFromEnvS3WormWritesJSONL" -v` |
+| [`CL-040`](docs/capability-ledger.md#baseline-claims-implemented) | Real scanner integration (non-stub ClamAV adapter) validates clean + quarantined outcomes and emits scan duration/verdict metrics+logs | ✅ | `cd file-engine && go test ./tests/integration -run TestUploadRealScannerIntegrationEmitsMetricsAndLogs -v` |
+| [`CL-041`](docs/capability-ledger.md#baseline-claims-implemented) | Governance hardening: key-doc ownership metadata + quarterly alignment cadence + CI architecture conformance checks | ✅ | `./scripts/doc-ownership-check.sh && ./scripts/architecture-conformance-check.sh` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
@@ -150,7 +159,7 @@ This platform provides a centralized, permissioned interface that **controls and
 ### Write path (async)
 
 - Create folders (policy-enforced naming)
-- Upload files (two-step: initiate → complete) *(target-state)*
+- Upload storage guardrails (staged quarantine write + scan-gated promote) are baseline-validated in integration tests; public upload API surface remains target-state.
 - Move/rename/write operations *(as tasks; target-state)*
 
 ### Governance & security
@@ -158,7 +167,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - JWT auth (Bearer)
 - RBAC + path-based ACL (inheritance)
 - Multi-tenant enforcement via **server-side tenant mapping**
-- Upload quarantine + malware scan gate before publish *(target-state)*
+- Upload quarantine + malware scan gate before publish (baseline guardrails + non-stub scanner adapter integration are validated)
 - Dual-layer audit (queryable + tamper-resistant sink) with baseline-validated external sink delivery adapters
 
 ---
@@ -175,8 +184,9 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder + GetTaskStatus; uploads target-state)
+- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder + GetTaskStatus; upload APIs remain target-state)
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
+- OTEL tracer provider wiring is initialized in both API + worker entrypoints when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (baseline wiring claim `CL-038`)
 - Enqueues tasks; worker executes storage operations with least privilege
 
 ### Diagram (trust boundaries)
@@ -200,7 +210,7 @@ flowchart TB
   AV -->|verdict| W
 
   %% Audit
-  FE --> DB["(Postgres<br/>audit_events (append-only, target-state)<br/>ACL / mappings)"]
+  FE --> DB["(Postgres<br/>audit_events (append-only, baseline-validated)<br/>ACL / mappings)"]
   W --> DB
   DB --> SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
 ```
@@ -297,7 +307,7 @@ HTTP/JSON routes (baseline for CreateFolder + GetTaskStatus):
 - `POST /v1/folders` → `CreateFolder`
 - `GET /v1/tasks/{taskId}` → `GetTaskStatus`
 
-Upload HTTP routes remain target-state until the upload pipeline is implemented.
+Upload HTTP routes remain target-state until upload endpoints are promoted to baseline; storage-level upload guardrails are already baseline-validated via CL-025/CL-033.
 
 Task state model (canonical):
 
@@ -327,7 +337,7 @@ cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuth
 
 ## Key flows
 
-**Target-state upload flow (not baseline-validated):**
+**Target-state upload API flow (storage guardrails are baseline-validated; endpoint contract is not yet baseline-promoted):**
 
 ```mermaid
 sequenceDiagram
@@ -387,7 +397,7 @@ Secure-by-default controls:
 - Deny-by-default authorization at File Engine
 - Tenant scope from server-side mapping (not JWT)
 - Strict path normalization + traversal rejection
-- Quarantine → scan → promote gating *(target-state)*
+- Quarantine → scan → promote gating (baseline guardrails validated in local integration tests; real scanner integration target-state)
 - Redaction policy: never log tokens or pre-signed URLs
 
 Known gaps / planned hardening (examples):
@@ -402,10 +412,10 @@ Known gaps / planned hardening (examples):
 
 ## Auditing
 
-**Dual-layer audit (target-state vision):**
+**Dual-layer audit:**
 
-- **Primary (queryable)**: Postgres `audit_events` table (append-only, target-state)
-- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM) with retries + DLQ + lag metric (`CL-035`)
+- **Primary (queryable)**: Postgres `audit_events` table (append-only enforcement baseline-validated in `CL-032`)
+- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM) with retries + DLQ + lag metric baseline-validated in `CL-035`
 
 **Baseline audit behavior:**
 
@@ -464,7 +474,7 @@ cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 
 ### 3) Optional: local File Engine run (scaffold-level, for debugging)
 
-This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are baseline for `CreateFolder` + `GetTaskStatus`; uploads remain target-state. Treat this path as a debug path beyond baseline behavior.
+This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are baseline for `CreateFolder` + `GetTaskStatus`; upload endpoints remain target-state even though storage-level upload guardrails are baseline-validated in tests. Treat this path as a debug path beyond baseline behavior.
 
 ```bash
 cd file-engine

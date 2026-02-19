@@ -80,12 +80,12 @@ func (c *Container) Servers() *Servers {
 	auditor := tasks.NewDualLayerAuditEmitter(c.Logger, pgPool, getenv("AUDIT_IMMUTABLE_SINK_PATH"))
 
 	objSvc := services.NewObjectService(st)
-	uploadSvc := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{
+	uploadSvc := services.NewUploadServiceWithLogger(st, adaptersecurity.BuildMalwareScannerFromEnv(), services.UploadPolicy{
 		MaxObjectSizeBytes: envInt64("UPLOAD_MAX_OBJECT_SIZE_BYTES", 10*1024*1024),
 		TenantQuotaBytes:   envInt64("UPLOAD_TENANT_QUOTA_BYTES", 100*1024*1024),
 		RequestTimeout:     time.Duration(envInt64("UPLOAD_REQUEST_TIMEOUT_MS", 30000)) * time.Millisecond,
 		RequireCleanScan:   strings.EqualFold(getenv("UPLOAD_REQUIRE_CLEAN_SCAN"), "true"),
-	})
+	}, c.Logger)
 	grpcHandler := handlers.NewGRPCHandler(q, objSvc, uploadSvc, aclStore, tenantResolver, c.Logger, auditor)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
