@@ -54,8 +54,6 @@ Legend:
 ### Implementation status (baseline)
 
 Every baseline claim is mapped to a claim ID and runnable command in the capability ledger.
-
-<details><summary><b>See more details</b></summary>
   
 | Claim ID | Capability | Status | Runnable validation |
 | :-- | :-- | :--: | :-- |
@@ -86,8 +84,6 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-034`](docs/capability-ledger.md#baseline-claims-implemented) | Curated ledger baseline gate script runs in CI to catch regressions | ✅ | `./scripts/ledger-baseline.sh` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
-
-</details>
 
 ---
 
