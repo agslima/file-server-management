@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 WORKDIR /src
 COPY . .
 RUN go build -o /bin/worker ./cmd/worker

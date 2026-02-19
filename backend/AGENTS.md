@@ -17,7 +17,7 @@ If guidance conflicts, prefer the same order above.
 
 - `backend/` is currently scaffold-level, not a feature-complete control plane.
 - Do **not** present backend endpoints as production-ready unless validated by runnable checks.
-- Keep claims aligned with the ledger (`CL-008` + `CL-018` currently define the backend scaffold contract).
+- Keep claims aligned with the ledger (`CL-008`, `CL-018`, and `CL-031` define the backend baseline contract).
 
 ## Change expectations for backend edits
 
@@ -35,6 +35,7 @@ Run from repository root unless noted:
 
 - `cd backend && composer validate --strict`
 - `cd backend && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php`
+- `cd backend && ./scripts/smoke.sh`
 
 If you add executable backend behavior, also add/update focused tests and include exact commands used to validate.
 

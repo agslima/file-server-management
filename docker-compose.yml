@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   redis:
     image: redis:7.2
@@ -20,6 +18,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./file-engine/db/migrations:/docker-entrypoint-initdb.d:ro
 
   file-engine:
     build:
@@ -34,6 +33,7 @@ services:
       POSTGRES_DSN: postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable
       FILE_BASE_ROOT: /mnt/files
       STORAGE_BACKEND: local
+      JWT_SECRET: dev-secret
     volumes:
       - file_data:/mnt/files
     depends_on:
@@ -56,6 +56,7 @@ services:
       POSTGRES_DSN: postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable
       FILE_BASE_ROOT: /mnt/files
       STORAGE_BACKEND: local
+      JWT_SECRET: dev-secret
     depends_on:
       - redis
       - postgres
@@ -68,14 +69,24 @@ services:
       context: ./backend
     container_name: backend
     ports:
-      - "9000:9000"
+      - "8081:8081"
     environment:
       FILE_ENGINE_URL: http://file-engine:8080/v1
+      FILE_ENGINE_BEARER_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdfQ.i_BpqphP_nb5kHJmT7ygLysGY87_p40biL0t3SIA26Q
       DB_CONNECTION: sqlite
     volumes:
       - ./backend:/var/www
+      - backend_vendor:/var/www/vendor
+      - backend_storage:/var/www/storage
+      - backend_bootstrap_cache:/var/www/bootstrap/cache
     depends_on:
       - file-engine
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8081/healthz >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   nginx:
     image: nginx:1.25
@@ -92,3 +103,6 @@ volumes:
   redis_data:
   file_data:
   pgdata:
+  backend_vendor:
+  backend_storage:
+  backend_bootstrap_cache:

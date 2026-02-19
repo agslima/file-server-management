@@ -94,7 +94,7 @@ type auditEvent struct {
 	correlationID string
 }
 
-func (a *inMemoryAuditor) EmitTaskEvent(_ context.Context, event, taskID, correlationID, _ string) {
+func (a *inMemoryAuditor) EmitTaskEvent(_ context.Context, event, taskID, correlationID, _ string, _ ...map[string]string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.events = append(a.events, auditEvent{event: event, taskID: taskID, correlationID: correlationID})

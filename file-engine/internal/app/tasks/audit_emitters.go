@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"strings"
 	"time"
 
@@ -25,11 +26,14 @@ type postgresAuditEmitter struct {
 	log  *logger.Logger
 }
 
-func (e *postgresAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string) {
+func (e *postgresAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string, extra ...map[string]string) {
 	if e.pool == nil {
 		return
 	}
 	metadata := map[string]string{"source": "file-engine-worker"}
+	if len(extra) > 0 && extra[0] != nil {
+		maps.Copy(metadata, extra[0])
+	}
 	metaJSON, err := json.Marshal(metadata)
 	if err != nil {
 		e.log.Event("warn", "audit metadata marshal failed", map[string]any{"event": event, "task_id": taskID, "error": err.Error()})
@@ -51,14 +55,18 @@ type sinkAuditEmitter struct {
 	log  *logger.Logger
 }
 
-func (e *sinkAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string) {
+func (e *sinkAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string, extra ...map[string]string) {
+	metadata := map[string]string{"source": "file-engine-worker", "sink": e.sink.Type()}
+	if len(extra) > 0 && extra[0] != nil {
+		maps.Copy(metadata, extra[0])
+	}
 	rec := auditEventRecord{
 		Event:         event,
 		TaskID:        taskID,
 		CorrelationID: correlationID,
 		Message:       message,
 		CreatedAt:     time.Now().UTC(),
-		Metadata:      map[string]string{"source": "file-engine-worker", "sink": e.sink.Type()},
+		Metadata:      metadata,
 	}
 	b, err := json.Marshal(rec)
 	if err != nil {
@@ -77,9 +85,9 @@ type multiAuditEmitter struct {
 	emitters []AuditEmitter
 }
 
-func (m *multiAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string) {
+func (m *multiAuditEmitter) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string, metadata ...map[string]string) {
 	for _, e := range m.emitters {
-		e.EmitTaskEvent(ctx, event, taskID, correlationID, message)
+		e.EmitTaskEvent(ctx, event, taskID, correlationID, message, metadata...)
 	}
 }
 
