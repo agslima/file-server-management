@@ -46,6 +46,7 @@ This ledger is the canonical claim-to-validation source for the repository.
 | `CL-034` | Ledger baseline gate runs curated baseline validations in CI and blocks regressions | ✅ | `./scripts/ledger-baseline.sh` | Exit code `0`; CI `Ledger Baseline Gate` job passes |
 | `CL-035` | Audit external sink delivery supports S3 WORM/Loki/SIEM adapters with retries + DLQ and publishes sink lag metric | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditExternalSinkDeliveryWithDLQAndLagMetrics -v` | `PASS`; test validates S3 WORM adapter writes JSONL object, Loki payload delivery, SIEM retry->DLQ behavior, and `fileengine_audit_sink_lag_ms` updates |
 | `CL-036` | `/readyz` executes deterministic DB+queue+storage dependency checks and returns stable per-check JSON state | ✅ | `cd file-engine && go test ./internal/server -run "TestHandleReadyzReturnsReadyWhenChecksPass|TestHandleReadyzReturnsServiceUnavailableWhenAnyCheckFails|TestHandleReadyzWithoutChecksReturnsDeterministicReadyPayload" -v` | `PASS`; tests assert deterministic check ordering and explicit status for `db`, `queue`, and `storage` checks |
+| `CL-037` | Storage contract suite enforces shared backend behavior and passes for local baseline (S3/GCS optional via env) | ✅ | `cd file-engine && go test ./internal/adapters/storage/local -run TestLocalStorageContractSuite -v` | `PASS`; local backend satisfies create/write/open/list/move/delete contract; S3/GCS suite entrypoints are present and env-gated |
 
 ## Domain capability ledger (by area)
 

@@ -117,6 +117,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-034`](docs/capability-ledger.md#baseline-claims-implemented) | Curated ledger baseline gate script runs in CI to catch regressions | ✅ | `./scripts/ledger-baseline.sh` |
 | [`CL-035`](docs/capability-ledger.md#baseline-claims-implemented) | Audit external sink delivery covers S3 WORM/Loki/SIEM adapters with retries + DLQ + lag metric | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditExternalSinkDeliveryWithDLQAndLagMetrics -v` |
 | [`CL-036`](docs/capability-ledger.md#baseline-claims-implemented) | `/readyz` checks DB+queue+storage dependencies with deterministic per-check JSON output | ✅ | `cd file-engine && go test ./internal/server -run "TestHandleReadyzReturnsReadyWhenChecksPass|TestHandleReadyzReturnsServiceUnavailableWhenAnyCheckFails|TestHandleReadyzWithoutChecksReturnsDeterministicReadyPayload" -v` |
+| [`CL-037`](docs/capability-ledger.md#baseline-claims-implemented) | Storage contract suite passes for local baseline backend (optional S3/GCS adapters are env-gated) | ✅ | `cd file-engine && go test ./internal/adapters/storage/local -run TestLocalStorageContractSuite -v` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
