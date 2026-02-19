@@ -66,7 +66,7 @@ This section summarizes capability status by domain with ownership, acceptance t
 The following areas remain target-state and are not currently baseline-gated by CI:
 
 - Enterprise identity integrations (AD/LDAP/OIDC broker)
-- Malware-gated upload promotion pipeline end-to-end with real scanner integration (non-stub)
+- Malware-gated upload promotion pipeline end-to-end with **real scanner integration** (non-stub) + operational controls (DLQ/metrics/runbooks)
 - Full OpenTelemetry backend export + alerting pipeline
 
 Promote these to baseline only when each has a dedicated runnable validation command.
