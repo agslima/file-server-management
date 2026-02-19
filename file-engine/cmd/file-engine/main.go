@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,11 +10,23 @@ import (
 	"github.com/example/file-engine/internal/config"
 	"github.com/example/file-engine/internal/di"
 	"github.com/example/file-engine/internal/logger"
+	"github.com/example/file-engine/internal/observability"
 )
 
 func main() {
 	cfg := config.LoadFromEnv()
 	logg := logger.New(cfg.LogLevel)
+
+	traceCfg := observability.ResolveTracingConfigFromEnv("file-engine-api")
+	shutdownTracing, err := observability.InitTracing(context.Background(), traceCfg)
+	if err != nil {
+		logg.Fatalf("tracing init: %v", err)
+	}
+	defer func() {
+		if shutdownErr := shutdownTracing(context.Background()); shutdownErr != nil {
+			logg.Warnf("tracing shutdown: %v", shutdownErr)
+		}
+	}()
 
 	container := di.BuildContainer(cfg, logg)
 

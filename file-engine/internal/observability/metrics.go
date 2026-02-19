@@ -64,6 +64,8 @@ type Metrics struct {
 	queueLagMs          durationSummary
 	auditSinkLagMs      atomic.Int64
 	uploadDurationMs    durationSummary
+	malwareScanDuration durationSummary
+	malwareScanVerdicts counterVec
 
 	statusTransitions sync.Map
 	httpRequests      counterVec
@@ -152,6 +154,21 @@ func (m *Metrics) ObserveUploadDurationMs(d int64) {
 	m.uploadDurationMs.observe(d)
 }
 
+func (m *Metrics) ObserveMalwareScanDurationMs(d int64) {
+	if d < 0 {
+		d = 0
+	}
+	m.malwareScanDuration.observe(d)
+}
+
+func (m *Metrics) IncMalwareScanVerdict(verdict string) {
+	v := sanitizeLabel(strings.ToLower(strings.TrimSpace(verdict)))
+	if v == "" {
+		v = "unknown"
+	}
+	m.malwareScanVerdicts.inc(v)
+}
+
 func (m *Metrics) SnapshotPrometheus() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# HELP fileengine_queue_depth Current queue depth\n")
@@ -195,6 +212,11 @@ func (m *Metrics) SnapshotPrometheus() string {
 	fmt.Fprintf(&b, "fileengine_upload_duration_ms_count %d\n", uCount)
 	fmt.Fprintf(&b, "fileengine_upload_duration_ms_sum %d\n", uSum)
 	fmt.Fprintf(&b, "fileengine_upload_duration_ms_max %d\n", uMax)
+	sCount, sSum, sMax := m.malwareScanDuration.snapshot()
+	fmt.Fprintf(&b, "fileengine_malware_scan_duration_ms_count %d\n", sCount)
+	fmt.Fprintf(&b, "fileengine_malware_scan_duration_ms_sum %d\n", sSum)
+	fmt.Fprintf(&b, "fileengine_malware_scan_duration_ms_max %d\n", sMax)
+	emitCounterVec(&b, "fileengine_malware_scan_verdict_total", []string{"verdict"}, m.malwareScanVerdicts.snapshot())
 
 	emitCounterVec(&b, "fileengine_http_requests_total", []string{"method", "route", "status"}, m.httpRequests.snapshot())
 	emitCounterVec(&b, "fileengine_grpc_requests_total", []string{"method", "code"}, m.grpcRequests.snapshot())

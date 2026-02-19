@@ -1,5 +1,10 @@
 # Platform Architecture — Server File Manager (Laravel + Go)
 
+[//]: # (owner: Platform Engineering)
+[//]: # (review_cadence: Quarterly)
+[//]: # (last_reviewed: 2026-02-19)
+
+
 This document describes the platform-level architecture: components, trust boundaries, data flows, and operational characteristics.
 
 Baseline onboarding is `./file-engine/scripts/dev.sh`; repository-root `docker-compose.yml` is the canonical compose entry point. See `docs/setup.md` for canonical paths.

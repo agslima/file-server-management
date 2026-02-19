@@ -113,6 +113,34 @@ func (s *lokiSink) WriteLine(ctx context.Context, line []byte) error {
 	return nil
 }
 
+type siemSink struct {
+	endpoint string
+	apiKey   string
+	client   *http.Client
+}
+
+func (s *siemSink) Type() string { return "siem" }
+
+func (s *siemSink) WriteLine(ctx context.Context, line []byte) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.endpoint, bytes.NewReader(append(line, '\n')))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-ndjson")
+	if s.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	}
+	resp, err := s.client.Do(req) // #nosec G704 -- endpoint is validated at sink construction and is operator-configured
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("siem returned status %d", resp.StatusCode)
+	}
+	return nil
+}
+
 type fileDeadLetterWriter struct {
 	path string
 	mu   sync.Mutex
@@ -164,6 +192,10 @@ func (s *retryingSink) WriteLine(ctx context.Context, line []byte) error {
 	for i := 1; i <= attempts; i++ {
 		err = s.sink.WriteLine(ctx, line)
 		if err == nil {
+			var rec auditEventRecord
+			if jsonErr := json.Unmarshal(line, &rec); jsonErr == nil && !rec.CreatedAt.IsZero() {
+				observability.DefaultMetrics.SetAuditSinkLagMs(time.Since(rec.CreatedAt).Milliseconds())
+			}
 			return nil
 		}
 		if i < attempts {
@@ -213,6 +245,16 @@ func BuildImmutableSinkFromEnv(logg *logger.Logger, legacyPath string) Immutable
 			root = filepath.Join(os.TempDir(), "audit-bucket")
 		}
 		base = &localBucketSink{rootDir: root, bucket: bucket, prefix: strings.TrimSpace(os.Getenv("AUDIT_BUCKET_PREFIX"))}
+	case "s3", "s3worm", "s3_worm":
+		bucket := strings.TrimSpace(os.Getenv("AUDIT_S3_BUCKET"))
+		if bucket == "" {
+			return nil
+		}
+		root := strings.TrimSpace(os.Getenv("AUDIT_S3_LOCAL_DIR"))
+		if root == "" {
+			root = filepath.Join(os.TempDir(), "audit-s3-worm")
+		}
+		base = &localBucketSink{rootDir: root, bucket: bucket, prefix: strings.TrimSpace(os.Getenv("AUDIT_S3_PREFIX"))}
 	case "loki":
 		endpoint := strings.TrimSpace(os.Getenv("AUDIT_LOKI_ENDPOINT"))
 		if endpoint == "" {
@@ -223,6 +265,20 @@ func BuildImmutableSinkFromEnv(logg *logger.Logger, legacyPath string) Immutable
 			return nil
 		}
 		base = &lokiSink{endpoint: endpoint, client: &http.Client{Timeout: 5 * time.Second}}
+	case "siem":
+		endpoint := strings.TrimSpace(os.Getenv("AUDIT_SIEM_ENDPOINT"))
+		if endpoint == "" {
+			return nil
+		}
+		u, err := url.Parse(endpoint)
+		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+			return nil
+		}
+		base = &siemSink{
+			endpoint: endpoint,
+			apiKey:   strings.TrimSpace(os.Getenv("AUDIT_SIEM_API_KEY")),
+			client:   &http.Client{Timeout: 5 * time.Second},
+		}
 	default:
 		return nil
 	}

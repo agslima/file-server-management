@@ -41,6 +41,12 @@ type readinessCheck struct {
 	fn   func(context.Context) error
 }
 
+type readinessCheckResult struct {
+	Name   string `json:"name"`
+	Ready  bool   `json:"ready"`
+	Reason string `json:"reason,omitempty"`
+}
+
 type HTTPServer struct {
 	Addr     string
 	GRPCAddr string
@@ -203,27 +209,30 @@ func (w *statusWriter) WriteHeader(statusCode int) {
 }
 
 func (h *HTTPServer) handleReadyz(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	if len(h.ReadyChecks) == 0 {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ready"))
+		_ = json.NewEncoder(w).Encode(map[string]any{"ready": true, "checks": []readinessCheckResult{}})
 		return
 	}
-	failed := map[string]string{}
+	results := make([]readinessCheckResult, 0, len(h.ReadyChecks))
+	allReady := true
 	for _, c := range h.ReadyChecks {
 		cctx, cancel := context.WithTimeout(r.Context(), 1500*time.Millisecond)
 		err := c.fn(cctx)
 		cancel()
 		if err != nil {
-			failed[c.name] = err.Error()
+			allReady = false
+			results = append(results, readinessCheckResult{Name: c.name, Ready: false, Reason: err.Error()})
+			continue
 		}
+		results = append(results, readinessCheckResult{Name: c.name, Ready: true})
 	}
-	if len(failed) > 0 {
-		w.Header().Set("Content-Type", "application/json")
+	if !allReady {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(map[string]any{"ready": false, "failed": failed})
+		_ = json.NewEncoder(w).Encode(map[string]any{"ready": false, "checks": results})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{"ready": true})
+	_ = json.NewEncoder(w).Encode(map[string]any{"ready": true, "checks": results})
 }

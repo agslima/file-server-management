@@ -1,6 +1,23 @@
 # Roadmap — Staged Milestones
 
+[//]: # (owner: Platform Engineering)
+[//]: # (review_cadence: Monthly)
+[//]: # (last_reviewed: 2026-02-19)
+
 A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
+
+---
+
+## Current status snapshot (2026-02-19)
+
+| Milestone | Status | Ledger evidence |
+| :-- | :--: | :-- |
+| Milestone 0 — Baseline Integrity | ✅ done | `CL-011`, `CL-034`, `CL-041` |
+| Milestone 1 — Read Path Baseline | ✅ done | `CL-012` |
+| Milestone 2 — Write Path Baseline | ✅ done | `CL-003`, `CL-004`, `CL-005`, `CL-017`, `CL-020` |
+| Milestone 3 — Upload Pipeline | ✅ done | `CL-025`, `CL-033`, `CL-040` |
+| Milestone 4 — Observability & Audit Sink | ✅ done | `CL-035`, `CL-038`, `CL-039` |
+| Milestone 5 — Governance Hardening | ✅ done | `CL-041` |
 
 ---
 
@@ -78,6 +95,24 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 1. Doc ownership metadata added to key docs.
 2. Quarterly alignment review cadence documented.
 3. Architecture conformance checks in CI (proto sync, endpoint inventory).
+
+---
+
+## Milestone 6 — Target-State Hardening Promotions (16–24 weeks)
+
+**Goal:** Convert currently documented target-state controls into baseline-validated capabilities.
+
+**Completion criteria**
+
+1. Enterprise identity integrations (AD/LDAP/OIDC broker) are implemented behind explicit config gates and validated with runnable auth flow checks.
+2. Upload pipeline operational hardening is baseline-validated:
+   - scanner deployment + failure-mode runbook published,
+   - failure retry/DLQ controls are validated with deterministic tests,
+   - SLO-aligned scanner alerts are documented and testable.
+3. Full OTEL backend export + alerting pipeline hardening is baseline-validated:
+   - collector/backend connectivity checks are runnable,
+   - alerting/runbook paths are documented with deterministic verification steps.
+4. Each promoted area is added to `docs/capability-ledger.md` with new claim IDs, runnable validation commands, and CI evidence before README baseline language changes.
 
 ---
 

@@ -13,12 +13,24 @@ import (
 	"github.com/example/file-engine/internal/app/tasks"
 	"github.com/example/file-engine/internal/config"
 	"github.com/example/file-engine/internal/logger"
+	"github.com/example/file-engine/internal/observability"
 	storagefactory "github.com/example/file-engine/internal/storage/factory"
 )
 
 func main() {
 	cfg := config.LoadFromEnv()
 	logg := logger.New(cfg.LogLevel)
+
+	traceCfg := observability.ResolveTracingConfigFromEnv("file-engine-worker")
+	shutdownTracing, err := observability.InitTracing(context.Background(), traceCfg)
+	if err != nil {
+		logg.Fatalf("tracing init: %v", err)
+	}
+	defer func() {
+		if shutdownErr := shutdownTracing(context.Background()); shutdownErr != nil {
+			logg.Warnf("tracing shutdown: %v", shutdownErr)
+		}
+	}()
 
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
 	q := redisq.NewRedisQueue(rdb)

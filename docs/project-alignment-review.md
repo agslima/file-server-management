@@ -1,5 +1,10 @@
 # Project Alignment & Improvement Review
 
+[//]: # (owner: Project Maintainers)
+[//]: # (review_cadence: Quarterly)
+[//]: # (last_reviewed: 2026-02-19)
+
+
 **Last verified:** 2026-02-18
 
 ## Scope and evidence base
@@ -34,14 +39,14 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-034`).
+   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-037`).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
 3. **Backend maturity contract is consistent across core control docs.**
    - `CL-018` backend scaffold checks are now baseline-marked, `CL-020` adds executable backend↔file-engine VS-001 E2E validation, and `CL-031` tracks backend smoke execution (composer install + phpunit).
 4. **Target-state boundaries remain explicit.**
-   - Upload pipeline, immutable sink, and full OTEL remain documented as target-state unless promoted by claim evidence.
+   - Upload pipeline and full OTEL remain documented as target-state unless promoted by claim evidence; immutable sink delivery is now promoted by claim evidence (`CL-035`).
 
 ### Alignment corrections completed in this cycle
 
@@ -119,7 +124,7 @@ What threatens sustainability:
 ### Priority 1 — Next 1-2 milestones
 
 1. **Promote VS-001 executable backend behavior checks in CI.**
-   - `CL-020` now provides docker-compose E2E proof; next step is wiring it into stable CI coverage.
+   - `CL-020` is now CI-gated with docker-compose E2E coverage and deterministic `E2E_OK` output for machine checks.
 2. **Introduce branch-protection mapping docs for scoped jobs.**
    - Document which required checks should be protected unconditionally vs conditionally by change scope.
 3. **Keep canonical setup references tight.**
@@ -138,7 +143,7 @@ What threatens sustainability:
 
 ## 4) Final assessment
 
-The project is **well-governed for its current maturity stage** and now has tighter policy-to-enforcement consistency than the previous baseline. The highest-value next step is to convert improved documentation/process rigor into broader multi-owner operational resilience and deeper backend executable validation.
+The project is **well-governed for its current maturity stage** and now has tighter policy-to-enforcement consistency than the previous baseline. With `CL-020`, `CL-022`, and `CL-025` promoted through deterministic checks, the highest-value next step is broader multi-owner operational resilience.
 
 ---
 
