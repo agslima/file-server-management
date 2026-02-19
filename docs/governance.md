@@ -1,5 +1,10 @@
 # Governance — Merge Gates & Workflow Policy
 
+[//]: # (owner: Project Maintainers)
+[//]: # (review_cadence: Quarterly)
+[//]: # (last_reviewed: 2026-02-19)
+
+
 This document defines the **required checks for merge** and how advanced security workflows are handled. The goal is a compact, reliable core gate that scales with the project, while keeping advanced security checks running in CI with clear promotion criteria into branch-protection requirements.
 
 ---
@@ -38,6 +43,12 @@ These workflows continue to run but do not gate merges until they are stable and
 When any of these are promoted to required, update this doc and the branch protection rules together.
 
 ---
+
+## Quarterly alignment review cadence
+
+- Alignment review is updated **quarterly** in `docs/project-alignment-review.md` (minimum cadence: once per quarter).
+- Each quarterly review must refresh evidence commands and confirm README/ledger/governance consistency.
+- Ownership metadata for key docs is enforced by `./scripts/doc-ownership-check.sh`.
 
 ## Enforcement checklist (for maintainers)
 

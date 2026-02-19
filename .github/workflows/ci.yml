@@ -136,6 +136,12 @@ jobs:
       - name: Doc drift check
         run: ./scripts/doc-drift-check.sh
 
+      - name: Doc ownership metadata check
+        run: ./scripts/doc-ownership-check.sh
+
+      - name: Architecture conformance check (proto sync + endpoint inventory)
+        run: ./scripts/architecture-conformance-check.sh
+
   ledger-baseline:
     name: Ledger Baseline Gate
     needs: changes

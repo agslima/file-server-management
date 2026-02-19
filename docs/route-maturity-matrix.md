@@ -1,5 +1,10 @@
 # Route Maturity Matrix
 
+[//]: # (owner: API/Contract)
+[//]: # (review_cadence: Per release)
+[//]: # (last_reviewed: 2026-02-19)
+
+
 This matrix summarizes API route maturity by transport, links each route to claim IDs, and points to runnable validations.
 
 ## Baseline routes (implemented)

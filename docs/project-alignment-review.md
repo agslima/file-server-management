@@ -1,5 +1,10 @@
 # Project Alignment & Improvement Review
 
+[//]: # (owner: Project Maintainers)
+[//]: # (review_cadence: Quarterly)
+[//]: # (last_reviewed: 2026-02-19)
+
+
 **Last verified:** 2026-02-18
 
 ## Scope and evidence base
