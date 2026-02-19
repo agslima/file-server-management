@@ -83,3 +83,6 @@ else
   echo "folder_exists=false"
   exit 1
 fi
+
+echo "[PASS] CL-020"
+echo "E2E_OK"

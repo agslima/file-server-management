@@ -3,9 +3,10 @@ package integration
 import (
 	"bytes"
 	"context"
-	"maps"
-	"sync"
+	"encoding/json"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
 	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
@@ -13,6 +14,7 @@ import (
 	"github.com/example/file-engine/internal/handlers"
 	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -40,47 +42,23 @@ func (s *auditDownloadCaptureStream) Send(chunk *pb.DownloadChunk) error {
 	return nil
 }
 
-type auditEventRow struct {
-	eventType     string
-	correlationID string
-	metadata      map[string]string
-}
+type postgresAuditStore struct{ pool *pgxpool.Pool }
 
-type auditEventStore struct {
-	mu   sync.Mutex
-	rows []auditEventRow
-}
-
-func (s *auditEventStore) EmitTaskEvent(_ context.Context, event, _, correlationID, _ string, metadata ...map[string]string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	meta := map[string]string{}
+func (s *postgresAuditStore) EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string, metadata ...map[string]string) {
+	metaJSON, _ := json.Marshal(map[string]string{})
 	if len(metadata) > 0 && metadata[0] != nil {
-		maps.Copy(meta, metadata[0])
+		metaJSON, _ = json.Marshal(metadata[0])
 	}
-
-	s.rows = append(s.rows, auditEventRow{
-		eventType:     event,
-		correlationID: correlationID,
-		metadata:      meta,
-	})
-}
-
-func (s *auditEventStore) queryByActions(actions map[string]bool) []auditEventRow {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	var out []auditEventRow
-	for _, row := range s.rows {
-		if actions[row.eventType] {
-			out = append(out, row)
-		}
-	}
-	return out
+	_, _ = s.pool.Exec(ctx, `INSERT INTO audit_events (event_type, task_id, correlation_id, message, metadata) VALUES ($1,$2,$3,$4,$5::jsonb)`, event, taskID, correlationID, message, string(metaJSON))
 }
 
 func TestAuditEventsEmittedForReadListDownload(t *testing.T) {
-	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	pool := mustConnectAuditDB(t, ctx)
+	defer pool.Close()
+	mustResetAuditEvents(t, ctx, pool)
 
 	root := t.TempDir()
 	storage := localstorage.New(root)
@@ -95,68 +73,59 @@ func TestAuditEventsEmittedForReadListDownload(t *testing.T) {
 		t.Fatalf("set acl: %v", err)
 	}
 
-	audits := &auditEventStore{}
-	h := handlers.NewGRPCHandler(
-		auditQueueStub{},
-		objectService,
-		nil,
-		acl,
-		auth.NewInMemoryTenantResolver(map[string][]string{"alice": {"acme"}}),
-		nil,
-		audits,
-	)
+	h := handlers.NewGRPCHandler(auditQueueStub{}, objectService, nil, acl, auth.NewInMemoryTenantResolver(map[string][]string{"alice": {"acme"}}), nil, &postgresAuditStore{pool: pool})
 
+	correlationID := fmt.Sprintf("corr-read-audit-%d", time.Now().UnixNano())
 	baseCtx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{}})
-	ctx := metadata.NewIncomingContext(baseCtx, metadata.Pairs("x-request-id", "corr-read-audit-1"))
+	requestCtx := metadata.NewIncomingContext(baseCtx, metadata.Pairs("x-request-id", correlationID))
 
-	if err := storage.CreateFolder(ctx, "/tenants/acme/projects"); err != nil {
+	if err := storage.CreateFolder(requestCtx, "/tenants/acme/projects"); err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
-	if err := storage.AtomicWrite(ctx, "/tenants/acme/projects/readme.txt", bytes.NewBufferString("hello")); err != nil {
+	if err := storage.AtomicWrite(requestCtx, "/tenants/acme/projects/readme.txt", bytes.NewBufferString("hello")); err != nil {
 		t.Fatalf("write file: %v", err)
 	}
 
-	if _, err := h.ListObjects(ctx, &pb.ListObjectsRequest{Prefix: "/tenants/acme/projects"}); err != nil {
+	if _, err := h.ListObjects(requestCtx, &pb.ListObjectsRequest{Prefix: "/tenants/acme/projects"}); err != nil {
 		t.Fatalf("list objects failed: %v", err)
 	}
-
-	stream := &auditDownloadCaptureStream{ctx: ctx}
+	stream := &auditDownloadCaptureStream{ctx: requestCtx}
 	if err := h.DownloadObject(&pb.DownloadObjectRequest{Path: "/tenants/acme/projects/readme.txt"}, stream); err != nil {
 		t.Fatalf("download object failed: %v", err)
 	}
 
-	actionRows := audits.queryByActions(map[string]bool{
-		"object.list":     true,
-		"object.read":     true,
-		"object.download": true,
-	})
-	if len(actionRows) < 3 {
-		t.Fatalf("expected at least 3 read/list/download audit rows, got %d (%+v)", len(actionRows), actionRows)
+	rows, err := pool.Query(ctx, `SELECT event_type, correlation_id, metadata::text FROM audit_events WHERE correlation_id = $1 AND event_type IN ('object.list','object.read','object.download')`, correlationID)
+	if err != nil {
+		t.Fatalf("query audit rows: %v", err)
 	}
+	defer rows.Close()
 
 	seen := map[string]bool{}
-	for _, row := range actionRows {
-		seen[row.eventType] = true
-		if row.correlationID == "" {
-			t.Fatalf("expected correlation_id for row %+v", row)
+	count := 0
+	for rows.Next() {
+		var eventType, rowCorrelationID, metadataJSON string
+		if err := rows.Scan(&eventType, &rowCorrelationID, &metadataJSON); err != nil {
+			t.Fatalf("scan audit row: %v", err)
 		}
-		if row.metadata["tenant_id"] == "" {
-			t.Fatalf("expected tenant_id metadata for row %+v", row)
+		var meta map[string]any
+		if err := json.Unmarshal([]byte(metadataJSON), &meta); err != nil {
+			t.Fatalf("decode metadata json: %v", err)
 		}
-		if row.metadata["actor_id"] == "" {
-			t.Fatalf("expected actor_id metadata for row %+v", row)
-		}
-		if row.metadata["action"] == "" {
-			t.Fatalf("expected action metadata for row %+v", row)
-		}
-		if row.metadata["result"] == "" {
-			t.Fatalf("expected result metadata for row %+v", row)
+		count++
+		seen[eventType] = true
+		if rowCorrelationID == "" || meta["tenant_id"] == "" || meta["actor_id"] == "" || meta["action"] == "" || meta["result"] == "" {
+			t.Fatalf("expected required audit metadata fields for event %q, got correlation_id=%q metadata=%s", eventType, rowCorrelationID, metadataJSON)
 		}
 	}
-
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate audit rows: %v", err)
+	}
+	if count < 3 {
+		t.Fatalf("expected at least 3 audit rows for read/list/download, got %d", count)
+	}
 	for _, action := range []string{"object.list", "object.read", "object.download"} {
 		if !seen[action] {
-			t.Fatalf("expected action %q in audit rows, got %+v", action, actionRows)
+			t.Fatalf("expected action %q in audit rows", action)
 		}
 	}
 }
