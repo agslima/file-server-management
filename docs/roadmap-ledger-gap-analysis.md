@@ -18,7 +18,6 @@
 
 Based on strict ledger-vs-roadmap comparison, these roadmap objectives remain open:
 
-
 ## Items that appear implemented and should be treated as done
 
 These roadmap expectations have concrete baseline evidence and are effectively delivered:
