@@ -19,7 +19,7 @@
 -->
 
 ⚡ A governance-focused, multi-tenant file management platform written in Go an PHP ⚡\
-Designed to operate directly on **real storage backends** (SMB, NFS, SFTP, and local mounts)\ 
+Designed to operate directly on **real storage backends** (SMB, NFS, SFTP, and local mounts) \
 The system enforces centralized access control through **Role-Based Access Control (RBAC) and path-based ACLs**, leverages asynchronous operations for all mutations, and secures file ingestion via a **quarantine, anti-malware scan, and promotion pipeline** (**target-state**), with a complete record of all actions maintained through immutable audit trails.
 
 </div>
