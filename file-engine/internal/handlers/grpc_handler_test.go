@@ -300,7 +300,7 @@ type auditSpy struct {
 	events []auditSpyEvent
 }
 
-func (a *auditSpy) EmitTaskEvent(_ context.Context, event, taskID, correlationID, message string) {
+func (a *auditSpy) EmitTaskEvent(_ context.Context, event, taskID, correlationID, message string, _ ...map[string]string) {
 	a.events = append(a.events, auditSpyEvent{event: event, taskID: taskID, correlationID: correlationID, message: message})
 }
 

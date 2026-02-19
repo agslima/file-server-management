@@ -119,6 +119,28 @@ jobs:
       - name: Doc drift check
         run: ./scripts/doc-drift-check.sh
 
+  ledger-baseline:
+    name: Ledger Baseline Gate
+    needs: changes
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
+        with:
+          php-version: 8.2
+
+      - name: Run curated ledger baseline checks
+        run: ./scripts/ledger-baseline.sh
+
   lint-go:
     name: Lint Go code
     if: ${{ needs.changes.outputs.file_engine == 'true' }}

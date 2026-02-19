@@ -43,12 +43,13 @@ type GRPCHandler struct {
 }
 
 type AuditEmitter interface {
-	EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string)
+	EmitTaskEvent(ctx context.Context, event, taskID, correlationID, message string, metadata ...map[string]string)
 }
 
 type noopAuditEmitter struct{}
 
-func (noopAuditEmitter) EmitTaskEvent(context.Context, string, string, string, string) {}
+func (noopAuditEmitter) EmitTaskEvent(context.Context, string, string, string, string, ...map[string]string) {
+}
 
 func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, uploads *services.UploadService, acl auth.ACLStore, tenantResolver auth.TenantResolver, logg *logger.Logger, auditor AuditEmitter) *GRPCHandler {
 	if tenantResolver == nil {
@@ -198,6 +199,10 @@ func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsReques
 	if err := h.ensureTenantAccess(ctx, authCtx, prefix, auth.PermList); err != nil {
 		return nil, err
 	}
+	tenantID, err := authz.TenantFromPath(prefix)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "path must be tenant-scoped")
+	}
 
 	items, err := h.objects.List(ctx, prefix)
 	if err != nil {
@@ -223,6 +228,7 @@ func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsReques
 			Group:      it.Group,
 		})
 	}
+	h.emitReadAudit(ctx, "object.list", tenantID, authCtx.UserID, "success", prefix)
 	return out, nil
 }
 
@@ -271,6 +277,11 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 	if err := h.ensureTenantAccess(stream.Context(), authCtx, objectPath, auth.PermRead); err != nil {
 		return err
 	}
+	tenantID, err := authz.TenantFromPath(objectPath)
+	if err != nil {
+		return status.Error(codes.InvalidArgument, "path must be tenant-scoped")
+	}
+	h.emitReadAudit(stream.Context(), "object.read", tenantID, authCtx.UserID, "success", objectPath)
 
 	r, err := h.objects.Open(stream.Context(), objectPath)
 	if err != nil {
@@ -300,6 +311,7 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 			return status.Error(codes.DataLoss, "integrity validation failed")
 		}
 	}
+	h.emitReadAudit(stream.Context(), "object.download", tenantID, authCtx.UserID, "success", objectPath)
 	return nil
 }
 
@@ -327,6 +339,15 @@ func (h *GRPCHandler) ensureTenantAccess(ctx context.Context, authCtx auth.AuthC
 	h.auditor.EmitTaskEvent(ctx, "auth.decision.allowed", "", correlationIDFromContext(ctx), "access allowed")
 	observability.DefaultMetrics.ObserveAuthzDecision(true, "ok")
 	return nil
+}
+
+func (h *GRPCHandler) emitReadAudit(ctx context.Context, action, tenantID, actorID, result, resourcePath string) {
+	h.auditor.EmitTaskEvent(ctx, action, "", correlationIDFromContext(ctx), resourcePath, map[string]string{
+		"tenant_id": tenantID,
+		"actor_id":  actorID,
+		"action":    action,
+		"result":    result,
+	})
 }
 
 func correlationIDFromContext(ctx context.Context) string {

@@ -14,6 +14,7 @@ COPY . .
 
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
-RUN chown -R www-data:www-data storage bootstrap/cache
+RUN mkdir -p storage bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
 
-CMD ["php-fpm"]
+CMD ["php", "-S", "0.0.0.0:8081", "api.php"]

@@ -13,7 +13,13 @@ This backend now includes a minimal runnable API surface that proxies to File En
 ```bash
 cd backend
 composer install
-composer test
+./scripts/smoke.sh
+```
+
+Host PHP must be `>=8.2` (Laravel 12 requirement). If your local PHP is older, run checks in Docker:
+
+```bash
+docker compose run --rm --no-deps backend sh -lc 'composer install --no-interaction && ./vendor/bin/phpunit -c phpunit.xml'
 ```
 
 These tests validate controller behavior for the thin vertical slice contract.
