@@ -18,8 +18,8 @@
 ![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
 -->
 
-⚡️ **A governance-focused, multi-tenant file management platform written in Go an PHP** ⚡️ \
-Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
+⚡️ **A governance-focused, multi-tenant file management platform written in Go and PHP** ⚡️ \
+Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a baseline-validated **quarantine -> scan -> promote** guardrail flow (local semantics).
 
 </div>
 
@@ -28,8 +28,8 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
 - **Async mutations:** create (baseline) returns a `taskId`; move/upload are target-state; clients poll task status.
-- **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
-- **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
+- **Secure uploads:** staged quarantine write + scan-gated promote behavior are baseline-validated for local storage semantics; real scanner integration remains target-state.
+- **Auditing:** persisted task status + task audit events + append-only DB enforcement + external sink delivery are baseline-validated.
 - **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
 
 > [!Note]
@@ -150,7 +150,7 @@ This platform provides a centralized, permissioned interface that **controls and
 ### Write path (async)
 
 - Create folders (policy-enforced naming)
-- Upload files (two-step: initiate → complete) *(target-state)*
+- Upload storage guardrails (staged quarantine write + scan-gated promote) are baseline-validated in integration tests; public upload API surface remains target-state.
 - Move/rename/write operations *(as tasks; target-state)*
 
 ### Governance & security
@@ -158,7 +158,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - JWT auth (Bearer)
 - RBAC + path-based ACL (inheritance)
 - Multi-tenant enforcement via **server-side tenant mapping**
-- Upload quarantine + malware scan gate before publish *(target-state)*
+- Upload quarantine + malware scan gate before publish (baseline guardrails validated with test scanner; real scanner integration is target-state)
 - Dual-layer audit (queryable + tamper-resistant sink) with baseline-validated external sink delivery adapters
 
 ---
@@ -175,7 +175,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder + GetTaskStatus; uploads target-state)
+- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder + GetTaskStatus; upload APIs remain target-state)
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
 - Enqueues tasks; worker executes storage operations with least privilege
 
@@ -200,7 +200,7 @@ flowchart TB
   AV -->|verdict| W
 
   %% Audit
-  FE --> DB["(Postgres<br/>audit_events (append-only, target-state)<br/>ACL / mappings)"]
+  FE --> DB["(Postgres<br/>audit_events (append-only, baseline-validated)<br/>ACL / mappings)"]
   W --> DB
   DB --> SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
 ```
@@ -297,7 +297,7 @@ HTTP/JSON routes (baseline for CreateFolder + GetTaskStatus):
 - `POST /v1/folders` → `CreateFolder`
 - `GET /v1/tasks/{taskId}` → `GetTaskStatus`
 
-Upload HTTP routes remain target-state until the upload pipeline is implemented.
+Upload HTTP routes remain target-state until upload endpoints are promoted to baseline; storage-level upload guardrails are already baseline-validated via CL-025/CL-033.
 
 Task state model (canonical):
 
@@ -327,7 +327,7 @@ cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuth
 
 ## Key flows
 
-**Target-state upload flow (not baseline-validated):**
+**Target-state upload API flow (storage guardrails are baseline-validated; endpoint contract is not yet baseline-promoted):**
 
 ```mermaid
 sequenceDiagram
@@ -387,7 +387,7 @@ Secure-by-default controls:
 - Deny-by-default authorization at File Engine
 - Tenant scope from server-side mapping (not JWT)
 - Strict path normalization + traversal rejection
-- Quarantine → scan → promote gating *(target-state)*
+- Quarantine → scan → promote gating (baseline guardrails validated in local integration tests; real scanner integration target-state)
 - Redaction policy: never log tokens or pre-signed URLs
 
 Known gaps / planned hardening (examples):
@@ -402,10 +402,10 @@ Known gaps / planned hardening (examples):
 
 ## Auditing
 
-**Dual-layer audit (target-state vision):**
+**Dual-layer audit:**
 
-- **Primary (queryable)**: Postgres `audit_events` table (append-only, target-state)
-- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM) with retries + DLQ + lag metric (`CL-035`)
+- **Primary (queryable)**: Postgres `audit_events` table (append-only enforcement baseline-validated in `CL-032`)
+- **Secondary (tamper-resistant)**: external sink (SIEM / Loki / S3 WORM) with retries + DLQ + lag metric baseline-validated in `CL-035`
 
 **Baseline audit behavior:**
 
@@ -464,7 +464,7 @@ cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 
 ### 3) Optional: local File Engine run (scaffold-level, for debugging)
 
-This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are baseline for `CreateFolder` + `GetTaskStatus`; uploads remain target-state. Treat this path as a debug path beyond baseline behavior.
+This brings up Redis/Postgres in Docker and runs the API/worker locally. REST endpoints are baseline for `CreateFolder` + `GetTaskStatus`; upload endpoints remain target-state even though storage-level upload guardrails are baseline-validated in tests. Treat this path as a debug path beyond baseline behavior.
 
 ```bash
 cd file-engine
