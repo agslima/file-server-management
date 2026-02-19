@@ -29,7 +29,7 @@ type TracingConfig struct {
 }
 
 // ResolveTracingConfig reads tracing configuration from state-free inputs.
-func ResolveTracingConfig(serviceName string, otlpEndpoint string) TracingConfig {
+func ResolveTracingConfig(serviceName, otlpEndpoint string) TracingConfig {
 	name := strings.TrimSpace(serviceName)
 	if name == "" {
 		name = defaultOTELServiceName

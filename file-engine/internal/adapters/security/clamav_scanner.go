@@ -71,7 +71,7 @@ func (s *ClamAVScanner) Scan(ctx context.Context, stagedPath string) (ports.Malw
 
 	reader := bufio.NewReader(conn)
 	line, err := reader.ReadString('\x00')
-	if err != nil && len(strings.TrimSpace(line)) == 0 {
+	if err != nil && strings.TrimSpace(line) == "" {
 		return ports.MalwareScanResult{}, fmt.Errorf("clamav read: %w", err)
 	}
 	response := strings.TrimSpace(strings.TrimSuffix(line, "\x00"))

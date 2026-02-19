@@ -1,3 +1,4 @@
+// Package integration contains end-to-end integration tests for file-engine.
 package integration
 
 import (
@@ -13,7 +14,7 @@ import (
 func testPostgresDSN() string {
 	dsn := os.Getenv("FILEENGINE_TEST_POSTGRES_DSN")
 	if strings.TrimSpace(dsn) == "" {
-		dsn = "postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"
+		dsn = "postgres://localhost:5432/fileengine?sslmode=disable"
 	}
 	return dsn
 }

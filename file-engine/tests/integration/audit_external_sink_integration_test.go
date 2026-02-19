@@ -121,9 +121,9 @@ func TestAuditExternalSinkDeliveryWithDLQAndLagMetrics(t *testing.T) {
 }
 
 func metricLine(snapshot, key string) string {
-	for _, line := range strings.Split(snapshot, "\n") {
-		if strings.HasPrefix(line, key+" ") {
-			return strings.TrimPrefix(line, key+" ")
+	for line := range strings.SplitSeq(snapshot, "\n") {
+		if value, ok := strings.CutPrefix(line, key+" "); ok {
+			return value
 		}
 	}
 	return ""

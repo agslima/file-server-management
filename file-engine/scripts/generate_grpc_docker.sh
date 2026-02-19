@@ -9,7 +9,7 @@ docker run --rm \
   -w /workspace \
   protoc-gen \
   protoc \
-    -I api/proto -I /usr/include -I /usr/local/include \
+    -I api/proto -I /usr/include \
     --go_out=pkg/generated --go_opt=paths=source_relative \
     --go-grpc_out=pkg/generated --go-grpc_opt=paths=source_relative \
     --grpc-gateway_out=pkg/generated --grpc-gateway_opt=paths=source_relative \

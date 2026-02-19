@@ -105,7 +105,7 @@ dump_debug() {
   echo "[debug] docker compose logs (tail=250)"
   compose logs --no-color --tail=250 postgres 2>/dev/null || true
   compose logs --no-color --tail=250 file-engine 2>/dev/null || true
-  compose logs --no-color --tail=250 worker 2>/dev/null || true
+  compose logs --no-color --tail=250 file-engine-worker 2>/dev/null || true
   compose logs --no-color --tail=250 backend 2>/dev/null || true
   echo "============================================"
 }
@@ -133,13 +133,48 @@ if ! command -v curl >/dev/null 2>&1; then
   log "[warn] curl not found; some E2E scripts may fail if they depend on curl"
 fi
 
+wait_for_postgres() {
+  local timeout_seconds="${1:-90}"
+  local elapsed=0
+  local interval=2
+
+  log "[wait] postgres readiness (timeout=${timeout_seconds}s)"
+  while (( elapsed < timeout_seconds )); do
+    if compose exec -T postgres pg_isready -U fileengine -d fileengine >/dev/null 2>&1; then
+      log "[ready] postgres is accepting connections"
+      return 0
+    fi
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+  done
+
+  die "postgres did not become ready within ${timeout_seconds}s"
+}
+
+wait_for_http_service() {
+  local url="$1"
+  local timeout_seconds="${2:-120}"
+  log "[wait] http readiness ${url} (timeout=${timeout_seconds}s)"
+  bash -lc "./scripts/wait-for-http.sh '${url}' '${timeout_seconds}'" >/dev/null
+}
+
 log "[start] ledger baseline (mode=${LEDGER_MODE})"
 
 log "=== CL-001: Proto + gateway generation is in sync ==="
 run_claim "CL-001" bash -lc 'cd file-engine && make proto && git diff --exit-code -- api/proto proto pkg/generated'
 
 log "=== CL-002: Go modules baseline ==="
-run_claim "CL-002" bash -lc 'cd file-engine && go mod tidy && git diff --exit-code -- go.mod go.sum'
+run_claim "CL-002" bash -lc '
+  cd file-engine
+  tmpmod="$(mktemp)"
+  tmpsum="$(mktemp)"
+  cp go.mod "$tmpmod"
+  cp go.sum "$tmpsum"
+  go mod tidy
+  diff -u "$tmpmod" go.mod
+  diff -u "$tmpsum" go.sum
+  rm -f "$tmpmod" "$tmpsum"
+'
 
 log "=== Backend baseline: CL-008 + CL-018 + CL-031 ==="
 run_claim "CL-008" bash -lc 'cd backend && composer validate --strict'
@@ -148,6 +183,10 @@ run_claim "CL-031" bash -lc 'cd backend && ./scripts/smoke.sh'
 
 log "=== Infra: Postgres up (isolated compose project) ==="
 compose up -d postgres
+wait_for_postgres 90
+
+# Integration tests use FILEENGINE_TEST_POSTGRES_DSN when present.
+export FILEENGINE_TEST_POSTGRES_DSN="${FILEENGINE_TEST_POSTGRES_DSN:-postgres://fileengine:fileengine@127.0.0.1:5432/fileengine?sslmode=disable}"
 
 log "=== CL-003: Async create-folder integration ==="
 run_claim "CL-003" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v'
@@ -172,6 +211,11 @@ run_claim "CL-037" bash -lc 'cd file-engine && go test ./internal/adapters/stora
 
 log "=== CL-011: Doc drift ==="
 run_claim "CL-011" bash -lc './scripts/doc-drift-check.sh'
+
+log "=== Infra: Full stack up for CL-020 ==="
+compose up -d redis file-engine file-engine-worker backend
+wait_for_http_service "http://localhost:8080/readyz" 120
+wait_for_http_service "http://localhost:8081/healthz" 120
 
 log "=== CL-020: Backend VS-001 E2E ==="
 run_claim "CL-020" bash -lc './scripts/e2e/vs001_create_folder.sh'

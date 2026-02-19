@@ -28,7 +28,7 @@ func main() {
 	}
 	defer func() {
 		if shutdownErr := shutdownTracing(context.Background()); shutdownErr != nil {
-			logg.Printf("tracing shutdown: %v", shutdownErr)
+			logg.Warnf("tracing shutdown: %v", shutdownErr)
 		}
 	}()
 

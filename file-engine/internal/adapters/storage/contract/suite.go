@@ -1,3 +1,4 @@
+// Package contract defines reusable storage adapter contract tests.
 package contract
 
 import (

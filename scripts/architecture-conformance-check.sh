@@ -26,15 +26,25 @@ required_api_methods=(
   '`CompleteUpload`'
 )
 
+contains_literal() {
+  local value="$1"
+  local file="$2"
+  if command -v rg >/dev/null 2>&1; then
+    rg -Fq "$value" "$file"
+  else
+    grep -Fq "$value" "$file"
+  fi
+}
+
 for item in "${required_matrix_entries[@]}"; do
-  if ! rg -Fq "$item" "$MATRIX"; then
+  if ! contains_literal "$item" "$MATRIX"; then
     echo "$MATRIX: missing endpoint inventory entry $item"
     exit 1
   fi
 done
 
 for item in "${required_api_methods[@]}"; do
-  if ! rg -Fq "$item" "$APIREF"; then
+  if ! contains_literal "$item" "$APIREF"; then
     echo "$APIREF: missing canonical method inventory entry $item"
     exit 1
   fi
