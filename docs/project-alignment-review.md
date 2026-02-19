@@ -34,14 +34,14 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-034`).
+   - The README implementation table now covers the full claim set tracked in `docs/capability-ledger.md` (`CL-001` through `CL-036`).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
 3. **Backend maturity contract is consistent across core control docs.**
    - `CL-018` backend scaffold checks are now baseline-marked, `CL-020` adds executable backend↔file-engine VS-001 E2E validation, and `CL-031` tracks backend smoke execution (composer install + phpunit).
 4. **Target-state boundaries remain explicit.**
-   - Upload pipeline, immutable sink, and full OTEL remain documented as target-state unless promoted by claim evidence.
+   - Upload pipeline and full OTEL remain documented as target-state unless promoted by claim evidence; immutable sink delivery is now promoted by claim evidence (`CL-035`).
 
 ### Alignment corrections completed in this cycle
 
