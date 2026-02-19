@@ -37,6 +37,38 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 
 ---
 
+## Canonical doc map
+
+**Architecture & Implementation:**
+
+- **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
+- **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
+- **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
+- **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
+- **Observability:** [`docs/observability.md`](docs/observability.md)
+- **Roadmap (staged milestones):** [`docs/roadmap.md`](docs/roadmap.md)
+- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
+- **Decisions and rationale:** [`docs/adr`](docs/adr)
+
+**Governance & Status:**
+
+- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Route maturity matrix:** [`docs/route-maturity-matrix.md`](docs/route-maturity-matrix.md)
+- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
+
+<details><summary><b>Operating guide</b></summary>
+
+- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
+- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
+
+</details>
+
+> If guidance conflicts, use this precedence order: capability ledger → setup → scoped AGENTS → architecture deep-dives.
+
+---
+
 ## Project status
 
 This repository documents an evolving architecture.
@@ -84,38 +116,6 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-034`](docs/capability-ledger.md#baseline-claims-implemented) | Curated ledger baseline gate script runs in CI to catch regressions | ✅ | `./scripts/ledger-baseline.sh` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
-
----
-
-## Canonical doc map
-
-**Architecture & Implementation:**
-
-- **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
-- **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
-- **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
-- **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
-- **Observability:** [`docs/observability.md`](docs/observability.md)
-- **Roadmap (staged milestones):** [`docs/roadmap.md`](docs/roadmap.md)
-- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
-- **Decisions and rationale:** [`docs/adr`](docs/adr)
-
-**Governance & Status:**
-
-- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
-- **Route maturity matrix:** [`docs/route-maturity-matrix.md`](docs/route-maturity-matrix.md)
-- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
-- **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
-
-<details><summary><b>Operating guide</b></summary>
-
-- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
-- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
-
-</details>
-
-> If guidance conflicts, use this precedence order: capability ledger → setup → scoped AGENTS → architecture deep-dives.
 
 ---
 
