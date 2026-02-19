@@ -18,8 +18,11 @@
 ![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
 -->
 
-⚡️ **A governance-focused, multi-tenant file management platform written in Go an PHP** ⚡️ \
-Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
+⚡ Multi-tenant, governance-first file operations with RBAC, audit trails, and malware-gated uploads ⚡\
+A multi-tenant, governance-first file management platform that operates on **real storage backends** (mounted SMB/NFS/SFTP/local)\
+It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
+
+⚡ A governance-focused, multi-tenant file management platform designed to operate directly on real storage backends (SMB, NFS, SFTP, and local mounts) ⚡\ The system enforces centralized access control through Role-Based Access Control (RBAC) and path-based ACLs, leverages asynchronous operations for all mutations, and secures file ingestion via a quarantine, anti-malware scan, and promotion pipeline, with a complete record of all actions maintained through immutable audit trails.
 
 </div>
 
@@ -28,13 +31,12 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
 - **Async mutations:** create (baseline) returns a `taskId`; move/upload are target-state; clients poll task status.
-- **Secure uploads:** quarantine → scan → promote workflow (**target-state, not fully baseline-validated**).
+- **Secure uploads:** quarantine -> scan -> promote workflow (**target-state, not fully baseline-validated**).
 - **Auditing:** persisted task status + basic task audit events in async folder flow baseline; dual-layer sink is target-state.
 - **Observability:** correlation IDs are propagated in baseline async flow logs/status; full OTEL pipeline is target-state.
 
 > [!Note]
 > **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
-
 ---
 
 ## Canonical doc map
@@ -60,7 +62,7 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
 - **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
 
-> If guidance conflicts, use this precedence order: capability ledger → setup → scoped AGENTS → architecture deep-dives.
+> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ---
 
@@ -81,6 +83,8 @@ Legend:
 ### Implementation status (baseline)
 
 Every baseline claim is mapped to a claim ID and runnable command in the capability ledger.
+
+<details><summary><b>See more details</b></summary>
   
 | Claim ID | Capability | Status | Runnable validation |
 | :-- | :-- | :--: | :-- |
@@ -111,6 +115,8 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-034`](docs/capability-ledger.md#baseline-claims-implemented) | Curated ledger baseline gate script runs in CI to catch regressions | ✅ | `./scripts/ledger-baseline.sh` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
+
+</details>
 
 ---
 
