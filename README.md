@@ -110,6 +110,11 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 - **Route maturity matrix:** [`docs/route-maturity-matrix.md`](docs/route-maturity-matrix.md)
 - **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
 - **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
+- <details><summary><b>Operating guide:</b></summary>
+  - **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+  - **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
+  - **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
+</details>
 
 > If guidance conflicts, use this precedence order: capability ledger → setup → scoped AGENTS → architecture deep-dives.
 
