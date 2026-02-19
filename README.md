@@ -18,9 +18,7 @@
 ![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
 -->
 
-<p align="center">
-  ⚡️ <strong>A governance-focused, multi-tenant file management platform written in Go an PHP</strong>  
-</p>
+⚡️ **A governance-focused, multi-tenant file management platform written in Go an PHP** ⚡️ \ 
 Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a **quarantine → scan → promote** upload pipeline (**target-state**).
 
 </div>
