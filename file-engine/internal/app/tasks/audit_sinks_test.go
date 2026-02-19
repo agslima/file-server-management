@@ -112,3 +112,59 @@ func TestBuildImmutableSinkFromEnvLokiPostsLine(t *testing.T) {
 		t.Fatalf("expected loki payload, got %q", received)
 	}
 }
+
+func TestBuildImmutableSinkFromEnvSIEMPostsNDJSONWithAuth(t *testing.T) {
+	received := ""
+	authHeader := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() { _ = r.Body.Close() }()
+		b, _ := io.ReadAll(r.Body)
+		received = string(b)
+		authHeader = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer srv.Close()
+
+	t.Setenv("AUDIT_IMMUTABLE_SINK_TYPE", "siem")
+	t.Setenv("AUDIT_SIEM_ENDPOINT", srv.URL)
+	t.Setenv("AUDIT_SIEM_API_KEY", "top-secret")
+	t.Setenv("AUDIT_DEAD_LETTER_PATH", filepath.Join(t.TempDir(), "dlq.ndjson"))
+
+	s := BuildImmutableSinkFromEnv(logger.New("debug"), "")
+	if s == nil {
+		t.Fatalf("expected siem sink")
+	}
+	if err := s.WriteLine(context.Background(), []byte(`{"event":"siem"}`)); err != nil {
+		t.Fatalf("write line: %v", err)
+	}
+	if !strings.Contains(received, `{"event":"siem"}`) {
+		t.Fatalf("expected siem payload, got %q", received)
+	}
+	if authHeader != "Bearer top-secret" {
+		t.Fatalf("expected authorization header, got %q", authHeader)
+	}
+}
+
+func TestBuildImmutableSinkFromEnvS3WormWritesJSONL(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("AUDIT_IMMUTABLE_SINK_TYPE", "s3_worm")
+	t.Setenv("AUDIT_S3_BUCKET", "audit-archive")
+	t.Setenv("AUDIT_S3_PREFIX", "worm")
+	t.Setenv("AUDIT_S3_LOCAL_DIR", root)
+	t.Setenv("AUDIT_DEAD_LETTER_PATH", filepath.Join(root, "dlq.ndjson"))
+
+	s := BuildImmutableSinkFromEnv(logger.New("debug"), "")
+	if s == nil {
+		t.Fatalf("expected s3_worm sink")
+	}
+	if err := s.WriteLine(context.Background(), []byte(`{"event":"s3_worm"}`)); err != nil {
+		t.Fatalf("write line: %v", err)
+	}
+	matches, err := filepath.Glob(filepath.Join(root, "audit-archive", "worm", "*.jsonl"))
+	if err != nil {
+		t.Fatalf("glob: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatalf("expected s3_worm jsonl object to be created")
+	}
+}
