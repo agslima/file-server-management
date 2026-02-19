@@ -1,7 +1,6 @@
 services:
   redis:
     image: redis:7.2
-    container_name: redis
     ports:
       - "6379:6379"
     volumes:
@@ -9,7 +8,6 @@ services:
 
   postgres:
     image: postgres:16
-    container_name: postgres
     environment:
       POSTGRES_DB: fileengine
       POSTGRES_USER: fileengine
@@ -24,7 +22,6 @@ services:
     build:
       context: ./file-engine
       dockerfile: build/docker/server.Dockerfile
-    container_name: file-engine
     ports:
       - "8080:8080"
       - "50051:50051"
@@ -50,7 +47,6 @@ services:
     build:
       context: ./file-engine
       dockerfile: build/docker/worker.Dockerfile
-    container_name: file-engine-worker
     environment:
       REDIS_ADDR: redis:6379
       POSTGRES_DSN: postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable
@@ -67,7 +63,6 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: backend
     ports:
       - "8081:8081"
     environment:
@@ -90,7 +85,6 @@ services:
 
   nginx:
     image: nginx:1.25
-    container_name: nginx
     ports:
       - "80:80"
     volumes:

@@ -9,11 +9,14 @@
 # - Supports modes:
 #     LEDGER_MODE=fast (default): curated PR gate
 #     LEDGER_MODE=full: heavier suite (nightly/manual)
+# - Optional toggles:
+#     RUN_CL020=0: skip CL-020 E2E inside ledger flow (useful when a dedicated CI job runs it)
 
 set -Eeuo pipefail
 
 LEDGER_MODE="${LEDGER_MODE:-fast}"
 LEDGER_TIMEOUT_SECONDS="${LEDGER_TIMEOUT_SECONDS:-900}"
+RUN_CL020="${RUN_CL020:-1}"
 
 # Compose isolation: avoid cross-job collisions.
 if [[ -n "${GITHUB_RUN_ID:-}" ]]; then
@@ -212,13 +215,17 @@ run_claim "CL-037" bash -lc 'cd file-engine && go test ./internal/adapters/stora
 log "=== CL-011: Doc drift ==="
 run_claim "CL-011" bash -lc './scripts/doc-drift-check.sh'
 
-log "=== Infra: Full stack up for CL-020 ==="
-compose up -d redis file-engine file-engine-worker backend
-wait_for_http_service "http://localhost:8080/readyz" 120
-wait_for_http_service "http://localhost:8081/healthz" 120
+if [[ "$RUN_CL020" == "1" ]]; then
+  log "=== Infra: Full stack up for CL-020 ==="
+  compose up -d redis file-engine file-engine-worker backend
+  wait_for_http_service "http://localhost:8080/readyz" 120
+  wait_for_http_service "http://localhost:8081/healthz" 120
 
-log "=== CL-020: Backend VS-001 E2E ==="
-run_claim "CL-020" bash -lc './scripts/e2e/vs001_create_folder.sh'
+  log "=== CL-020: Backend VS-001 E2E ==="
+  run_claim "CL-020" bash -lc './scripts/e2e/vs001_create_folder.sh'
+else
+  log "=== CL-020: skipped (RUN_CL020=${RUN_CL020}) ==="
+fi
 
 if [[ "$LEDGER_MODE" == "full" ]]; then
   log "=== FULL MODE: extra baseline validations ==="
