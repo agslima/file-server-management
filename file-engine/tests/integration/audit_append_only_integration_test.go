@@ -3,50 +3,20 @@ package integration
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestAuditEventsAppendOnlyEnforced(t *testing.T) {
-	t.Parallel()
-
-	dsn := os.Getenv("FILEENGINE_TEST_POSTGRES_DSN")
-	if strings.TrimSpace(dsn) == "" {
-		dsn = "postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Skipf("postgres unavailable for append-only integration test: %v", err)
-	}
+	pool := mustConnectAuditDB(t, ctx)
 	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("postgres unavailable for append-only integration test: %v", err)
-	}
-
-	migrationPath := filepath.Join("..", "db", "migrations", "0003_create_audit_events.sql")
-	migrationSQL, err := os.ReadFile(migrationPath)
-	if err != nil {
-		t.Fatalf("read migration sql: %v", err)
-	}
-
-	if _, err := pool.Exec(ctx, string(migrationSQL)); err != nil {
-		t.Fatalf("apply audit_events migration: %v", err)
-	}
-
-	if _, err := pool.Exec(ctx, "TRUNCATE audit_events"); err != nil {
-		t.Fatalf("truncate audit_events: %v", err)
-	}
+	mustResetAuditEvents(t, ctx, pool)
 
 	var id int64
 	if err := pool.QueryRow(ctx, `INSERT INTO audit_events (event_type, task_id, correlation_id, message, metadata) VALUES ($1,$2,$3,$4,$5::jsonb) RETURNING id`,

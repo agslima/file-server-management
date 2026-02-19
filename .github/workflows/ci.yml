@@ -55,6 +55,13 @@ jobs:
         uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
         with:
           php-version: 8.2
+      - name: Cache Composer cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
       - name: Validate backend VS-001 baseline contract
         run: |
           cd backend
@@ -92,7 +99,17 @@ jobs:
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
-          
+
+      - name: Cache Go module download + build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ env.GOLANG_VERSION }}-${{ hashFiles('file-engine/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ env.GOLANG_VERSION }}-
+
       - name: Run known-working file-engine dev checks
         run: ./file-engine/scripts/dev.sh
         
@@ -133,13 +150,52 @@ jobs:
         with:
           go-version: ${{ env.GOLANG_VERSION }}
 
+      - name: Cache Go module download + build cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-ledger-${{ env.GOLANG_VERSION }}-${{ hashFiles('file-engine/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-ledger-${{ env.GOLANG_VERSION }}-
+
       - name: Setup PHP
         uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
         with:
           php-version: 8.2
 
+      - name: Cache Composer cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-ledger-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-ledger-
+
       - name: Run curated ledger baseline checks
         run: ./scripts/ledger-baseline.sh
+
+  cl020-e2e:
+    name: CL-020 Docker E2E
+    needs: changes
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run VS-001 docker-compose E2E
+        env:
+          COMPOSE_PROJECT_NAME: cl020-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          trap 'docker compose down -v --remove-orphans' EXIT
+          docker compose build --pull
+          docker compose up -d
+          ./scripts/wait-for-http.sh http://localhost:8080/healthz 120
+          ./scripts/wait-for-http.sh http://localhost:8081/healthz 120
+          ./scripts/e2e/vs001_create_folder.sh
+
 
   lint-go:
     name: Lint Go code

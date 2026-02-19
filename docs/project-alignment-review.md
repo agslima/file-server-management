@@ -119,7 +119,7 @@ What threatens sustainability:
 ### Priority 1 — Next 1-2 milestones
 
 1. **Promote VS-001 executable backend behavior checks in CI.**
-   - `CL-020` now provides docker-compose E2E proof; next step is wiring it into stable CI coverage.
+   - `CL-020` is now CI-gated with docker-compose E2E coverage and deterministic `E2E_OK` output for machine checks.
 2. **Introduce branch-protection mapping docs for scoped jobs.**
    - Document which required checks should be protected unconditionally vs conditionally by change scope.
 3. **Keep canonical setup references tight.**
@@ -138,7 +138,7 @@ What threatens sustainability:
 
 ## 4) Final assessment
 
-The project is **well-governed for its current maturity stage** and now has tighter policy-to-enforcement consistency than the previous baseline. The highest-value next step is to convert improved documentation/process rigor into broader multi-owner operational resilience and deeper backend executable validation.
+The project is **well-governed for its current maturity stage** and now has tighter policy-to-enforcement consistency than the previous baseline. With `CL-020`, `CL-022`, and `CL-025` promoted through deterministic checks, the highest-value next step is broader multi-owner operational resilience.
 
 ---
 
