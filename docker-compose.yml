@@ -84,7 +84,7 @@ services:
       - "8081:8081"
     environment:
       FILE_ENGINE_URL: http://file-engine:8080/v1
-      FILE_ENGINE_BEARER_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdfQ.i_BpqphP_nb5kHJmT7ygLysGY87_p40biL0t3SIA26Q
+      FILE_ENGINE_BEARER_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODIvcmVhbG1zL2ZpbGUtZW5naW5lIiwiYXVkIjpbImZpbGUtZW5naW5lLWRldiJdfQ.g1qwhSzsMoJxTr7cGVQLspyUBx7fxDswGzx-nmQlNOA
       DB_CONNECTION: sqlite
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     volumes:

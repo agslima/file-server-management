@@ -74,8 +74,13 @@ func NewJWTVerifierWithOIDC(secret, publicKeyPEM, issuer, audience, jwksURL, act
 			client: &http.Client{Timeout: 2 * time.Second},
 			keys:   map[string]*rsa.PublicKey{},
 		}
-		if err := resolver.refresh(); err != nil {
-			return nil, fmt.Errorf("load jwks: %w", err)
+		// If HMAC or static RSA verification is configured, defer JWKS network fetch
+		// until we receive an RSA token. This keeps local/dev startup resilient when
+		// OIDC infra is intentionally not running.
+		if len(v.secret) == 0 && v.pubKey == nil {
+			if err := resolver.refresh(); err != nil {
+				return nil, fmt.Errorf("load jwks: %w", err)
+			}
 		}
 		v.jwks = resolver
 	}
@@ -129,15 +134,28 @@ func (v *JWTVerifier) ParseAuthContext(authHeader string) (AuthContext, error) {
 			return AuthContext{}, errors.New("invalid audience")
 		}
 	}
-	if claims.Subject == "" {
-		return AuthContext{}, errors.New("missing sub claim")
+	userID := strings.TrimSpace(claims.Subject)
+	if userID == "" {
+		// Some IdPs issue lightweight access tokens without "sub".
+		// Fall back to deterministic identity claims from the signed token.
+		userID = strings.TrimSpace(claims.PreferredUsername)
 	}
+	if userID == "" {
+		userID = strings.TrimSpace(claims.Email)
+	}
+	if userID == "" {
+		userID = strings.TrimSpace(claims.ActorID)
+	}
+	if userID == "" {
+		return AuthContext{}, errors.New("missing subject identity claim")
+	}
+
 	actorID := strings.TrimSpace(resolveActorID(v.actorIDClaim, claims))
 	if actorID == "" {
-		actorID = claims.Subject
+		actorID = userID
 	}
 	roles := normalizedRoles(claims)
-	return AuthContext{UserID: claims.Subject, ActorID: actorID, Email: claims.Email, Groups: claims.Groups, Roles: roles}, nil
+	return AuthContext{UserID: userID, ActorID: actorID, Email: claims.Email, Groups: claims.Groups, Roles: roles}, nil
 }
 
 func resolveActorID(actorIDClaim string, claims *Claims) string {

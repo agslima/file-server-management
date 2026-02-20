@@ -16,18 +16,19 @@ resp=$(curl -fsS -X POST "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connec
   --data-urlencode "password=${PASSWORD}")
 
 token=$(python3 -c 'import json,sys;print(json.load(sys.stdin)["access_token"])' <<<"$resp")
-sub=$(python3 - <<'PY' "$token"
+subject=$(python3 - <<'PY' "$token"
 import base64, json, sys
 parts=sys.argv[1].split('.')
 payload=parts[1]+'='*((4-len(parts[1])%4)%4)
-print(json.loads(base64.urlsafe_b64decode(payload))['sub'])
+claims = json.loads(base64.urlsafe_b64decode(payload))
+print(claims.get('sub') or claims.get('preferred_username') or claims.get('email') or "")
 PY
 )
 
 ok_status=$(curl -s -o /tmp/oidc-ok.json -w "%{http_code}" -X POST "${ENGINE_URL}/v1/folders" \
   -H "Authorization: Bearer ${token}" \
   -H 'Content-Type: application/json' \
-  -d '{"path":"/tenants/acme/projects/oidc-proof"}')
+  -d '{"parentPath":"/tenants/acme/projects","folderName":"oidc-proof","requestedBy":"oidc-e2e"}')
 
 if [[ "$ok_status" != "200" ]]; then
   echo "expected allowed tenant create to succeed, got status=${ok_status}" >&2
@@ -38,7 +39,7 @@ fi
 deny_status=$(curl -s -o /tmp/oidc-deny.json -w "%{http_code}" -X POST "${ENGINE_URL}/v1/folders" \
   -H "Authorization: Bearer ${token}" \
   -H 'Content-Type: application/json' \
-  -d '{"path":"/tenants/beta/projects/oidc-deny"}')
+  -d '{"parentPath":"/tenants/beta/projects","folderName":"oidc-deny","requestedBy":"oidc-e2e"}')
 
 if [[ "$deny_status" != "403" ]]; then
   echo "expected cross-tenant create to be denied by server mapping, got status=${deny_status}" >&2
@@ -46,4 +47,4 @@ if [[ "$deny_status" != "403" ]]; then
   exit 1
 fi
 
-echo "OIDC_OK sub=${sub} allowed_tenant=acme denied_tenant=beta"
+echo "OIDC_OK sub=${subject} allowed_tenant=acme denied_tenant=beta"

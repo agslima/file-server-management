@@ -9,7 +9,20 @@
       "publicClient": true,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "defaultClientScopes": ["profile", "email", "roles", "groups"]
+      "defaultClientScopes": ["profile", "email", "roles"],
+      "protocolMappers": [
+        {
+          "name": "aud-file-engine-dev",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "file-engine-dev",
+            "access.token.claim": "true",
+            "id.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "roles": {
@@ -27,7 +40,10 @@
     {
       "username": "dev-admin",
       "enabled": true,
+      "firstName": "Dev",
+      "lastName": "Admin",
       "email": "dev-admin@example.com",
+      "emailVerified": true,
       "credentials": [{"type": "password", "value": "dev-admin", "temporary": false}],
       "realmRoles": ["admin", "iam-admin"],
       "groups": ["/engineering"]
@@ -35,7 +51,10 @@
     {
       "username": "dev-analyst",
       "enabled": true,
+      "firstName": "Dev",
+      "lastName": "Analyst",
       "email": "dev-analyst@example.com",
+      "emailVerified": true,
       "credentials": [{"type": "password", "value": "dev-analyst", "temporary": false}],
       "realmRoles": ["viewer"],
       "groups": ["/finance"]

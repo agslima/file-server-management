@@ -94,3 +94,48 @@ func TestJWTNormalizesKeycloakStyleRoles(t *testing.T) {
 		t.Fatalf("expected merged roles, got %+v", authCtx.Roles)
 	}
 }
+
+func TestJWTVerifierWithSecretDoesNotRequireJWKSAtStartup(t *testing.T) {
+	verifier, err := NewJWTVerifierWithOIDC(
+		"test-secret",
+		"",
+		"",
+		"",
+		"http://127.0.0.1:1/realms/file-engine/protocol/openid-connect/certs",
+		"sub",
+	)
+	if err != nil {
+		t.Fatalf("new verifier with secret+jwks should not fail startup: %v", err)
+	}
+	if verifier == nil {
+		t.Fatal("expected non-nil verifier")
+	}
+}
+
+func TestJWTFallsBackWhenSubIsMissing(t *testing.T) {
+	secret := "test-secret"
+	token := jwtgo.NewWithClaims(jwtgo.SigningMethodHS256, jwtgo.MapClaims{
+		"preferred_username": "dev-admin",
+		"email":              "dev-admin@example.com",
+		"roles":              []string{"admin"},
+		"exp":                time.Now().Add(time.Hour).Unix(),
+	})
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+	verifier, err := NewJWTVerifier(secret, "", "", "")
+	if err != nil {
+		t.Fatalf("new verifier: %v", err)
+	}
+	authCtx, err := verifier.ParseAuthContext("Bearer " + signed)
+	if err != nil {
+		t.Fatalf("parse auth context: %v", err)
+	}
+	if authCtx.UserID != "dev-admin" {
+		t.Fatalf("expected fallback user id dev-admin, got %q", authCtx.UserID)
+	}
+	if authCtx.EffectiveActorID() != "dev-admin" {
+		t.Fatalf("expected actor id fallback to user id, got %+v", authCtx)
+	}
+}
