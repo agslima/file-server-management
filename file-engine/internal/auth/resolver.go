@@ -3,8 +3,18 @@ package auth
 import "path/filepath"
 
 type AuthContext struct {
-	UserID string
-	Roles  []string
+	UserID  string
+	ActorID string
+	Email   string
+	Groups  []string
+	Roles   []string
+}
+
+func (a AuthContext) EffectiveActorID() string {
+	if a.ActorID != "" {
+		return a.ActorID
+	}
+	return a.UserID
 }
 
 func parentPaths(path string) []string {

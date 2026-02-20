@@ -79,7 +79,7 @@ final class ControllersTest extends TestCase
     {
         $controller = new TaskController(new FakeFileEngineService());
 
-        $response = $controller->show('task-123');
+        $response = $controller->show(Request::create('/tasks/task-123', 'GET'), 'task-123');
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('task-123', $response->getData(true)['taskId']);
@@ -107,7 +107,7 @@ final class FakeFileEngineService extends FileEngineService
         parent::__construct(new HttpFactory(), 'http://example.test/v1');
     }
 
-    public function createFolder(string $path, string $folderName, string $requestedBy): array
+    public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
     {
         return [
             '_engine_http_status' => 200,
@@ -119,7 +119,7 @@ final class FakeFileEngineService extends FileEngineService
         ];
     }
 
-    public function initiateUpload(array $payload, string $requestedBy): array
+    public function initiateUpload(array $payload, string $requestedBy, array $traceHeaders = []): array
     {
         return [
             '_engine_http_status' => 200,
@@ -130,7 +130,7 @@ final class FakeFileEngineService extends FileEngineService
         ];
     }
 
-    public function completeUpload(string $uploadId): array
+    public function completeUpload(string $uploadId, array $traceHeaders = []): array
     {
         return [
             '_engine_http_status' => 200,
@@ -140,7 +140,7 @@ final class FakeFileEngineService extends FileEngineService
         ];
     }
 
-    public function getTask(string $id): array
+    public function getTask(string $id, array $traceHeaders = []): array
     {
         return [
             '_engine_http_status' => 200,
@@ -158,7 +158,7 @@ final class DeniedFileEngineService extends FileEngineService
         parent::__construct(new HttpFactory(), 'http://example.test/v1');
     }
 
-    public function createFolder(string $path, string $folderName, string $requestedBy): array
+    public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
     {
         return [
             '_engine_http_status' => 403,

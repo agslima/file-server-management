@@ -40,6 +40,8 @@ export STORAGE_BACKEND="local"
 export FILE_BASE_ROOT="$PWD/data"
 export JWT_SECRET="dev-secret"
 export TENANT_MEMBERSHIPS="dev-admin=dev-tenant"
+# Optional governance policy (quota/retention/legal-hold/lifecycle):
+# export GOVERNANCE_POLICY_FILE="$PWD/config/governance-policy.example.json"
 ```
 
 ### Apply migrations
@@ -81,6 +83,39 @@ docker compose up --build
 ```
 
 This path is useful to validate container builds, but it is **not** a baseline-validated runtime. Use the baseline validation or File Engine local run for reproducible checks.
+
+### OIDC profile (Keycloak) for enterprise identity testing
+
+Use compose profile `oidc` to start a local IdP and validate JWT->actor normalization while still enforcing tenant access from server-side DB mappings:
+
+```bash
+docker compose --profile oidc up --build -d keycloak postgres redis file-engine file-engine-worker
+```
+
+Keycloak URL: `http://localhost:8082` (admin/admin). Realm import: `infra/keycloak/dev-realm.json`.
+
+Identity lifecycle helpers:
+
+```bash
+./file-engine/scripts/seed_identity.sh
+TOKEN='<admin-access-token>' ./file-engine/scripts/export_access_review.sh
+```
+
+### Observability profile (OTEL collector + Jaeger)
+
+Start observability stack and core services:
+
+```bash
+docker compose --profile observability up --build -d otel-collector jaeger redis postgres file-engine file-engine-worker backend
+```
+
+Quick checks:
+
+```bash
+./scripts/wait-for-http.sh http://localhost:8080/metrics 120
+./scripts/wait-for-http.sh http://localhost:16686 120
+./scripts/drills/observability_incident_drill.sh
+```
 
 ---
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\FileEngineService;
+use App\Support\TraceHeaders;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,7 @@ class FolderController extends Controller
 
         $requestedBy = (string) ($request->input('requestedBy') ?? optional($request->user())->email ?? 'system');
 
-        $payload = $this->engine->createFolder($path, $folderName, $requestedBy);
+        $payload = $this->engine->createFolder($path, $folderName, $requestedBy, TraceHeaders::fromRequest($request));
         $status = (int) ($payload['_engine_http_status'] ?? 200);
         unset($payload['_engine_http_status']);
 

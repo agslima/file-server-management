@@ -2,10 +2,15 @@ package local
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -21,9 +26,16 @@ func New(base string) *LocalStorage {
 }
 
 func (l *LocalStorage) full(p string) string {
-	// keep simple; production should also enforce traversal protections (already exists in other adapter in older code)
-	clean := filepath.Clean("/" + p)
+	clean := normalizePath(p)
 	return filepath.Join(l.base, clean)
+}
+
+func normalizePath(p string) string {
+	p = path.Clean("/" + path.Clean(strings.ReplaceAll(strings.TrimSpace(p), "\\", "/")))
+	if p == "." {
+		return "/"
+	}
+	return p
 }
 
 func (l *LocalStorage) CreateFolder(_ context.Context, path string) error {
@@ -113,6 +125,15 @@ func (l *LocalStorage) List(_ context.Context, prefix string) ([]storage.ObjectI
 				group = strconv.FormatUint(uint64(stat.Gid), 10)
 			}
 		}
+		checksum := ""
+		if info != nil && !e.IsDir() {
+			if f, openErr := os.Open(l.full(filepath.Join(prefix, e.Name()))); openErr == nil {
+				h := sha256.New()
+				_, _ = io.Copy(h, f)
+				checksum = hex.EncodeToString(h.Sum(nil))
+				_ = f.Close()
+			}
+		}
 		out = append(out, storage.ObjectInfo{
 			Path:       filepath.Join(prefix, e.Name()),
 			Size:       size,
@@ -121,8 +142,10 @@ func (l *LocalStorage) List(_ context.Context, prefix string) ([]storage.ObjectI
 			CreatedAt:  createdAt,
 			Owner:      owner,
 			Group:      group,
+			Checksum:   checksum,
 		})
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil
 }
 

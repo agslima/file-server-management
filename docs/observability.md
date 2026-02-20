@@ -16,6 +16,13 @@ This document defines **logging, metrics, and tracing** standards for the File E
 - Defining vendor-specific dashboards (Datadog/Loki) – covered in runbooks.
 - Full audit log immutability guarantees (can be added via sink/WORM storage).
 
+> Implementation assets tracked in-repo:
+> - Collector config: `observability/otel-collector-config.yaml`
+> - Golden dashboard template: `monitoring/dashboards/file-engine-golden-signals.json`
+> - Alert rules as code: `monitoring/alerts/file-engine-alerts.yml`
+> - Alert validation script: `scripts/validate-alert-rules.sh`
+> - Incident drill script + runbook: `scripts/drills/observability_incident_drill.sh`, `docs/runbooks/observability-incident-drill.md`
+
 ---
 
 ## 2) Log Level Standards

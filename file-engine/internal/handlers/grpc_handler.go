@@ -228,7 +228,7 @@ func (h *GRPCHandler) ListObjects(ctx context.Context, req *pb.ListObjectsReques
 			Group:      it.Group,
 		})
 	}
-	h.emitReadAudit(ctx, "object.list", tenantID, authCtx.UserID, "success", prefix)
+	h.emitReadAudit(ctx, "object.list", tenantID, authCtx, "success", prefix)
 	return out, nil
 }
 
@@ -281,7 +281,7 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 	if err != nil {
 		return status.Error(codes.InvalidArgument, "path must be tenant-scoped")
 	}
-	h.emitReadAudit(stream.Context(), "object.read", tenantID, authCtx.UserID, "success", objectPath)
+	h.emitReadAudit(stream.Context(), "object.read", tenantID, authCtx, "success", objectPath)
 
 	r, err := h.objects.Open(stream.Context(), objectPath)
 	if err != nil {
@@ -311,7 +311,7 @@ func (h *GRPCHandler) DownloadObject(req *pb.DownloadObjectRequest, stream pb.Fi
 			return status.Error(codes.DataLoss, "integrity validation failed")
 		}
 	}
-	h.emitReadAudit(stream.Context(), "object.download", tenantID, authCtx.UserID, "success", objectPath)
+	h.emitReadAudit(stream.Context(), "object.download", tenantID, authCtx, "success", objectPath)
 	return nil
 }
 
@@ -341,12 +341,18 @@ func (h *GRPCHandler) ensureTenantAccess(ctx context.Context, authCtx auth.AuthC
 	return nil
 }
 
-func (h *GRPCHandler) emitReadAudit(ctx context.Context, action, tenantID, actorID, result, resourcePath string) {
+func (h *GRPCHandler) emitReadAudit(ctx context.Context, action, tenantID string, authCtx auth.AuthContext, result, resourcePath string) {
+	groups := strings.Join(authCtx.Groups, ",")
 	h.auditor.EmitTaskEvent(ctx, action, "", correlationIDFromContext(ctx), resourcePath, map[string]string{
-		"tenant_id": tenantID,
-		"actor_id":  actorID,
-		"action":    action,
-		"result":    result,
+		"tenant_id":       tenantID,
+		"actor_id":        authCtx.EffectiveActorID(),
+		"actor_subject":   authCtx.UserID,
+		"actor_email":     authCtx.Email,
+		"actor_groups":    groups,
+		"actor_roles":     strings.Join(authCtx.Roles, ","),
+		"identity_source": "jwt",
+		"action":          action,
+		"result":          result,
 	})
 }
 

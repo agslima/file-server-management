@@ -1,0 +1,44 @@
+{
+  "realm": "file-engine",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "file-engine-dev",
+      "name": "file-engine-dev",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "defaultClientScopes": ["profile", "email", "roles", "groups"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {"name": "admin"},
+      {"name": "viewer"},
+      {"name": "iam-admin"}
+    ]
+  },
+  "groups": [
+    {"name": "engineering"},
+    {"name": "finance"}
+  ],
+  "users": [
+    {
+      "username": "dev-admin",
+      "enabled": true,
+      "email": "dev-admin@example.com",
+      "credentials": [{"type": "password", "value": "dev-admin", "temporary": false}],
+      "realmRoles": ["admin", "iam-admin"],
+      "groups": ["/engineering"]
+    },
+    {
+      "username": "dev-analyst",
+      "enabled": true,
+      "email": "dev-analyst@example.com",
+      "credentials": [{"type": "password", "value": "dev-analyst", "temporary": false}],
+      "realmRoles": ["viewer"],
+      "groups": ["/finance"]
+    }
+  ]
+}

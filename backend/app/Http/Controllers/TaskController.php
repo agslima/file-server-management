@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\FileEngineService;
+use App\Support\TraceHeaders;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
@@ -11,9 +13,9 @@ class TaskController extends Controller
     {
     }
 
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
-        $payload = $this->engine->getTask($id);
+        $payload = $this->engine->getTask($id, TraceHeaders::fromRequest($request));
         $status = (int) ($payload['_engine_http_status'] ?? 200);
         unset($payload['_engine_http_status']);
 

@@ -16,6 +16,7 @@ import (
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/config"
 	"github.com/example/file-engine/internal/handlers"
+	"github.com/example/file-engine/internal/identity"
 	"github.com/example/file-engine/internal/logger"
 	"github.com/example/file-engine/internal/server"
 	"github.com/example/file-engine/internal/services"
@@ -71,7 +72,7 @@ func (c *Container) Servers() *Servers {
 		aclStore = auth.NewInMemoryACLStore()
 	}
 
-	verifier, err := auth.NewJWTVerifier(c.Config.JWTSecret, c.Config.JWTPublicKeyPEM, c.Config.JWTIssuer, c.Config.JWTAudience)
+	verifier, err := auth.NewJWTVerifierWithOIDC(c.Config.JWTSecret, c.Config.JWTPublicKeyPEM, c.Config.JWTIssuer, c.Config.JWTAudience, c.Config.JWTJWKSURL, c.Config.JWTActorIDClaim)
 	if err != nil {
 		c.Logger.Fatalf("jwt verifier: %v", err)
 	}
@@ -83,13 +84,24 @@ func (c *Container) Servers() *Servers {
 	uploadSvc := services.NewUploadServiceWithLogger(st, adaptersecurity.BuildMalwareScannerFromEnv(), services.UploadPolicy{
 		MaxObjectSizeBytes: envInt64("UPLOAD_MAX_OBJECT_SIZE_BYTES", 10*1024*1024),
 		TenantQuotaBytes:   envInt64("UPLOAD_TENANT_QUOTA_BYTES", 100*1024*1024),
+		TenantObjectLimit:  envInt64("UPLOAD_TENANT_OBJECT_LIMIT", 0),
 		RequestTimeout:     time.Duration(envInt64("UPLOAD_REQUEST_TIMEOUT_MS", 30000)) * time.Millisecond,
 		RequireCleanScan:   strings.EqualFold(getenv("UPLOAD_REQUIRE_CLEAN_SCAN"), "true"),
 	}, c.Logger)
+	if policyPath := strings.TrimSpace(getenv("GOVERNANCE_POLICY_FILE")); policyPath != "" {
+		govPolicy, err := services.LoadGovernancePolicyFromFile(policyPath)
+		if err != nil {
+			c.Logger.Fatalf("governance policy: %v", err)
+		}
+		if err := uploadSvc.SetGovernancePolicy(govPolicy); err != nil {
+			c.Logger.Fatalf("apply governance policy: %v", err)
+		}
+	}
 	grpcHandler := handlers.NewGRPCHandler(q, objSvc, uploadSvc, aclStore, tenantResolver, c.Logger, auditor)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
 	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore, uploadSvc, tenantResolver)
+	httpSrv.Identity = identity.NewStore(pgPool)
 	httpSrv.AddReadyCheck("storage", func(ctx context.Context) error {
 		_, err := st.List(ctx, "/")
 		return err

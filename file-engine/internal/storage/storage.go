@@ -32,4 +32,5 @@ type ObjectInfo struct {
 	CreatedAt  time.Time
 	Owner      string
 	Group      string
+	Checksum   string
 }
