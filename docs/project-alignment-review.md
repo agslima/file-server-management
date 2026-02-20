@@ -39,7 +39,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-045`, including OIDC, operational hardening, observability assets, and storage parity controls).
+   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-046`, including OIDC, operational hardening, observability assets, and storage parity controls).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).

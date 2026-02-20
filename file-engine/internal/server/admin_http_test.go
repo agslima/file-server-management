@@ -94,3 +94,49 @@ func TestQuarantineCleanupEndpoint(t *testing.T) {
 		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
 	}
 }
+
+func TestGovernanceDeleteEndpointBlockedByRetention(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
+	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{RetentionSeconds: 3600}, Tenants: map[string]services.TenantGovernancePolicy{}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	if _, err := uploads.Upload(context.Background(), "/tenants/acme/docs/a.txt", []byte("x")); err != nil {
+		t.Fatalf("upload seed: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/governance:delete", strings.NewReader(`{"path":"/tenants/acme/docs/a.txt"}`))
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleGovernanceDelete(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected 409 got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestLifecycleCleanupEndpoint(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	if err := st.AtomicWrite(context.Background(), "/staging/acme/old.bin", bytes.NewBufferString("x")); err != nil {
+		t.Fatalf("seed staging: %v", err)
+	}
+	time.Sleep(20 * time.Millisecond)
+	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
+	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{}, Tenants: map[string]services.TenantGovernancePolicy{}, Lifecycle: services.LifecyclePolicy{OrphanStagingTTLSeconds: 1}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/lifecycle:cleanup", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleLifecycleCleanup(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "staging") {
+		t.Fatalf("expected staging report, got %s", rr.Body.String())
+	}
+}

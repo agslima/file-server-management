@@ -31,14 +31,16 @@ type UploadPolicy struct {
 }
 
 type UploadMetadata struct {
-	TenantID   string
-	Path       string
-	StagePath  string
-	Size       int64
-	Checksum   string
-	ScanStatus ports.MalwareScanStatus
-	ScannedBy  string
-	CreatedAt  time.Time
+	TenantID    string
+	Path        string
+	StagePath   string
+	Size        int64
+	Checksum    string
+	ScanStatus  ports.MalwareScanStatus
+	ScannedBy   string
+	CreatedAt   time.Time
+	RetainUntil time.Time
+	LegalHold   bool
 }
 
 type ScanDLQEntry struct {
@@ -59,17 +61,20 @@ type CleanupReport struct {
 }
 
 type UploadService struct {
-	st      storage.Storage
-	scanner ports.MalwareScanner
-	policy  UploadPolicy
-	log     *logger.Logger
+	st         storage.Storage
+	scanner    ports.MalwareScanner
+	policy     UploadPolicy
+	governance GovernancePolicy
+	log        *logger.Logger
 
-	mu          sync.RWMutex
-	metadata    map[string]UploadMetadata
-	idempotency map[string]idempotencyRecord
-	dlq         map[string]ScanDLQEntry
-	dlqSeq      int64
-	resumable   map[string]*resumableUpload
+	mu               sync.RWMutex
+	metadata         map[string]UploadMetadata
+	idempotency      map[string]idempotencyRecord
+	dlq              map[string]ScanDLQEntry
+	dlqSeq           int64
+	resumable        map[string]*resumableUpload
+	rateByTenant     map[string]tenantRateWindow
+	governanceEvents []GovernanceEvent
 }
 
 type resumableUpload struct {
@@ -82,6 +87,11 @@ type idempotencyRecord struct {
 	Path       string
 	Meta       UploadMetadata
 	ErrMessage string
+}
+
+type tenantRateWindow struct {
+	WindowStart time.Time
+	Count       int64
 }
 
 func NewUploadService(st storage.Storage, scanner ports.MalwareScanner, policy UploadPolicy) *UploadService {
@@ -98,7 +108,15 @@ func NewUploadServiceWithLogger(st storage.Storage, scanner ports.MalwareScanner
 	if policy.ScanRetryBackoff <= 0 {
 		policy.ScanRetryBackoff = 200 * time.Millisecond
 	}
-	return &UploadService{st: st, scanner: scanner, policy: policy, log: logg, metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, dlq: map[string]ScanDLQEntry{}, resumable: map[string]*resumableUpload{}}
+	return &UploadService{
+		st: st, scanner: scanner, policy: policy, log: logg,
+		metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, dlq: map[string]ScanDLQEntry{}, resumable: map[string]*resumableUpload{},
+		rateByTenant: map[string]tenantRateWindow{},
+		governance: GovernancePolicy{
+			Default: TenantGovernancePolicy{QuotaBytes: policy.TenantQuotaBytes, ObjectLimit: policy.TenantObjectLimit},
+			Tenants: map[string]TenantGovernancePolicy{},
+		},
+	}
 }
 
 func (s *UploadService) StartResumableUpload(targetPath string) (string, error) {
@@ -143,6 +161,56 @@ func (s *UploadService) FinalizeResumableUpload(ctx context.Context, sessionID, 
 	return s.UploadStream(ctx, target, bytes.NewReader(payload), idempotencyKey)
 }
 
+func (s *UploadService) SetGovernancePolicy(p GovernancePolicy) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if p.Tenants == nil {
+		p.Tenants = map[string]TenantGovernancePolicy{}
+	}
+	s.governance = p
+	return nil
+}
+
+func (s *UploadService) GovernanceEvents() []GovernanceEvent {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]GovernanceEvent, len(s.governanceEvents))
+	copy(out, s.governanceEvents)
+	return out
+}
+
+func (s *UploadService) appendGovernanceEventLocked(actorID, tenantID, action, objectPath, decision, reason string) {
+	s.governanceEvents = append(s.governanceEvents, GovernanceEvent{
+		Timestamp: time.Now().UTC(),
+		ActorID:   actorID,
+		TenantID:  tenantID,
+		Action:    action,
+		Path:      objectPath,
+		Decision:  decision,
+		Reason:    reason,
+	})
+}
+
+func (s *UploadService) enforceTenantRateLimitLocked(tenantID string, maxPerMinute int64) error {
+	if maxPerMinute <= 0 {
+		return nil
+	}
+	now := time.Now().UTC()
+	window := s.rateByTenant[tenantID]
+	if window.WindowStart.IsZero() || now.Sub(window.WindowStart) >= time.Minute {
+		window = tenantRateWindow{WindowStart: now}
+	}
+	if window.Count >= maxPerMinute {
+		return errors.New("tenant upload rate limit exceeded")
+	}
+	window.Count++
+	s.rateByTenant[tenantID] = window
+	return nil
+}
+
 func (s *UploadService) Upload(ctx context.Context, targetPath string, content []byte) (UploadMetadata, error) {
 	return s.UploadStream(ctx, targetPath, bytes.NewReader(content), "")
 }
@@ -172,12 +240,32 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	if tenantID == "" {
 		return UploadMetadata{}, errors.New("invalid tenant path")
 	}
-	if s.policy.TenantQuotaBytes > 0 {
+	tenantPolicy := s.tenantGovernancePolicy(tenantID)
+	if tenantPolicy.QuotaBytes <= 0 {
+		tenantPolicy.QuotaBytes = s.policy.TenantQuotaBytes
+	}
+	if tenantPolicy.ObjectLimit <= 0 {
+		tenantPolicy.ObjectLimit = s.policy.TenantObjectLimit
+	}
+	s.mu.Lock()
+	if err := s.enforceTenantRateLimitLocked(tenantID, tenantPolicy.RequestsPerMinute); err != nil {
+		s.appendGovernanceEventLocked("system", tenantID, "upload", normalized, "deny", "rate_limit")
+		s.mu.Unlock()
+		return UploadMetadata{}, err
+	}
+	s.mu.Unlock()
+	if tenantPolicy.QuotaBytes > 0 {
 		used, objects := s.tenantUsage(tenantID)
-		if s.policy.TenantObjectLimit > 0 && objects >= s.policy.TenantObjectLimit {
+		if tenantPolicy.ObjectLimit > 0 && objects >= tenantPolicy.ObjectLimit {
+			s.mu.Lock()
+			s.appendGovernanceEventLocked("system", tenantID, "upload", normalized, "deny", "object_limit")
+			s.mu.Unlock()
 			return UploadMetadata{}, errors.New("tenant object count limit exceeded")
 		}
-		if used >= s.policy.TenantQuotaBytes {
+		if used >= tenantPolicy.QuotaBytes {
+			s.mu.Lock()
+			s.appendGovernanceEventLocked("system", tenantID, "upload", normalized, "deny", "quota_bytes")
+			s.mu.Unlock()
 			return UploadMetadata{}, errors.New("tenant quota exceeded")
 		}
 	}
@@ -197,10 +285,13 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 		_ = s.st.Delete(tctx, stagePath)
 		return UploadMetadata{}, errors.New("max object size exceeded")
 	}
-	if s.policy.TenantQuotaBytes > 0 {
+	if tenantPolicy.QuotaBytes > 0 {
 		used, _ := s.tenantUsage(tenantID)
-		if used+cr.n > s.policy.TenantQuotaBytes {
+		if used+cr.n > tenantPolicy.QuotaBytes {
 			_ = s.st.Delete(tctx, stagePath)
+			s.mu.Lock()
+			s.appendGovernanceEventLocked("system", tenantID, "upload", normalized, "deny", "quota_bytes")
+			s.mu.Unlock()
 			return UploadMetadata{}, errors.New("tenant quota exceeded")
 		}
 	}
@@ -234,7 +325,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 		}
 	}
 	if s.policy.RequireCleanScan && scanStatus != ports.MalwareStatusClean {
-		meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: ports.MalwareStatusQuarantined, ScannedBy: scannedBy, CreatedAt: time.Now().UTC()}
+		meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: ports.MalwareStatusQuarantined, ScannedBy: scannedBy, CreatedAt: time.Now().UTC(), RetainUntil: time.Now().UTC().Add(time.Duration(tenantPolicy.RetentionSeconds) * time.Second), LegalHold: tenantPolicy.LegalHold || s.pathUnderLegalHold(normalized)}
 		s.mu.Lock()
 		if scanErrMessage != "" {
 			s.enqueueScanDLQLocked(meta, "scanner_error", scanAttempts, scanErrMessage)
@@ -251,7 +342,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	if err := s.st.Move(tctx, stagePath, normalized); err != nil {
 		return UploadMetadata{}, err
 	}
-	meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: scanStatus, ScannedBy: scannedBy, CreatedAt: time.Now().UTC()}
+	meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: scanStatus, ScannedBy: scannedBy, CreatedAt: time.Now().UTC(), RetainUntil: time.Now().UTC().Add(time.Duration(tenantPolicy.RetentionSeconds) * time.Second), LegalHold: tenantPolicy.LegalHold || s.pathUnderLegalHold(normalized)}
 	s.storeMeta(meta, idempotencyKey, "")
 	return meta, nil
 }
@@ -460,7 +551,97 @@ func (s *UploadService) CleanupQuarantine(ctx context.Context, ttl time.Duration
 }
 
 func (s *UploadService) listQuarantineObjects(ctx context.Context) ([]storage.ObjectInfo, error) {
-	queue := []string{"/quarantine"}
+	return s.listPrefixObjects(ctx, "/quarantine")
+}
+
+func (s *UploadService) DeleteObject(ctx context.Context, actorID, objectPath string) error {
+	normalized, err := security.NormalizeTenantPath(objectPath)
+	if err != nil {
+		return err
+	}
+	tenantID := tenantFromPath(normalized)
+	s.mu.Lock()
+	meta, ok := s.metadata[normalized]
+	if ok {
+		if meta.LegalHold || s.pathUnderLegalHold(normalized) {
+			s.appendGovernanceEventLocked(actorID, tenantID, "delete", normalized, "deny", "legal_hold")
+			s.mu.Unlock()
+			return errors.New("deletion blocked by legal hold")
+		}
+		if !meta.RetainUntil.IsZero() && time.Now().UTC().Before(meta.RetainUntil) {
+			s.appendGovernanceEventLocked(actorID, tenantID, "delete", normalized, "deny", "retention")
+			s.mu.Unlock()
+			return errors.New("deletion blocked by retention policy")
+		}
+	}
+	s.mu.Unlock()
+	if err := s.st.Delete(ctx, normalized); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	delete(s.metadata, normalized)
+	s.appendGovernanceEventLocked(actorID, tenantID, "delete", normalized, "allow", "")
+	s.updateOperationalMetricsLocked()
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *UploadService) CleanupLifecycle(ctx context.Context) (map[string]CleanupReport, error) {
+	reports := map[string]CleanupReport{}
+	if ttl := time.Duration(s.governance.Lifecycle.QuarantineTTLSeconds) * time.Second; ttl > 0 {
+		rep, err := s.cleanupPrefix(ctx, "/quarantine", ttl)
+		if err != nil {
+			return nil, err
+		}
+		reports["quarantine"] = rep
+	}
+	if ttl := time.Duration(s.governance.Lifecycle.OrphanStagingTTLSeconds) * time.Second; ttl > 0 {
+		rep, err := s.cleanupPrefix(ctx, "/staging", ttl)
+		if err != nil {
+			return nil, err
+		}
+		reports["staging"] = rep
+	}
+	return reports, nil
+}
+
+func (s *UploadService) cleanupPrefix(ctx context.Context, prefix string, ttl time.Duration) (CleanupReport, error) {
+	if ttl <= 0 {
+		return CleanupReport{}, errors.New("ttl must be > 0")
+	}
+	objects, err := s.listPrefixObjects(ctx, prefix)
+	if err != nil {
+		return CleanupReport{}, err
+	}
+	cutoff := time.Now().UTC().Add(-ttl)
+	report := CleanupReport{}
+	for _, obj := range objects {
+		if obj.IsDir {
+			continue
+		}
+		if !strings.HasPrefix(obj.Path, prefix+"/") {
+			report.Skipped++
+			continue
+		}
+		ageRef := obj.ModifiedAt
+		if ageRef.IsZero() {
+			ageRef = obj.CreatedAt
+		}
+		if ageRef.IsZero() || ageRef.After(cutoff) {
+			report.Skipped++
+			continue
+		}
+		if err := s.st.Delete(ctx, obj.Path); err != nil {
+			report.Skipped++
+			continue
+		}
+		report.Deleted++
+	}
+	return report, nil
+}
+
+func (s *UploadService) listPrefixObjects(ctx context.Context, root string) ([]storage.ObjectInfo, error) {
+	queue := []string{root}
 	out := make([]storage.ObjectInfo, 0)
 	for len(queue) > 0 {
 		prefix := queue[0]
@@ -479,7 +660,6 @@ func (s *UploadService) listQuarantineObjects(ctx context.Context) ([]storage.Ob
 	}
 	return out, nil
 }
-
 func tenantFromPath(p string) string {
 	parts := strings.Split(strings.TrimPrefix(p, "/"), "/")
 	if len(parts) < 2 || parts[0] != "tenants" {

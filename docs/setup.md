@@ -40,6 +40,8 @@ export STORAGE_BACKEND="local"
 export FILE_BASE_ROOT="$PWD/data"
 export JWT_SECRET="dev-secret"
 export TENANT_MEMBERSHIPS="dev-admin=dev-tenant"
+# Optional governance policy (quota/retention/legal-hold/lifecycle):
+# export GOVERNANCE_POLICY_FILE="$PWD/config/governance-policy.example.json"
 ```
 
 ### Apply migrations

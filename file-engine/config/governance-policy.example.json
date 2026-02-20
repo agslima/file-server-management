@@ -1,0 +1,23 @@
+{
+  "default": {
+    "quota_bytes": 104857600,
+    "object_limit": 10000,
+    "requests_per_minute": 120,
+    "retention_seconds": 604800,
+    "legal_hold": false
+  },
+  "tenants": {
+    "acme": {
+      "quota_bytes": 52428800,
+      "retention_seconds": 2592000,
+      "legal_hold": true
+    }
+  },
+  "path_holds": [
+    "/tenants/acme/finance/"
+  ],
+  "lifecycle": {
+    "quarantine_ttl_seconds": 86400,
+    "orphan_staging_ttl_seconds": 86400
+  }
+}

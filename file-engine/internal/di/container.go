@@ -84,9 +84,19 @@ func (c *Container) Servers() *Servers {
 	uploadSvc := services.NewUploadServiceWithLogger(st, adaptersecurity.BuildMalwareScannerFromEnv(), services.UploadPolicy{
 		MaxObjectSizeBytes: envInt64("UPLOAD_MAX_OBJECT_SIZE_BYTES", 10*1024*1024),
 		TenantQuotaBytes:   envInt64("UPLOAD_TENANT_QUOTA_BYTES", 100*1024*1024),
+		TenantObjectLimit:  envInt64("UPLOAD_TENANT_OBJECT_LIMIT", 0),
 		RequestTimeout:     time.Duration(envInt64("UPLOAD_REQUEST_TIMEOUT_MS", 30000)) * time.Millisecond,
 		RequireCleanScan:   strings.EqualFold(getenv("UPLOAD_REQUIRE_CLEAN_SCAN"), "true"),
 	}, c.Logger)
+	if policyPath := strings.TrimSpace(getenv("GOVERNANCE_POLICY_FILE")); policyPath != "" {
+		govPolicy, err := services.LoadGovernancePolicyFromFile(policyPath)
+		if err != nil {
+			c.Logger.Fatalf("governance policy: %v", err)
+		}
+		if err := uploadSvc.SetGovernancePolicy(govPolicy); err != nil {
+			c.Logger.Fatalf("apply governance policy: %v", err)
+		}
+	}
 	grpcHandler := handlers.NewGRPCHandler(q, objSvc, uploadSvc, aclStore, tenantResolver, c.Logger, auditor)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)

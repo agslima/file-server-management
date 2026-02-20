@@ -208,3 +208,57 @@ func TestUploadServiceResumableUploadFinalize(t *testing.T) {
 		t.Fatalf("expected hello, got %q", string(b))
 	}
 }
+
+func TestUploadServiceRetentionBlocksDelete(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{RequestTimeout: time.Second})
+	if err := svc.SetGovernancePolicy(GovernancePolicy{Default: TenantGovernancePolicy{RetentionSeconds: 3600}, Tenants: map[string]TenantGovernancePolicy{}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	if _, err := svc.Upload(context.Background(), "/tenants/acme/docs/retain.txt", []byte("payload")); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	if err := svc.DeleteObject(context.Background(), "admin", "/tenants/acme/docs/retain.txt"); err == nil {
+		t.Fatalf("expected retention delete denial")
+	}
+	events := svc.GovernanceEvents()
+	if len(events) == 0 || events[len(events)-1].Reason != "retention" {
+		t.Fatalf("expected retention governance event, got %+v", events)
+	}
+}
+
+func TestUploadServiceLegalHoldBlocksDelete(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{RequestTimeout: time.Second})
+	if err := svc.SetGovernancePolicy(GovernancePolicy{Default: TenantGovernancePolicy{}, Tenants: map[string]TenantGovernancePolicy{"acme": {LegalHold: true}}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	if _, err := svc.Upload(context.Background(), "/tenants/acme/docs/hold.txt", []byte("payload")); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	if err := svc.DeleteObject(context.Background(), "admin", "/tenants/acme/docs/hold.txt"); err == nil {
+		t.Fatalf("expected legal hold delete denial")
+	}
+	events := svc.GovernanceEvents()
+	if len(events) == 0 || events[len(events)-1].Reason != "legal_hold" {
+		t.Fatalf("expected legal hold governance event, got %+v", events)
+	}
+}
+
+func TestUploadServiceTenantPolicyQuotaFinalGate(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{RequestTimeout: time.Second})
+	if err := svc.SetGovernancePolicy(GovernancePolicy{Default: TenantGovernancePolicy{}, Tenants: map[string]TenantGovernancePolicy{"acme": {QuotaBytes: 3}}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	if _, err := svc.Upload(context.Background(), "/tenants/acme/docs/a.txt", []byte("ab")); err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+	if _, err := svc.Upload(context.Background(), "/tenants/acme/docs/b.txt", []byte("cd")); err == nil {
+		t.Fatalf("expected quota denial")
+	}
+	events := svc.GovernanceEvents()
+	if len(events) == 0 || events[len(events)-1].Reason != "quota_bytes" {
+		t.Fatalf("expected quota governance event, got %+v", events)
+	}
+}
