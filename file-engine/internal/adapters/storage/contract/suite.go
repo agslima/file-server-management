@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"sort"
 	"strings"
 	"testing"
 
@@ -140,6 +141,54 @@ func RunStorageContractSuite(t *testing.T, newStorage StorageFactory) {
 		for path, found := range want {
 			if !found {
 				t.Fatalf("expected %s in list output, got %+v", path, items)
+			}
+		}
+	})
+
+	t.Run("list_ordering_and_metadata", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		st := newStorage(t)
+
+		if err := st.CreateFolder(ctx, "/tenants/acme/contracts"); err != nil {
+			t.Fatalf("create folder: %v", err)
+		}
+		if err := st.AtomicWrite(ctx, `\tenants\acme\contracts\c.txt`, strings.NewReader("c")); err != nil {
+			t.Fatalf("write c.txt with windows path: %v", err)
+		}
+		if err := st.AtomicWrite(ctx, "/tenants/acme/contracts/a.txt", strings.NewReader("a")); err != nil {
+			t.Fatalf("write a.txt: %v", err)
+		}
+		if err := st.AtomicWrite(ctx, "/tenants/acme/contracts/b.txt", strings.NewReader("b")); err != nil {
+			t.Fatalf("write b.txt: %v", err)
+		}
+
+		items, err := st.List(ctx, "/tenants/acme/contracts")
+		if err != nil {
+			t.Fatalf("list: %v", err)
+		}
+		if len(items) < 3 {
+			t.Fatalf("expected >=3 items, got %d", len(items))
+		}
+
+		paths := make([]string, 0, len(items))
+		for _, it := range items {
+			paths = append(paths, it.Path)
+			if !it.IsDir && it.Size <= 0 {
+				t.Fatalf("expected non-zero size for file %s", it.Path)
+			}
+			if !it.IsDir && it.ModifiedAt.IsZero() {
+				t.Fatalf("expected modified timestamp for file %s", it.Path)
+			}
+			if !it.IsDir && it.CreatedAt.IsZero() {
+				t.Fatalf("expected created timestamp for file %s", it.Path)
+			}
+		}
+		sorted := append([]string{}, paths...)
+		sort.Strings(sorted)
+		for i := range paths {
+			if paths[i] != sorted[i] {
+				t.Fatalf("expected list ordering by path, got=%v sorted=%v", paths, sorted)
 			}
 		}
 	})

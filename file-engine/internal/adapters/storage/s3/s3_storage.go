@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -63,11 +65,19 @@ func New(ctx context.Context, cfg Config) (*S3Storage, error) {
 }
 
 func (s *S3Storage) key(path string) string {
-	p := strings.TrimPrefix(path, "/")
+	p := strings.TrimPrefix(normalizePath(path), "/")
 	if s.prefix == "" {
 		return p
 	}
 	return s.prefix + "/" + p
+}
+
+func normalizePath(p string) string {
+	p = path.Clean("/" + path.Clean(strings.ReplaceAll(strings.TrimSpace(p), "\\", "/")))
+	if p == "." {
+		return "/"
+	}
+	return p
 }
 
 func randHex(n int) string {
@@ -219,9 +229,11 @@ func (s *S3Storage) List(ctx context.Context, prefix string) ([]storage.ObjectIn
 				ModifiedAt: modifiedAt,
 				CreatedAt:  createdAt,
 				Owner:      owner,
+				Checksum:   strings.Trim(aws.ToString(obj.ETag), "\""),
 			})
 		}
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil
 }
 

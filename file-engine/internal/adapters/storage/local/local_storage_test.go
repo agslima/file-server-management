@@ -58,4 +58,7 @@ func TestLocalStorageListMetadata(t *testing.T) {
 	if file.Group != strconv.Itoa(os.Getgid()) {
 		t.Fatalf("expected group %d, got %q", os.Getgid(), file.Group)
 	}
+	if file.Checksum == "" {
+		t.Fatalf("expected checksum to be populated for local files")
+	}
 }

@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"path"
+	"sort"
 	"strings"
 
 	"cloud.google.com/go/storage"
@@ -37,11 +39,19 @@ func New(ctx context.Context, cfg Config) (*GCSStorage, error) {
 }
 
 func (g *GCSStorage) key(path string) string {
-	p := strings.TrimPrefix(path, "/")
+	p := strings.TrimPrefix(normalizePath(path), "/")
 	if g.prefix == "" {
 		return p
 	}
 	return g.prefix + "/" + p
+}
+
+func normalizePath(p string) string {
+	p = path.Clean("/" + path.Clean(strings.ReplaceAll(strings.TrimSpace(p), "\\", "/")))
+	if p == "." {
+		return "/"
+	}
+	return p
 }
 
 func randHex(n int) string {
@@ -145,8 +155,10 @@ func (g *GCSStorage) List(ctx context.Context, prefix string) ([]istorage.Object
 			IsDir:      false,
 			ModifiedAt: obj.Updated,
 			CreatedAt:  obj.Created,
+			Checksum:   hex.EncodeToString(obj.MD5),
 		})
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil
 }
 

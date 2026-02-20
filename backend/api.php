@@ -32,7 +32,7 @@ if ($method === 'POST' && $path === '/folders') {
 
 if ($method === 'GET' && preg_match('#^/tasks/([^/]+)$#', $path, $matches) === 1) {
     $controller = new TaskController($service);
-    respond($controller->show($matches[1]));
+    respond($controller->show($request, $matches[1]));
 }
 
 respond(new JsonResponse(['message' => 'Not Found'], 404));

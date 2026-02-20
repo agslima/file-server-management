@@ -22,6 +22,9 @@ func TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics(t *testing.T) 
 	m.ObserveQueueLagMs(55)
 	m.SetAuditSinkLagMs(3)
 	m.ObserveUploadDurationMs(77)
+	m.SetScanBacklog(4)
+	m.SetScanDLQSize(2)
+	m.ObserveQuarantineTimeMs(1500)
 
 	snapshot := m.SnapshotPrometheus()
 	assertContains := func(expected string) {
@@ -47,4 +50,7 @@ func TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics(t *testing.T) 
 	assertContains("fileengine_queue_lag_ms_sum 55")
 	assertContains("fileengine_audit_sink_lag_ms 3")
 	assertContains("fileengine_upload_duration_ms_max 77")
+	assertContains("fileengine_scan_backlog 4")
+	assertContains("fileengine_scan_dlq_size 2")
+	assertContains("fileengine_quarantine_time_ms_max 1500")
 }

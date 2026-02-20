@@ -13,8 +13,10 @@ type Config struct {
 
 	JWTSecret       string // #nosec G117 -- config key name maps directly to JWT_SECRET env var
 	JWTPublicKeyPEM string
+	JWTJWKSURL      string
 	JWTIssuer       string
 	JWTAudience     string
+	JWTActorIDClaim string
 
 	PostgresDSN  string
 	RedisAddr    string
@@ -41,8 +43,10 @@ func LoadFromEnv() *Config {
 		PostgresDSN:     getEnv("POSTGRES_DSN", "postgres://fileengine:fileengine@localhost:5432/fileengine?sslmode=disable"),
 		JWTSecret:       getEnv("JWT_SECRET", ""),
 		JWTPublicKeyPEM: getEnv("JWT_PUBLIC_KEY_PEM", ""),
+		JWTJWKSURL:      getEnv("JWT_JWKS_URL", ""),
 		JWTIssuer:       getEnv("JWT_ISSUER", ""),
 		JWTAudience:     getEnv("JWT_AUDIENCE", ""),
+		JWTActorIDClaim: getEnv("JWT_ACTOR_ID_CLAIM", "sub"),
 	}
 	return c
 }

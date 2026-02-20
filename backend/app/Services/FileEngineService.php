@@ -29,9 +29,9 @@ class FileEngineService
         return $this->http;
     }
 
-    public function createFolder(string $path, string $folderName, string $requestedBy): array
+    public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
     {
-        $response = $this->client()->post($this->base() . '/folders', [
+        $response = $this->client()->withHeaders($traceHeaders)->post($this->base() . '/folders', [
             'parentPath' => $path,
             'folderName' => $folderName,
             'requestedBy' => $requestedBy,
@@ -40,22 +40,22 @@ class FileEngineService
         return $this->withStatus($response);
     }
 
-    public function initiateUpload(array $payload, string $requestedBy): array
+    public function initiateUpload(array $payload, string $requestedBy, array $traceHeaders = []): array
     {
         $payload['createdBy'] = $requestedBy;
-        return $this->withStatus($this->client()->post($this->base() . '/uploads/initiate', $payload));
+        return $this->withStatus($this->client()->withHeaders($traceHeaders)->post($this->base() . '/uploads/initiate', $payload));
     }
 
-    public function completeUpload(string $uploadId): array
+    public function completeUpload(string $uploadId, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->client()->post($this->base() . '/uploads/complete', [
+        return $this->withStatus($this->client()->withHeaders($traceHeaders)->post($this->base() . '/uploads/complete', [
             'uploadId' => $uploadId,
         ]));
     }
 
-    public function getTask(string $id): array
+    public function getTask(string $id, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->client()->get($this->base() . '/tasks/' . $id));
+        return $this->withStatus($this->client()->withHeaders($traceHeaders)->get($this->base() . '/tasks/' . $id));
     }
 
     private function withStatus(Response $response): array

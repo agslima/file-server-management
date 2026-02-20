@@ -20,6 +20,7 @@ import (
 
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/authz"
+	"github.com/example/file-engine/internal/identity"
 	"github.com/example/file-engine/internal/logger"
 	"github.com/example/file-engine/internal/services"
 	"github.com/example/file-engine/internal/storage"
@@ -58,6 +59,7 @@ type HTTPServer struct {
 	ACLStore auth.ACLStore
 	Uploads  *services.UploadService
 	Tenants  auth.TenantResolver
+	Identity *identity.Store
 
 	ReadyChecks []readinessCheck
 
@@ -161,6 +163,15 @@ func (h *HTTPServer) Start() error {
 	root.HandleFunc("/readyz", h.handleReadyz)
 	root.HandleFunc("/v1/objects:download", h.handleDownload)
 	root.HandleFunc("/v1/objects:upload", h.handleUpload)
+	root.HandleFunc("/admin/v1/tenants", h.handleAdminTenants)
+	root.HandleFunc("/admin/v1/users", h.handleAdminUsers)
+	root.HandleFunc("/admin/v1/memberships", h.handleAdminMemberships)
+	root.HandleFunc("/admin/v1/roles", h.handleAdminRoles)
+	root.HandleFunc("/admin/v1/access-review", h.handleAccessReview)
+	root.HandleFunc("/admin/v1/scan-dlq", h.handleScanDLQ)
+	root.HandleFunc("/admin/v1/quarantine:cleanup", h.handleQuarantineCleanup)
+	root.HandleFunc("/admin/v1/lifecycle:cleanup", h.handleLifecycleCleanup)
+	root.HandleFunc("/admin/v1/governance:delete", h.handleGovernanceDelete)
 	root.Handle("/", auth.HTTPAuthMiddleware(h.Verifier, mux))
 
 	handler := h.instrumentHTTP(root)

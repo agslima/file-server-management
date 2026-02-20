@@ -1,0 +1,29 @@
+{
+  "title": "File Engine Golden Signals",
+  "panels": [
+    {
+      "name": "RED - request rate",
+      "query": "sum(rate(fileengine_http_requests_total[5m])) by (route,method)"
+    },
+    {
+      "name": "RED - error rate",
+      "query": "sum(rate(fileengine_http_requests_total{status=~\"5..\"}[5m])) by (route,method)"
+    },
+    {
+      "name": "RED - duration",
+      "query": "max(fileengine_http_request_duration_ms_max)"
+    },
+    {
+      "name": "Queue health",
+      "query": "fileengine_queue_depth or fileengine_queue_lag_ms_max or fileengine_scan_dlq_size"
+    },
+    {
+      "name": "Security authz denies",
+      "query": "sum(rate(fileengine_authz_decisions_total{decision=\"deny\"}[5m])) by (reason)"
+    },
+    {
+      "name": "Audit sink health",
+      "query": "fileengine_audit_sink_lag_ms or increase(fileengine_audit_sink_failures_total[5m])"
+    }
+  ]
+}
