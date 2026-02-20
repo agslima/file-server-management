@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\FileEngineService;
+use App\Support\TraceHeaders;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,7 +29,7 @@ class UploadController extends Controller
             'path' => $path,
             'filename' => $filename,
             'mimeType' => $mimeType,
-        ], $requestedBy);
+        ], $requestedBy, TraceHeaders::fromRequest($request));
         $status = (int) ($payload['_engine_http_status'] ?? 200);
         unset($payload['_engine_http_status']);
 
@@ -42,7 +43,7 @@ class UploadController extends Controller
             return new JsonResponse(['message' => 'uploadId is required'], 422);
         }
 
-        $payload = $this->engine->completeUpload($uploadId);
+        $payload = $this->engine->completeUpload($uploadId, TraceHeaders::fromRequest($request));
         $status = (int) ($payload['_engine_http_status'] ?? 200);
         unset($payload['_engine_http_status']);
 

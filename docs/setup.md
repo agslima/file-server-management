@@ -99,6 +99,22 @@ Identity lifecycle helpers:
 TOKEN='<admin-access-token>' ./file-engine/scripts/export_access_review.sh
 ```
 
+### Observability profile (OTEL collector + Jaeger)
+
+Start observability stack and core services:
+
+```bash
+docker compose --profile observability up --build -d otel-collector jaeger redis postgres file-engine file-engine-worker backend
+```
+
+Quick checks:
+
+```bash
+./scripts/wait-for-http.sh http://localhost:8080/metrics 120
+./scripts/wait-for-http.sh http://localhost:16686 120
+./scripts/drills/observability_incident_drill.sh
+```
+
 ---
 
 ## 4) Notes on alternate compose files

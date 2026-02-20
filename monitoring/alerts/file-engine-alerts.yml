@@ -1,0 +1,38 @@
+groups:
+  - name: file-engine-golden-signals
+    rules:
+      - alert: FileEngineHighErrorRate
+        expr: rate(fileengine_http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "File Engine HTTP 5xx error rate is elevated"
+      - alert: FileEngineQueueLagHigh
+        expr: fileengine_queue_lag_ms_max > 5000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queue lag is above threshold"
+      - alert: FileEngineScanDLQGrowing
+        expr: fileengine_scan_dlq_size > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scan DLQ has unresolved entries"
+      - alert: FileEngineAuditSinkFailures
+        expr: increase(fileengine_audit_sink_failures_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Audit sink failures detected"
+      - alert: FileEngineAuthzDenySpike
+        expr: rate(fileengine_authz_decisions_total{decision="deny"}[5m]) > 5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Authorization denials spiking"

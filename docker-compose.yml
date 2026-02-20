@@ -34,6 +34,7 @@ services:
       JWT_JWKS_URL: http://keycloak:8080/realms/file-engine/protocol/openid-connect/certs
       JWT_ISSUER: http://localhost:8082/realms/file-engine
       JWT_AUDIENCE: file-engine-dev
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     volumes:
       - file_data:/mnt/files
     depends_on:
@@ -56,6 +57,7 @@ services:
       FILE_BASE_ROOT: /mnt/files
       STORAGE_BACKEND: local
       JWT_SECRET: dev-secret
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     depends_on:
       - redis
       - postgres
@@ -84,6 +86,7 @@ services:
       FILE_ENGINE_URL: http://file-engine:8080/v1
       FILE_ENGINE_BEARER_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdfQ.i_BpqphP_nb5kHJmT7ygLysGY87_p40biL0t3SIA26Q
       DB_CONNECTION: sqlite
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     volumes:
       - ./backend:/var/www
       - backend_vendor:/var/www/vendor
@@ -107,6 +110,25 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - backend
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    profiles: ["observability"]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    profiles: ["observability"]
+    ports:
+      - "16686:16686"
+      - "4319:4317"
 
 volumes:
   redis_data:
