@@ -69,6 +69,13 @@ type UploadService struct {
 	idempotency map[string]idempotencyRecord
 	dlq         map[string]ScanDLQEntry
 	dlqSeq      int64
+	resumable   map[string]*resumableUpload
+}
+
+type resumableUpload struct {
+	TargetPath string
+	Buffer     bytes.Buffer
+	Offset     int64
 }
 
 type idempotencyRecord struct {
@@ -91,7 +98,49 @@ func NewUploadServiceWithLogger(st storage.Storage, scanner ports.MalwareScanner
 	if policy.ScanRetryBackoff <= 0 {
 		policy.ScanRetryBackoff = 200 * time.Millisecond
 	}
-	return &UploadService{st: st, scanner: scanner, policy: policy, log: logg, metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, dlq: map[string]ScanDLQEntry{}}
+	return &UploadService{st: st, scanner: scanner, policy: policy, log: logg, metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, dlq: map[string]ScanDLQEntry{}, resumable: map[string]*resumableUpload{}}
+}
+
+func (s *UploadService) StartResumableUpload(targetPath string) (string, error) {
+	normalized, err := security.NormalizeTenantPath(targetPath)
+	if err != nil {
+		return "", err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dlqSeq++
+	id := fmt.Sprintf("resumable-%d", s.dlqSeq)
+	s.resumable[id] = &resumableUpload{TargetPath: normalized}
+	return id, nil
+}
+
+func (s *UploadService) UploadChunk(sessionID string, offset int64, data []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r, ok := s.resumable[sessionID]
+	if !ok {
+		return errors.New("resumable session not found")
+	}
+	if offset != r.Offset {
+		return errors.New("invalid chunk offset")
+	}
+	n, err := r.Buffer.Write(data)
+	r.Offset += int64(n)
+	return err
+}
+
+func (s *UploadService) FinalizeResumableUpload(ctx context.Context, sessionID, idempotencyKey string) (UploadMetadata, error) {
+	s.mu.Lock()
+	r, ok := s.resumable[sessionID]
+	if !ok {
+		s.mu.Unlock()
+		return UploadMetadata{}, errors.New("resumable session not found")
+	}
+	payload := append([]byte(nil), r.Buffer.Bytes()...)
+	target := r.TargetPath
+	delete(s.resumable, sessionID)
+	s.mu.Unlock()
+	return s.UploadStream(ctx, target, bytes.NewReader(payload), idempotencyKey)
 }
 
 func (s *UploadService) Upload(ctx context.Context, targetPath string, content []byte) (UploadMetadata, error) {

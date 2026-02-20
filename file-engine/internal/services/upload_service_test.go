@@ -176,3 +176,35 @@ func TestUploadServiceCleanupQuarantineDeletesExpiredObjects(t *testing.T) {
 		t.Fatalf("expected deleted > 0, got %+v", rep)
 	}
 }
+
+func TestUploadServiceResumableUploadFinalize(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second})
+
+	session, err := svc.StartResumableUpload("/tenants/acme/docs/resume.txt")
+	if err != nil {
+		t.Fatalf("start resumable: %v", err)
+	}
+	if err := svc.UploadChunk(session, 0, []byte("hel")); err != nil {
+		t.Fatalf("chunk 1: %v", err)
+	}
+	if err := svc.UploadChunk(session, 3, []byte("lo")); err != nil {
+		t.Fatalf("chunk 2: %v", err)
+	}
+	meta, err := svc.FinalizeResumableUpload(context.Background(), session, "")
+	if err != nil {
+		t.Fatalf("finalize resumable: %v", err)
+	}
+	if meta.Path != "/tenants/acme/docs/resume.txt" {
+		t.Fatalf("unexpected target path: %+v", meta)
+	}
+	r, err := st.Open(context.Background(), "/tenants/acme/docs/resume.txt")
+	if err != nil {
+		t.Fatalf("open finalized object: %v", err)
+	}
+	defer func() { _ = r.Close() }()
+	b, _ := io.ReadAll(r)
+	if string(b) != "hello" {
+		t.Fatalf("expected hello, got %q", string(b))
+	}
+}
