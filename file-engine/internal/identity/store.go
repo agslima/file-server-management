@@ -1,3 +1,4 @@
+// Package identity provides persistence for tenant, user, and role identity data.
 package identity
 
 import (

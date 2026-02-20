@@ -219,26 +219,26 @@ func (h *HTTPServer) handleGovernanceDelete(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if authCtx, ok := h.requireAdmin(w, r); !ok {
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
 		return
-	} else {
-		if h.Uploads == nil {
-			http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		var req struct {
-			Path string `json:"path"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Path) == "" {
-			http.Error(w, "invalid payload", http.StatusBadRequest)
-			return
-		}
-		if err := h.Uploads.DeleteObject(r.Context(), authCtx.EffectiveActorID(), req.Path); err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
 	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Path) == "" {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	if err := h.Uploads.DeleteObject(r.Context(), authCtx.EffectiveActorID(), req.Path); err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *HTTPServer) handleLifecycleCleanup(w http.ResponseWriter, r *http.Request) {

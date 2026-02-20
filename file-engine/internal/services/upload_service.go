@@ -348,10 +348,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 }
 
 func (s *UploadService) scanWithRetry(ctx context.Context, stagePath string) (ports.MalwareScanResult, int, error) {
-	attempts := s.policy.ScanRetryAttempts
-	if attempts < 1 {
-		attempts = 1
-	}
+	attempts := max(s.policy.ScanRetryAttempts, 1)
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
 		result, err := s.scanner.Scan(ctx, stagePath)
@@ -660,6 +657,7 @@ func (s *UploadService) listPrefixObjects(ctx context.Context, root string) ([]s
 	}
 	return out, nil
 }
+
 func tenantFromPath(p string) string {
 	parts := strings.Split(strings.TrimPrefix(p, "/"), "/")
 	if len(parts) < 2 || parts[0] != "tenants" {

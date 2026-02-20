@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -95,7 +96,6 @@ func (v *JWTVerifier) ParseAuthContext(authHeader string) (AuthContext, error) {
 
 	claims := &Claims{}
 	parsed, err := jwtgo.ParseWithClaims(token, claims, func(t *jwtgo.Token) (any, error) {
-
 		switch t.Method.(type) {
 		case *jwtgo.SigningMethodHMAC:
 			if len(v.secret) == 0 {
@@ -204,11 +204,17 @@ func (r *jwksResolver) keyForKID(kid string) (*rsa.PublicKey, error) {
 }
 
 func (r *jwksResolver) refresh() error {
-	resp, err := r.client.Get(r.url) // #nosec G107 -- URL comes from controlled env config.
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, r.url, http.NoBody) // #nosec G107 -- URL comes from controlled env config.
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	resp, err := r.client.Do(req) // #nosec G704 -- request URL is controlled by trusted env configuration.
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("jwks status %d", resp.StatusCode)
 	}

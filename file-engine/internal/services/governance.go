@@ -44,7 +44,7 @@ func LoadGovernancePolicyFromFile(filePath string) (GovernancePolicy, error) {
 	if strings.TrimSpace(filePath) == "" {
 		return GovernancePolicy{}, nil
 	}
-	b, err := os.ReadFile(filePath)
+	b, err := os.ReadFile(filePath) // #nosec G304 -- file path is provided by trusted operator configuration.
 	if err != nil {
 		return GovernancePolicy{}, fmt.Errorf("read governance policy: %w", err)
 	}
@@ -107,8 +107,8 @@ func (s *UploadService) pathUnderLegalHold(objectPath string) bool {
 	normalized := path.Clean(objectPath)
 	for _, hold := range s.governance.PathHolds {
 		h := path.Clean(hold)
-		if strings.HasSuffix(h, "/") {
-			if strings.HasPrefix(normalized, strings.TrimSuffix(h, "/")+"/") {
+		if base, ok := strings.CutSuffix(h, "/"); ok {
+			if strings.HasPrefix(normalized, base+"/") {
 				return true
 			}
 			continue
