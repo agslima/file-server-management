@@ -2,13 +2,13 @@
 
 [//]: # (owner: Platform Engineering)
 [//]: # (review_cadence: Monthly)
-[//]: # (last_reviewed: 2026-02-19)
+[//]: # (last_reviewed: 2026-02-20)
 
 A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
 
 ---
 
-## Current status snapshot (2026-02-19)
+## Current status snapshot (2026-02-20)
 
 | Milestone | Status | Ledger evidence |
 | :-- | :--: | :-- |
@@ -18,6 +18,7 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 | Milestone 3 — Upload Pipeline | ✅ done | `CL-025`, `CL-033`, `CL-040` |
 | Milestone 4 — Observability & Audit Sink | ✅ done | `CL-035`, `CL-038`, `CL-039` |
 | Milestone 5 — Governance Hardening | ✅ done | `CL-041` |
+| Milestone 6 — Target-State Hardening Promotions | 🟡 in progress | `CL-042` (in progress), `CL-043`, `CL-044`, `CL-045`, `CL-046` |
 
 ---
 
@@ -102,17 +103,32 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Convert currently documented target-state controls into baseline-validated capabilities.
 
+**Current progress**
+
+1. Implemented and baseline-validated: upload operational hardening (`CL-043`), observability assets hardening (`CL-044`), storage parity hardening (`CL-045`), governance controls baseline (`CL-046`).
+2. Remaining promotion blocker: enterprise identity integration (`CL-042`) is still marked in progress.
+
 **Completion criteria**
 
-1. Enterprise identity integrations (AD/LDAP/OIDC broker) are implemented behind explicit config gates and validated with runnable auth flow checks.
-2. Upload pipeline operational hardening is baseline-validated:
-   - scanner deployment + failure-mode runbook published,
-   - failure retry/DLQ controls are validated with deterministic tests,
-   - SLO-aligned scanner alerts are documented and testable.
-3. Full OTEL backend export + alerting pipeline hardening is baseline-validated:
-   - collector/backend connectivity checks are runnable,
-   - alerting/runbook paths are documented with deterministic verification steps.
-4. Each promoted area is added to `docs/capability-ledger.md` with new claim IDs, runnable validation commands, and CI evidence before README baseline language changes.
+1. Enterprise identity integration (`CL-042`) is promoted to ✅ with repeatable CI/runtime evidence (OIDC profile e2e is deterministic and claim-gated).
+2. README and supporting docs remove stale target-state wording for areas now baseline-validated in `CL-043` to `CL-046`.
+3. Any remaining hardening gaps are moved into the next milestone with explicit claim IDs and validation commands.
+
+---
+
+## Milestone 7 — Production Operations Closure (24–32 weeks)
+
+**Goal:** Close remaining production-grade gaps after baseline promotion work.
+
+**Completion criteria**
+
+1. OIDC/enterprise identity path is CI-gated in default governance (not only ad-hoc/manual profile usage) and documented with operational runbook ownership.
+2. Upload API contract promotion is completed for `InitiateUpload` / `CompleteUpload` with authz and quarantine-scan-promote behavior validated by runnable end-to-end checks.
+3. OpenTelemetry production deployment hardening is completed: collector/backend connectivity SLO checks, alert routing, and paging integration are validated by deterministic drills.
+4. Governance next-step controls are implemented with claim-backed validation:
+   - archive-tier lifecycle enforcement,
+   - external governance policy distribution and drift detection.
+5. `docs/capability-ledger.md`, `README.md`, and `docs/roadmap-ledger-gap-analysis.md` are updated in the same PR for every promoted control.
 
 ---
 
