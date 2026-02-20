@@ -21,8 +21,10 @@
 │   │   │       ├── FolderController.php
 │   │   │       ├── TaskController.php
 │   │   │       └── UploadController.php
-│   │   └── Services
-│   │       └── FileEngineService.php
+│   │   ├── Services
+│   │   │   └── FileEngineService.php
+│   │   └── Support
+│   │       └── TraceHeaders.php
 │   ├── bootstrap
 │   │   └── cache
 │   ├── composer.json
@@ -39,7 +41,8 @@
 │   │   ├── Integration
 │   │   │   └── VS001CreateFolderE2ETest.php
 │   │   └── Unit
-│   │       └── ControllersTest.php
+│   │       ├── ControllersTest.php
+│   │       └── TraceHeadersTest.php
 │   └── vendor
 │       ├── autoload.php
 │       ├── bin
@@ -8289,6 +8292,10 @@
 │   ├── roadmap-ledger-gap-analysis.md
 │   ├── roadmap.md
 │   ├── route-maturity-matrix.md
+│   ├── runbooks
+│   │   ├── governance-controls-operations.md
+│   │   ├── malware-gate-operations.md
+│   │   └── observability-incident-drill.md
 │   ├── security-reviewers.md
 │   ├── setup.md
 │   ├── storage_backends.md
@@ -8330,6 +8337,8 @@
 │   │   │   └── main.go
 │   │   └── worker
 │   │       └── main.go
+│   ├── config
+│   │   └── governance-policy.example.json
 │   ├── db
 │   │   ├── migrations
 │   │   │   ├── 0001_create_acl_entries.sql
@@ -8445,6 +8454,8 @@
 │   │   │   ├── grpc_handler.go
 │   │   │   ├── grpc_handler_test.go
 │   │   │   └── http_handler.go
+│   │   ├── identity
+│   │   │   └── store.go
 │   │   ├── infra
 │   │   │   ├── logger
 │   │   │   │   ├── doc.go
@@ -8466,6 +8477,8 @@
 │   │   │   ├── validator.go
 │   │   │   └── validator_test.go
 │   │   ├── server
+│   │   │   ├── admin_http.go
+│   │   │   ├── admin_http_test.go
 │   │   │   ├── doc.go
 │   │   │   ├── download_http.go
 │   │   │   ├── download_http_test.go
@@ -8477,6 +8490,8 @@
 │   │   ├── services
 │   │   │   ├── doc.go
 │   │   │   ├── file_service.go
+│   │   │   ├── governance.go
+│   │   │   ├── governance_test.go
 │   │   │   ├── object_service.go
 │   │   │   ├── upload_service.go
 │   │   │   └── upload_service_test.go
@@ -8506,8 +8521,11 @@
 │   │           └── http.proto
 │   ├── scripts
 │   │   ├── dev.sh
+│   │   ├── export_access_review.sh
 │   │   ├── generate_grpc.sh
-│   │   └── generate_grpc_docker.sh
+│   │   ├── generate_grpc_docker.sh
+│   │   ├── scan_dlq.sh
+│   │   └── seed_identity.sh
 │   ├── tests
 │   │   ├── fs
 │   │   └── integration
@@ -8529,19 +8547,34 @@
 ├── hack
 │   ├── README.md
 │   └── snyk-report.sh
+├── infra
+│   └── keycloak
+│       └── dev-realm.json
 ├── k8s
 │   └── readme.md
+├── monitoring
+│   ├── alerts
+│   │   └── file-engine-alerts.yml
+│   └── dashboards
+│       └── file-engine-golden-signals.json
 ├── nginx
 │   └── nginx.conf
+├── observability
+│   └── otel-collector-config.yaml
 ├── scripts
 │   ├── architecture-conformance-check.sh
 │   ├── doc-drift-check.sh
 │   ├── doc-ownership-check.sh
+│   ├── drills
+│   │   └── observability_incident_drill.sh
 │   ├── e2e
+│   │   ├── oidc_login_and_call_engine.sh
 │   │   └── vs001_create_folder.sh
 │   ├── ledger-baseline.sh
+│   ├── validate-alert-rules.sh
+│   ├── validate-observability-assets.sh
 │   └── wait-for-http.sh
 └── tree.md
 
-1131 directories, 7410 files
+1142 directories, 7432 files
 ```
