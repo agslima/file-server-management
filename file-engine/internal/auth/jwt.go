@@ -3,37 +3,60 @@ package auth
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
+	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	jwtgo "github.com/golang-jwt/jwt/v5"
 )
 
-// Claims shape.
-// Recommended:
-// - sub: user id
-// - roles: ["admin","viewer"]
-// - iss, aud as needed
 type Claims struct {
-	Roles []string `json:"roles"`
+	Roles             []string `json:"roles"`
+	Email             string   `json:"email"`
+	ActorID           string   `json:"actor_id"`
+	PreferredUsername string   `json:"preferred_username"`
+	RealmAccess       struct {
+		Roles []string `json:"roles"`
+	} `json:"realm_access"`
+	ResourceAccess map[string]struct {
+		Roles []string `json:"roles"`
+	} `json:"resource_access"`
+	// OIDC group claims typically uses `groups`.
+	Groups []string `json:"groups"`
 	jwtgo.RegisteredClaims
 }
 
-// JWTVerifier validates JWTs using either:
-// - HMAC secret (JWTSecret) or
-// - RSA public key PEM (JWTPublicKeyPEM)
+type jwksResolver struct {
+	url    string
+	client *http.Client
+	keys   map[string]*rsa.PublicKey
+}
+
 type JWTVerifier struct {
-	secret   []byte
-	pubKey   *rsa.PublicKey
-	issuer   string
-	audience string
+	secret       []byte
+	pubKey       *rsa.PublicKey
+	jwks         *jwksResolver
+	issuer       string
+	audience     string
+	actorIDClaim string
 }
 
 func NewJWTVerifier(secret, publicKeyPEM, issuer, audience string) (*JWTVerifier, error) {
-	v := &JWTVerifier{issuer: issuer, audience: audience}
+	return NewJWTVerifierWithOIDC(secret, publicKeyPEM, issuer, audience, "", "sub")
+}
+
+func NewJWTVerifierWithOIDC(secret, publicKeyPEM, issuer, audience, jwksURL, actorIDClaim string) (*JWTVerifier, error) {
+	v := &JWTVerifier{issuer: issuer, audience: audience, actorIDClaim: strings.TrimSpace(actorIDClaim)}
+	if v.actorIDClaim == "" {
+		v.actorIDClaim = "sub"
+	}
 	if secret != "" {
 		v.secret = []byte(secret)
 	}
@@ -44,8 +67,19 @@ func NewJWTVerifier(secret, publicKeyPEM, issuer, audience string) (*JWTVerifier
 		}
 		v.pubKey = pk
 	}
-	if len(v.secret) == 0 && v.pubKey == nil {
-		return nil, errors.New("JWT verifier requires JWT_SECRET or JWT_PUBLIC_KEY_PEM")
+	if strings.TrimSpace(jwksURL) != "" {
+		resolver := &jwksResolver{
+			url:    strings.TrimSpace(jwksURL),
+			client: &http.Client{Timeout: 2 * time.Second},
+			keys:   map[string]*rsa.PublicKey{},
+		}
+		if err := resolver.refresh(); err != nil {
+			return nil, fmt.Errorf("load jwks: %w", err)
+		}
+		v.jwks = resolver
+	}
+	if len(v.secret) == 0 && v.pubKey == nil && v.jwks == nil {
+		return nil, errors.New("JWT verifier requires JWT_SECRET or JWT_PUBLIC_KEY_PEM or JWT_JWKS_URL")
 	}
 	return v, nil
 }
@@ -61,7 +95,7 @@ func (v *JWTVerifier) ParseAuthContext(authHeader string) (AuthContext, error) {
 
 	claims := &Claims{}
 	parsed, err := jwtgo.ParseWithClaims(token, claims, func(t *jwtgo.Token) (any, error) {
-		// enforce signing method
+
 		switch t.Method.(type) {
 		case *jwtgo.SigningMethodHMAC:
 			if len(v.secret) == 0 {
@@ -69,10 +103,14 @@ func (v *JWTVerifier) ParseAuthContext(authHeader string) (AuthContext, error) {
 			}
 			return v.secret, nil
 		case *jwtgo.SigningMethodRSA:
-			if v.pubKey == nil {
-				return nil, errors.New("rsa public key not configured")
+			if v.pubKey != nil {
+				return v.pubKey, nil
 			}
-			return v.pubKey, nil
+			if v.jwks != nil {
+				kid, _ := t.Header["kid"].(string)
+				return v.jwks.keyForKID(kid)
+			}
+			return nil, errors.New("rsa public key not configured")
 		default:
 			return nil, fmt.Errorf("unsupported signing method: %s", t.Method.Alg())
 		}
@@ -83,27 +121,131 @@ func (v *JWTVerifier) ParseAuthContext(authHeader string) (AuthContext, error) {
 	if !parsed.Valid {
 		return AuthContext{}, errors.New("invalid token")
 	}
-
-	// Optional issuer/audience checks
 	if v.issuer != "" && claims.Issuer != v.issuer {
 		return AuthContext{}, errors.New("invalid issuer")
 	}
 	if v.audience != "" {
-		audOK := slices.Contains(claims.Audience, v.audience)
-		if !audOK {
+		if !slices.Contains(claims.Audience, v.audience) {
 			return AuthContext{}, errors.New("invalid audience")
 		}
 	}
-
-	userID := ""
-	if claims.Subject != "" {
-		userID = claims.Subject
-	}
-	if userID == "" {
+	if claims.Subject == "" {
 		return AuthContext{}, errors.New("missing sub claim")
 	}
+	actorID := strings.TrimSpace(resolveActorID(v.actorIDClaim, claims))
+	if actorID == "" {
+		actorID = claims.Subject
+	}
+	roles := normalizedRoles(claims)
+	return AuthContext{UserID: claims.Subject, ActorID: actorID, Email: claims.Email, Groups: claims.Groups, Roles: roles}, nil
+}
 
-	return AuthContext{UserID: userID, Roles: claims.Roles}, nil
+func resolveActorID(actorIDClaim string, claims *Claims) string {
+	switch strings.TrimSpace(strings.ToLower(actorIDClaim)) {
+	case "sub", "subject", "":
+		return claims.Subject
+	case "email":
+		return claims.Email
+	case "actor_id":
+		return claims.ActorID
+	case "preferred_username", "username":
+		return claims.PreferredUsername
+	default:
+		return claims.Subject
+	}
+}
+
+func normalizedRoles(claims *Claims) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	add := func(roles []string) {
+		for _, role := range roles {
+			role = strings.TrimSpace(role)
+			if role == "" {
+				continue
+			}
+			if _, ok := seen[role]; ok {
+				continue
+			}
+			seen[role] = struct{}{}
+			out = append(out, role)
+		}
+	}
+	add(claims.Roles)
+	add(claims.RealmAccess.Roles)
+	for _, v := range claims.ResourceAccess {
+		add(v.Roles)
+	}
+	return out
+}
+
+type jwksDocument struct {
+	Keys []jsonWebKey `json:"keys"`
+}
+
+type jsonWebKey struct {
+	Kty string `json:"kty"`
+	Kid string `json:"kid"`
+	N   string `json:"n"`
+	E   string `json:"e"`
+}
+
+func (r *jwksResolver) keyForKID(kid string) (*rsa.PublicKey, error) {
+	if key, ok := r.keys[kid]; ok {
+		return key, nil
+	}
+	if err := r.refresh(); err != nil {
+		return nil, err
+	}
+	if key, ok := r.keys[kid]; ok {
+		return key, nil
+	}
+	return nil, fmt.Errorf("kid %q not found in jwks", kid)
+}
+
+func (r *jwksResolver) refresh() error {
+	resp, err := r.client.Get(r.url) // #nosec G107 -- URL comes from controlled env config.
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("jwks status %d", resp.StatusCode)
+	}
+	var doc jwksDocument
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+		return err
+	}
+	keys := map[string]*rsa.PublicKey{}
+	for _, k := range doc.Keys {
+		if k.Kty != "RSA" || k.Kid == "" {
+			continue
+		}
+		pub, err := parseRSAFromJWK(k.N, k.E)
+		if err != nil {
+			continue
+		}
+		keys[k.Kid] = pub
+	}
+	if len(keys) == 0 {
+		return errors.New("jwks did not contain RSA keys")
+	}
+	r.keys = keys
+	return nil
+}
+
+func parseRSAFromJWK(nB64, eB64 string) (*rsa.PublicKey, error) {
+	nBytes, err := base64.RawURLEncoding.DecodeString(nB64)
+	if err != nil {
+		return nil, err
+	}
+	eBytes, err := base64.RawURLEncoding.DecodeString(eB64)
+	if err != nil {
+		return nil, err
+	}
+	n := new(big.Int).SetBytes(nBytes)
+	e := new(big.Int).SetBytes(eBytes)
+	return &rsa.PublicKey{N: n, E: int(e.Int64())}, nil
 }
 
 func parseRSAPublicKeyFromPEM(pemStr string) (*rsa.PublicKey, error) {
@@ -118,7 +260,6 @@ func parseRSAPublicKeyFromPEM(pemStr string) (*rsa.PublicKey, error) {
 		}
 		return nil, errors.New("PEM is not RSA public key")
 	}
-	// Try parsing certificate
 	cert, err2 := x509.ParseCertificate(block.Bytes)
 	if err2 == nil {
 		if pk, ok := cert.PublicKey.(*rsa.PublicKey); ok {

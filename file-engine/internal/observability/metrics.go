@@ -63,9 +63,12 @@ type Metrics struct {
 	auditDeadLetters    atomic.Int64
 	queueLagMs          durationSummary
 	auditSinkLagMs      atomic.Int64
+	scanBacklog         atomic.Int64
+	scanDLQSize         atomic.Int64
 	uploadDurationMs    durationSummary
 	malwareScanDuration durationSummary
 	malwareScanVerdicts counterVec
+	quarantineTimeMs    durationSummary
 
 	statusTransitions sync.Map
 	httpRequests      counterVec
@@ -161,6 +164,27 @@ func (m *Metrics) ObserveMalwareScanDurationMs(d int64) {
 	m.malwareScanDuration.observe(d)
 }
 
+func (m *Metrics) SetScanBacklog(n int64) {
+	if n < 0 {
+		n = 0
+	}
+	m.scanBacklog.Store(n)
+}
+
+func (m *Metrics) SetScanDLQSize(n int64) {
+	if n < 0 {
+		n = 0
+	}
+	m.scanDLQSize.Store(n)
+}
+
+func (m *Metrics) ObserveQuarantineTimeMs(d int64) {
+	if d < 0 {
+		d = 0
+	}
+	m.quarantineTimeMs.observe(d)
+}
+
 func (m *Metrics) IncMalwareScanVerdict(verdict string) {
 	v := sanitizeLabel(strings.ToLower(strings.TrimSpace(verdict)))
 	if v == "" {
@@ -208,6 +232,8 @@ func (m *Metrics) SnapshotPrometheus() string {
 	fmt.Fprintf(&b, "fileengine_queue_lag_ms_sum %d\n", sum)
 	fmt.Fprintf(&b, "fileengine_queue_lag_ms_max %d\n", maxValue)
 	fmt.Fprintf(&b, "fileengine_audit_sink_lag_ms %d\n", m.auditSinkLagMs.Load())
+	fmt.Fprintf(&b, "fileengine_scan_backlog %d\n", m.scanBacklog.Load())
+	fmt.Fprintf(&b, "fileengine_scan_dlq_size %d\n", m.scanDLQSize.Load())
 	uCount, uSum, uMax := m.uploadDurationMs.snapshot()
 	fmt.Fprintf(&b, "fileengine_upload_duration_ms_count %d\n", uCount)
 	fmt.Fprintf(&b, "fileengine_upload_duration_ms_sum %d\n", uSum)
@@ -217,6 +243,10 @@ func (m *Metrics) SnapshotPrometheus() string {
 	fmt.Fprintf(&b, "fileengine_malware_scan_duration_ms_sum %d\n", sSum)
 	fmt.Fprintf(&b, "fileengine_malware_scan_duration_ms_max %d\n", sMax)
 	emitCounterVec(&b, "fileengine_malware_scan_verdict_total", []string{"verdict"}, m.malwareScanVerdicts.snapshot())
+	qCount, qSum, qMax := m.quarantineTimeMs.snapshot()
+	fmt.Fprintf(&b, "fileengine_quarantine_time_ms_count %d\n", qCount)
+	fmt.Fprintf(&b, "fileengine_quarantine_time_ms_sum %d\n", qSum)
+	fmt.Fprintf(&b, "fileengine_quarantine_time_ms_max %d\n", qMax)
 
 	emitCounterVec(&b, "fileengine_http_requests_total", []string{"method", "route", "status"}, m.httpRequests.snapshot())
 	emitCounterVec(&b, "fileengine_grpc_requests_total", []string{"method", "code"}, m.grpcRequests.snapshot())

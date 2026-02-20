@@ -24,6 +24,21 @@ type fakeTaskQueue struct {
 	statuses map[string]*redisq.TaskStatus
 }
 
+type mutableTenantResolver struct {
+	allowed bool
+}
+
+func (m *mutableTenantResolver) ResolveTenants(_ context.Context, _ string) ([]string, error) {
+	if m.allowed {
+		return []string{"acme"}, nil
+	}
+	return nil, nil
+}
+
+func (m *mutableTenantResolver) UserHasTenant(_ context.Context, _, tenantID string) (bool, error) {
+	return m.allowed && tenantID == "acme", nil
+}
+
 type enqueueRecord struct {
 	parentPath    string
 	folderName    string
@@ -286,6 +301,28 @@ func TestUploadObjectRejectsUnauthorizedTenant(t *testing.T) {
 	_, err := h.UploadObject(ctx, &pb.UploadObjectRequest{Path: "/tenants/beta/projects/new.txt", Content: []byte("ok")})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected permission denied, got %v", err)
+	}
+}
+
+func TestMembershipRevocationBlocksAccessImmediately(t *testing.T) {
+	root := t.TempDir()
+	st := localstorage.New(root)
+	obj := services.NewObjectService(st)
+	resolver := &mutableTenantResolver{allowed: true}
+	h := NewGRPCHandler(&fakeTaskQueue{}, obj, nil, auth.NewInMemoryACLStore(), resolver, nil, nil)
+	if err := st.CreateFolder(context.Background(), "/tenants/acme"); err != nil {
+		t.Fatalf("seed tenant dir: %v", err)
+	}
+
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+	if _, err := h.ListObjects(ctx, &pb.ListObjectsRequest{Prefix: "/tenants/acme"}); err != nil {
+		t.Fatalf("expected access before revoke, got %v", err)
+	}
+
+	resolver.allowed = false
+	_, err := h.ListObjects(ctx, &pb.ListObjectsRequest{Prefix: "/tenants/acme"})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected permission denied after revoke, got %v", err)
 	}
 }
 

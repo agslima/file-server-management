@@ -18,6 +18,22 @@ func (s scannerStub) Scan(context.Context, string) (ports.MalwareScanResult, err
 	return s.result, nil
 }
 
+type flakyScanner struct{ calls int }
+
+func (s *flakyScanner) Scan(context.Context, string) (ports.MalwareScanResult, error) {
+	s.calls++
+	if s.calls < 3 {
+		return ports.MalwareScanResult{}, errors.New("scanner unavailable")
+	}
+	return ports.MalwareScanResult{Status: ports.MalwareStatusClean, Engine: "flaky"}, nil
+}
+
+type alwaysFailScanner struct{}
+
+func (alwaysFailScanner) Scan(context.Context, string) (ports.MalwareScanResult, error) {
+	return ports.MalwareScanResult{}, errors.New("scanner down")
+}
+
 type failMoveStorage struct{ *localstorage.LocalStorage }
 
 func (f failMoveStorage) Move(context.Context, string, string) error {
@@ -113,5 +129,50 @@ func TestUploadServiceIdempotencyReplayPreservesFailure(t *testing.T) {
 
 	if _, err := svc.UploadStream(context.Background(), "/tenants/acme/docs/eicar.txt", bytes.NewReader([]byte("different")), "scan-key"); err == nil {
 		t.Fatalf("expected replay to return prior failure")
+	}
+}
+
+func TestUploadServiceScannerRetryEventuallySucceeds(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	scanner := &flakyScanner{}
+	svc := NewUploadService(st, scanner, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second, RequireCleanScan: true, ScanRetryAttempts: 3, ScanRetryBackoff: time.Millisecond})
+
+	if _, err := svc.Upload(context.Background(), "/tenants/acme/docs/retry.txt", []byte("abc")); err != nil {
+		t.Fatalf("expected retry success, got %v", err)
+	}
+	if scanner.calls != 3 {
+		t.Fatalf("expected 3 scan attempts, got %d", scanner.calls)
+	}
+}
+
+func TestUploadServiceScannerFailureEnqueuesDLQ(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, alwaysFailScanner{}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second, RequireCleanScan: true, ScanRetryAttempts: 2, ScanRetryBackoff: time.Millisecond})
+
+	if _, err := svc.Upload(context.Background(), "/tenants/acme/docs/fail.txt", []byte("abc")); err == nil {
+		t.Fatal("expected upload failure")
+	}
+	dlq := svc.ListScanDLQ(false)
+	if len(dlq) != 1 {
+		t.Fatalf("expected 1 dlq entry, got %+v", dlq)
+	}
+	if dlq[0].Attempts != 2 {
+		t.Fatalf("expected attempts to be recorded, got %+v", dlq[0])
+	}
+}
+
+func TestUploadServiceCleanupQuarantineDeletesExpiredObjects(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	if err := st.AtomicWrite(context.Background(), "/quarantine/acme/old.bin", bytes.NewBufferString("x")); err != nil {
+		t.Fatalf("seed quarantine: %v", err)
+	}
+	time.Sleep(20 * time.Millisecond)
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second})
+	rep, err := svc.CleanupQuarantine(context.Background(), 1*time.Millisecond)
+	if err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if rep.Deleted == 0 {
+		t.Fatalf("expected deleted > 0, got %+v", rep)
 	}
 }
