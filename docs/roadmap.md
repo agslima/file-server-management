@@ -19,8 +19,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 | Milestone 4 — Observability & Audit Sink | ✅ done | `CL-035`, `CL-038`, `CL-039` |
 | Milestone 5 — Governance Hardening | ✅ done | `CL-041` |
 | Milestone 6 — Target-State Hardening Promotions | ✅ done | `CL-042`, `CL-043`, `CL-044`, `CL-045`, `CL-046` |
-| Milestone 7 — Production Operations Closure | 🟡 in progress | `CL-047`, `CL-048`, `CL-049` |
-| Milestone 8 — Sustainability & Ownership Resilience | 🔒 planned | (new claims required) |
+| Milestone 7 — Production Operations Closure | ✅ done | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
+| Milestone 8 — Sustainability & Ownership Resilience | 🟡 in progress | `CL-053` |
 
 ---
 
@@ -142,6 +142,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 8 — Sustainability & Ownership Resilience (32–40 weeks)
 
 **Goal:** Reduce operational concentration risk and stabilize long-horizon governance.
+
+**Status:** 🟡 in progress
 
 **Completion criteria**
 

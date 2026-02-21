@@ -39,7 +39,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-048`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, operational hardening, observability assets, OTEL production deployment drills, and storage parity controls).
+   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-053`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
@@ -47,7 +47,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 3. **Backend maturity contract is consistent across core control docs.**
    - `CL-018` backend scaffold checks are now baseline-marked, `CL-020` adds executable backend↔file-engine VS-001 E2E validation, and `CL-031` tracks backend smoke execution (composer install + phpunit).
 4. **Target-state boundaries remain explicit.**
-   - Upload pipeline and paging-provider delivery remain target-state unless promoted by claim evidence; OTEL production deployment hardening is now promoted via `CL-048`, and immutable sink delivery remains promoted via `CL-035`.
+   - Upload pipeline operational closure for thresholds/on-call/escalation is promoted via `CL-051`; OTEL production deployment hardening is promoted via `CL-048`, paging-provider delivery via `CL-050`, documentation contract synchronization via `CL-052`, and immutable sink delivery remains promoted via `CL-035`.
 
 ### Alignment corrections completed in this cycle
 

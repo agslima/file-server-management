@@ -57,6 +57,7 @@
 │   ├── architecture.md
 │   ├── architecture_file-engine.md
 │   ├── auth.md
+│   ├── branch-protection-mapping.md
 │   ├── capability-ledger.md
 │   ├── contributors.md
 │   ├── dataflow-security-risk-assessment.md
@@ -64,6 +65,7 @@
 │   ├── governance.md
 │   ├── jwt_integration.md
 │   ├── observability.md
+│   ├── ownership-backup-matrix.md
 │   ├── platform-engineers.md
 │   ├── prod-checklist.md
 │   ├── project-alignment-review.md
@@ -216,10 +218,9 @@
 │   │   │   ├── config.yaml
 │   │   │   └── doc.go
 │   │   ├── delivery
-│   │   │   ├── grpc
-│   │   │   │   ├── doc.go
-│   │   │   │   └── fileengine_server.go
-│   │   │   └── http
+│   │   │   └── grpc
+│   │   │       ├── doc.go
+│   │   │       └── fileengine_server.go
 │   │   ├── di
 │   │   │   ├── container.go
 │   │   │   ├── container_test.go
@@ -296,7 +297,6 @@
 │   │   ├── scan_dlq.sh
 │   │   └── seed_identity.sh
 │   ├── tests
-│   │   ├── fs
 │   │   └── integration
 │   │       ├── audit_append_only_integration_test.go
 │   │       ├── audit_external_sink_integration_test.go
@@ -332,7 +332,9 @@
 │   └── otel-collector-config.yaml
 └── scripts
     ├── architecture-conformance-check.sh
+    ├── check-malware-runbook.sh
     ├── check-otel-connectivity.sh
+    ├── check-paging-delivery.sh
     ├── doc-drift-check.sh
     ├── doc-ownership-check.sh
     ├── drills
@@ -347,9 +349,10 @@
     │   ├── upload_lifecycle.sh
     │   └── vs001_create_folder.sh
     ├── ledger-baseline.sh
+    ├── sustainability-metrics.sh
     ├── validate-alert-rules.sh
     ├── validate-observability-assets.sh
     ├── wait-for-http.sh
     └── wait-for-oidc-token.sh
 
-93 directories, 260 files
+91 directories, 265 files

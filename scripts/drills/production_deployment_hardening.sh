@@ -5,5 +5,6 @@ set -euo pipefail
 ./scripts/drills/sink_down.sh
 ./scripts/drills/scanner_down.sh
 ./scripts/drills/otel_exporter_down.sh
+./scripts/check-paging-delivery.sh
 
 echo "PRODUCTION_DEPLOYMENT_HARDENING_DRILLS_OK"
