@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\UploadController;
 use App\Services\FileEngineService;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,21 @@ if ($method === 'GET' && $path === '/healthz') {
 if ($method === 'POST' && $path === '/folders') {
     $controller = new FolderController($service);
     respond($controller->create($request));
+}
+
+if ($method === 'POST' && $path === '/uploads/initiate') {
+    $controller = new UploadController($service);
+    respond($controller->initiate($request));
+}
+
+if ($method === 'PUT' && preg_match('#^/uploads/([^/]+)/chunk$#', $path, $matches) === 1) {
+    $controller = new UploadController($service);
+    respond($controller->uploadChunk($request, $matches[1]));
+}
+
+if ($method === 'POST' && preg_match('#^/uploads/([^/]+)/complete$#', $path, $matches) === 1) {
+    $controller = new UploadController($service);
+    respond($controller->complete($request, $matches[1]));
 }
 
 if ($method === 'GET' && preg_match('#^/tasks/([^/]+)$#', $path, $matches) === 1) {

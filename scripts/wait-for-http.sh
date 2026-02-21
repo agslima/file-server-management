@@ -12,7 +12,11 @@ timeout="${2:-60}"
 deadline=$((SECONDS + timeout))
 
 while (( SECONDS < deadline )); do
-  code="$(curl -sS -o /dev/null -w '%{http_code}' "$url" || true)"
+  if code="$(curl -s -o /dev/null -w '%{http_code}' "$url" 2>/dev/null)"; then
+    :
+  else
+    code="000"
+  fi
   if [[ "$code" =~ ^2[0-9][0-9]$ ]]; then
     echo "ready url=$url status=$code"
     exit 0

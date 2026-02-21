@@ -209,6 +209,32 @@ func TestUploadServiceResumableUploadFinalize(t *testing.T) {
 	}
 }
 
+func TestUploadServiceResumableCompleteReplayByIdempotencyKey(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second})
+
+	session, err := svc.StartResumableUpload("/tenants/acme/docs/replay.txt", "")
+	if err != nil {
+		t.Fatalf("start resumable: %v", err)
+	}
+	if err := svc.UploadChunk(session, 0, []byte("hello")); err != nil {
+		t.Fatalf("chunk: %v", err)
+	}
+
+	first, err := svc.FinalizeResumableUpload(context.Background(), session, "complete-key")
+	if err != nil {
+		t.Fatalf("finalize first: %v", err)
+	}
+
+	replay, err := svc.FinalizeResumableUpload(context.Background(), session, "complete-key")
+	if err != nil {
+		t.Fatalf("finalize replay: %v", err)
+	}
+	if replay.Path != first.Path || replay.Checksum != first.Checksum {
+		t.Fatalf("expected replay metadata to match first finalize, first=%+v replay=%+v", first, replay)
+	}
+}
+
 func TestUploadServiceRetentionBlocksDelete(t *testing.T) {
 	st := localstorage.New(t.TempDir())
 	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{RequestTimeout: time.Second})

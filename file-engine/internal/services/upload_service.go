@@ -175,6 +175,15 @@ func (s *UploadService) FinalizeResumableUpload(ctx context.Context, sessionID, 
 	s.mu.Lock()
 	r, ok := s.resumable[sessionID]
 	if !ok {
+		if idempotencyKey != "" {
+			if existing, found := s.idempotency[idempotencyKey]; found {
+				s.mu.Unlock()
+				if existing.ErrMessage != "" {
+					return existing.Meta, errors.New(existing.ErrMessage)
+				}
+				return existing.Meta, nil
+			}
+		}
 		s.mu.Unlock()
 		return UploadMetadata{}, errors.New("resumable session not found")
 	}

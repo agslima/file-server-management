@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -131,6 +132,16 @@ func (c *Container) Servers() *Servers {
 		httpSrv.AddReadyCheck("postgres", func(ctx context.Context) error {
 			if err := pgPool.Ping(ctx); err != nil {
 				return err
+			}
+			return nil
+		})
+		httpSrv.AddReadyCheck("tenant-membership-schema", func(ctx context.Context) error {
+			var tablePresent bool
+			if err := pgPool.QueryRow(ctx, "SELECT to_regclass('public.user_tenants') IS NOT NULL").Scan(&tablePresent); err != nil {
+				return err
+			}
+			if !tablePresent {
+				return errors.New("tenant membership schema not ready")
 			}
 			return nil
 		})

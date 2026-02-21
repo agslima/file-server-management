@@ -194,9 +194,70 @@ jobs:
       - name: Run curated ledger baseline checks
         run: ./scripts/ledger-baseline.sh
 
+  pre-e2e-gate:
+    name: Pre-E2E Gate
+    needs:
+      - changes
+      - backend
+      - frontend
+      - file-engine
+      - doc-drift
+      - ledger-baseline
+      - lint-go
+    if: ${{ always() }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate prerequisite job results
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          FILE_ENGINE_RESULT: ${{ needs['file-engine'].result }}
+          DOC_DRIFT_RESULT: ${{ needs['doc-drift'].result }}
+          LEDGER_BASELINE_RESULT: ${{ needs['ledger-baseline'].result }}
+          LINT_GO_RESULT: ${{ needs['lint-go'].result }}
+        run: |
+          set -euo pipefail
+
+          require_success() {
+            local name="$1"
+            local result="$2"
+            if [[ "$result" != "success" ]]; then
+              echo "::error::${name} must succeed before E2E. result=${result}"
+              exit 1
+            fi
+          }
+
+          require_success_or_skipped() {
+            local name="$1"
+            local result="$2"
+            case "$result" in
+              success|skipped) ;;
+              *)
+                echo "::error::${name} must be success or skipped before E2E. result=${result}"
+                exit 1
+                ;;
+            esac
+          }
+
+          require_success "changes" "$CHANGES_RESULT"
+          require_success "doc-drift" "$DOC_DRIFT_RESULT"
+
+          require_success_or_skipped "backend" "$BACKEND_RESULT"
+          require_success_or_skipped "frontend" "$FRONTEND_RESULT"
+          require_success_or_skipped "file-engine" "$FILE_ENGINE_RESULT"
+          require_success_or_skipped "ledger-baseline" "$LEDGER_BASELINE_RESULT"
+          require_success_or_skipped "lint-go" "$LINT_GO_RESULT"
+
+          echo "Pre-E2E gate passed."
+
   cl020-e2e:
     name: CL-020 Docker E2E
-    needs: changes
+    needs:
+      - changes
+      - pre-e2e-gate
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.file_engine == 'true' || needs.changes.outputs.infra == 'true' }}
     permissions:
       contents: read
@@ -212,14 +273,15 @@ jobs:
           trap 'docker compose down -v --remove-orphans' EXIT
           docker compose build --pull
           docker compose up -d
-          ./scripts/wait-for-http.sh http://localhost:8080/healthz 120
+          ./scripts/wait-for-http.sh http://localhost:8080/readyz 120
           ./scripts/wait-for-http.sh http://localhost:8081/healthz 120
           ./scripts/e2e/vs001_create_folder.sh
 
-
   upload-lifecycle-e2e:
     name: Upload Lifecycle E2E
-    needs: changes
+    needs:
+      - changes
+      - pre-e2e-gate
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.file_engine == 'true' || needs.changes.outputs.infra == 'true' }}
     permissions:
       contents: read
@@ -235,15 +297,15 @@ jobs:
           trap 'docker compose down -v --remove-orphans' EXIT
           docker compose build --pull file-engine file-engine-worker backend
           docker compose up -d redis postgres file-engine file-engine-worker backend
-          ./scripts/wait-for-http.sh http://localhost:8080/healthz 120
+          ./scripts/wait-for-http.sh http://localhost:8080/readyz 120
           ./scripts/wait-for-http.sh http://localhost:8081/healthz 120
           timeout --signal=TERM 180 ./scripts/e2e/upload_lifecycle.sh
 
-
-
   oidc-e2e:
     name: OIDC Profile E2E
-    needs: changes
+    needs:
+      - changes
+      - pre-e2e-gate
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.file_engine == 'true' || needs.changes.outputs.infra == 'true' }}
     permissions:
       contents: read
@@ -258,11 +320,9 @@ jobs:
         run: |
           ./scripts/e2e/run_oidc_profile.sh
 
-
-
   lint-go:
     name: Lint Go code
-    if: ${{ needs.changes.outputs.file_engine == 'true' }}
+    if: ${{ needs.changes.outputs.file_engine == 'true' || needs.changes.outputs.infra == 'true' }}
     runs-on: ubuntu-latest
     needs:
       - changes
