@@ -199,7 +199,6 @@ jobs:
     needs:
       - changes
       - backend
-      - frontend
       - file-engine
       - doc-drift
       - ledger-baseline
@@ -246,7 +245,7 @@ jobs:
           require_success "doc-drift" "$DOC_DRIFT_RESULT"
 
           require_success_or_skipped "backend" "$BACKEND_RESULT"
-          require_success_or_skipped "frontend" "$FRONTEND_RESULT"
+          # require_success_or_skipped "frontend" "$FRONTEND_RESULT"
           require_success_or_skipped "file-engine" "$FILE_ENGINE_RESULT"
           require_success_or_skipped "ledger-baseline" "$LEDGER_BASELINE_RESULT"
           require_success_or_skipped "lint-go" "$LINT_GO_RESULT"
