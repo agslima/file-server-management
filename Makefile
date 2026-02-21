@@ -3,8 +3,7 @@
 # Generate and optionally publish a project directory tree.
 
 TREE_OUT      := docs/tree.md
-TREE_EXCLUDES := backend/vendor
-TREE_FLAGS    := -I $(TREE_EXCLUDES)
+TREE_FLAGS    := --gitignore
 
 .PHONY: tree tree-check tree-open tree-commit tree-push tree-publish
 
