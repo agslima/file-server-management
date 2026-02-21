@@ -17,12 +17,7 @@ check_metric "fileengine_scan_dlq_size"
 check_metric "fileengine_audit_sink_failures_total"
 check_metric "fileengine_authz_decisions_total"
 
-echo "[drill] expected break scenarios (manual actions)"
-echo "- break scanner: set MALWARE_SCANNER_BACKEND=clamav with unreachable CLAMAV_ADDR, then upload"
-echo "  expected: upload.scan.completed with scan_error, scan DLQ entry, fileengine_scan_dlq_size > 0"
-echo "- break sink: set AUDIT_SIEM_ENDPOINT to failing endpoint"
-echo "  expected: fileengine_audit_sink_failures_total increment and DLQ/lag signals"
-echo "- slow db: inject latency/failure on Postgres"
-echo "  expected: readiness degradation, queue lag increase, traces show db span latency"
+echo "[drill] running deterministic production hardening drills"
+./scripts/drills/production_deployment_hardening.sh
 
 echo "DRILL_OK"

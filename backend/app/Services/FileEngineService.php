@@ -31,7 +31,7 @@ class FileEngineService
 
     public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
     {
-        $response = $this->client()->withHeaders($traceHeaders)->post($this->base() . '/folders', [
+        $response = $this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/folders', [
             'parentPath' => $path,
             'folderName' => $folderName,
             'requestedBy' => $requestedBy,
@@ -42,7 +42,7 @@ class FileEngineService
 
     public function initiateUpload(array $payload, array $traceHeaders = [], string $idempotencyKey = ''): array
     {
-        $request = $this->client()->withHeaders($traceHeaders);
+        $request = $this->requestWithTraceHeaders($traceHeaders);
         if ($idempotencyKey !== '') {
             $request = $request->withHeaders(['X-Idempotency-Key' => $idempotencyKey]);
         }
@@ -52,14 +52,14 @@ class FileEngineService
 
     public function uploadChunk(string $uploadId, int $offset, string $content, array $traceHeaders = []): array
     {
-        $request = $this->client()->withHeaders($traceHeaders)->withBody($content, 'application/octet-stream');
+        $request = $this->requestWithTraceHeaders($traceHeaders)->withBody($content, 'application/octet-stream');
 
         return $this->withStatus($request->put($this->base() . '/uploads/' . rawurlencode($uploadId) . ':chunk?offset=' . $offset));
     }
 
     public function completeUpload(string $uploadId, array $traceHeaders = [], string $idempotencyKey = ''): array
     {
-        $request = $this->client()->withHeaders($traceHeaders);
+        $request = $this->requestWithTraceHeaders($traceHeaders);
         if ($idempotencyKey !== '') {
             $request = $request->withHeaders(['X-Idempotency-Key' => $idempotencyKey]);
         }
@@ -69,7 +69,36 @@ class FileEngineService
 
     public function getTask(string $id, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->client()->withHeaders($traceHeaders)->get($this->base() . '/tasks/' . $id));
+        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->get($this->base() . '/tasks/' . $id));
+    }
+
+    /**
+     * @param array<string,mixed> $traceHeaders
+     */
+    private function requestWithTraceHeaders(array $traceHeaders): PendingRequest
+    {
+        $allowed = [
+            'X-Request-Id',
+            'X-Correlation-Id',
+            'traceparent',
+            'tracestate',
+            'baggage',
+        ];
+
+        $headers = [];
+        foreach ($allowed as $name) {
+            $value = $traceHeaders[$name] ?? null;
+            if (!is_string($value)) {
+                continue;
+            }
+            $clean = trim($value);
+            if ($clean === '') {
+                continue;
+            }
+            $headers[$name] = $clean;
+        }
+
+        return $this->client()->withHeaders($headers);
     }
 
     private function withStatus(Response $response): array
