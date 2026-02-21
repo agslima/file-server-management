@@ -3,7 +3,7 @@
 # Generate and optionally publish a project directory tree.
 
 TREE_OUT      := docs/tree.md
-TREE_EXCLUDES := vendor
+TREE_EXCLUDES := backend/vendor
 TREE_FLAGS    := --exclude-dir $(TREE_EXCLUDES)
 
 .PHONY: tree tree-check tree-open tree-commit tree-push tree-publish
@@ -63,7 +63,7 @@ lint: test-tools-image
 .PHONY: lint-local
 lint-local:
 	golangci-lint --version
-	golangci-lint run --fix --verbose
+	cd file-engine && golangci-lint run --fix --verbose
 
 .PHONY: lint-ui
 lint-ui: test-tools-image
