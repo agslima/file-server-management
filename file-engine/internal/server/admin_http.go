@@ -262,6 +262,45 @@ func (h *HTTPServer) handleLifecycleCleanup(w http.ResponseWriter, r *http.Reque
 	_ = json.NewEncoder(w).Encode(map[string]any{"reports": reports})
 }
 
+func (h *HTTPServer) handleGovernanceEffective(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, ok := h.requireAdmin(w, r); !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	tenantID := strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+	if tenantID == "" {
+		http.Error(w, "tenant_id is required", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(h.Uploads.EffectivePolicy(tenantID))
+}
+
+func (h *HTTPServer) handleGovernanceDriftCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	drift := h.Uploads.CheckGovernanceDrift(authCtx.EffectiveActorID())
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"drift_detected": drift})
+}
+
 func (h *HTTPServer) handleAccessReview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

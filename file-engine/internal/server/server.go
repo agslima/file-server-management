@@ -187,6 +187,8 @@ func (h *HTTPServer) Start() error {
 	root.HandleFunc("/admin/v1/quarantine:cleanup", h.handleQuarantineCleanup)
 	root.HandleFunc("/admin/v1/lifecycle:cleanup", h.handleLifecycleCleanup)
 	root.HandleFunc("/admin/v1/governance:delete", h.handleGovernanceDelete)
+	root.HandleFunc("/admin/v1/governance:effective", h.handleGovernanceEffective)
+	root.HandleFunc("/admin/v1/governance:drift-check", h.handleGovernanceDriftCheck)
 	root.Handle("/", auth.HTTPAuthMiddleware(h.Verifier, mux))
 
 	handler := h.instrumentHTTP(root)

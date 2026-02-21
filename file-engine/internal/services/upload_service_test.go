@@ -262,3 +262,51 @@ func TestUploadServiceTenantPolicyQuotaFinalGate(t *testing.T) {
 		t.Fatalf("expected quota governance event, got %+v", events)
 	}
 }
+
+func TestUploadServiceArchiveLifecycleTransition(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{RequestTimeout: time.Second})
+	if err := svc.SetGovernancePolicy(GovernancePolicy{Default: TenantGovernancePolicy{ArchiveAfterDays: 1, ArchiveClass: "archive-cold"}, Tenants: map[string]TenantGovernancePolicy{}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	meta, err := svc.Upload(context.Background(), "/tenants/acme/docs/old.txt", []byte("payload"))
+	if err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	svc.mu.Lock()
+	m := svc.metadata[meta.Path]
+	m.CreatedAt = time.Now().UTC().Add(-48 * time.Hour)
+	svc.metadata[meta.Path] = m
+	svc.mu.Unlock()
+
+	reports, err := svc.CleanupLifecycle(context.Background())
+	if err != nil {
+		t.Fatalf("cleanup lifecycle: %v", err)
+	}
+	if reports["archive"].Deleted != 1 {
+		t.Fatalf("expected archive transition report, got %+v", reports)
+	}
+	svc.mu.RLock()
+	archived := svc.metadata[meta.Path]
+	svc.mu.RUnlock()
+	if archived.StorageClass != "archive-cold" || archived.ArchivedAt.IsZero() {
+		t.Fatalf("expected archived metadata, got %+v", archived)
+	}
+}
+
+func TestUploadServiceGovernanceDriftDetection(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, nil, UploadPolicy{RequestTimeout: time.Second})
+	runtimePolicy := GovernancePolicy{Default: TenantGovernancePolicy{QuotaBytes: 10}, Tenants: map[string]TenantGovernancePolicy{}}
+	if err := svc.SetGovernancePolicy(runtimePolicy); err != nil {
+		t.Fatalf("set runtime policy: %v", err)
+	}
+	svc.SetGovernanceSource(GovernancePolicy{Default: TenantGovernancePolicy{QuotaBytes: 20}, Tenants: map[string]TenantGovernancePolicy{}}, "source-v1")
+	if !svc.CheckGovernanceDrift("system") {
+		t.Fatalf("expected drift")
+	}
+	effective := svc.EffectivePolicy("acme")
+	if !effective.DriftDetected || effective.SourceVersion != "source-v1" {
+		t.Fatalf("expected effective policy drift metadata, got %+v", effective)
+	}
+}

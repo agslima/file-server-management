@@ -25,6 +25,8 @@ func TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics(t *testing.T) 
 	m.SetScanBacklog(4)
 	m.SetScanDLQSize(2)
 	m.ObserveQuarantineTimeMs(1500)
+	m.ObserveGovernanceDrift(true, "runtime_policy_mismatch")
+	m.IncArchiveTransition()
 
 	snapshot := m.SnapshotPrometheus()
 	assertContains := func(expected string) {
@@ -53,4 +55,7 @@ func TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics(t *testing.T) 
 	assertContains("fileengine_scan_backlog 4")
 	assertContains("fileengine_scan_dlq_size 2")
 	assertContains("fileengine_quarantine_time_ms_max 1500")
+	assertContains("fileengine_governance_drift_active 1")
+	assertContains("fileengine_archive_transitions_total 1")
+	assertContains("fileengine_governance_drift_checks_total{state=\"drift\",reason=\"runtime_policy_mismatch\"} 1")
 }
