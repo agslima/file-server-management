@@ -27,7 +27,26 @@ func New(base string) *LocalStorage {
 
 func (l *LocalStorage) full(p string) string {
 	clean := normalizePath(p)
-	return filepath.Join(l.base, clean)
+	joined := filepath.Join(l.base, clean)
+
+	// Ensure that the resolved path stays within the configured base directory.
+	baseAbs, errBase := filepath.Abs(l.base)
+	fullAbs, errFull := filepath.Abs(joined)
+	if errBase != nil || errFull != nil {
+		return l.base
+	}
+
+	baseWithSep := baseAbs
+	if !strings.HasSuffix(baseWithSep, string(filepath.Separator)) {
+		baseWithSep += string(filepath.Separator)
+	}
+
+	if fullAbs == baseAbs || strings.HasPrefix(fullAbs, baseWithSep) {
+		return fullAbs
+	}
+
+	// If the path would escape the base directory, fall back to the base itself.
+	return baseAbs
 }
 
 func normalizePath(p string) string {
