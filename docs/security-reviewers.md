@@ -142,4 +142,4 @@ Recommended minimum:
 
 ## Named backup maintainer
 
-- Backup maintainer for Security (authz/audit): **Marina Costa** (see `docs/ownership-backup-matrix.md`).
+- Backup maintainer for Security (authz/audit): **Agnaldo Silva Lima** (see `docs/ownership-backup-matrix.md`).
