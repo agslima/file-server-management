@@ -11,6 +11,9 @@ ENGINE_URL="${ENGINE_URL:-http://localhost:8080}"
 PARENT_ALLOW="${OIDC_ALLOW_PARENT_PATH:-/tenants/acme/projects}"
 PARENT_DENY="${OIDC_DENY_PARENT_PATH:-/tenants/beta/projects}"
 
+WAIT_TIMEOUT="${OIDC_WAIT_TIMEOUT:-120}"
+TOKEN_WAIT_SCRIPT="${OIDC_TOKEN_WAIT_SCRIPT:-./scripts/wait-for-oidc-token.sh}"
+
 tmp_ok="$(mktemp -t oidc-ok.XXXXXX.json)"
 tmp_deny="$(mktemp -t oidc-deny.XXXXXX.json)"
 tmp_token="$(mktemp -t oidc-token.XXXXXX.json)"
@@ -18,31 +21,18 @@ trap 'rm -f "$tmp_ok" "$tmp_deny" "$tmp_token"' EXIT
 
 token_endpoint="${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token"
 
-# --- Wait until Keycloak can actually mint tokens (realm import + user ready) ---
-deadline=$((SECONDS + 120))
-resp=""
-while (( SECONDS < deadline )); do
-  set +e
-  resp=$(curl -sS -X POST "$token_endpoint" \
-    -H 'Content-Type: application/x-www-form-urlencoded' \
-    --data-urlencode "grant_type=password" \
-    --data-urlencode "client_id=${CLIENT_ID}" \
-    --data-urlencode "username=${USERNAME}" \
-    --data-urlencode "password=${PASSWORD}" \
-    -o "$tmp_token" -w "%{http_code}")
-  rc=$?
-  set -e
+"${TOKEN_WAIT_SCRIPT}" "${token_endpoint}" "${CLIENT_ID}" "${USERNAME}" "${PASSWORD}" "${WAIT_TIMEOUT}"
 
-  if [[ $rc -eq 0 && "$resp" == "200" ]]; then
-    break
-  fi
+status="$(curl -sS -X POST "$token_endpoint" \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  --data-urlencode "grant_type=password" \
+  --data-urlencode "client_id=${CLIENT_ID}" \
+  --data-urlencode "username=${USERNAME}" \
+  --data-urlencode "password=${PASSWORD}" \
+  -o "$tmp_token" -w '%{http_code}')"
 
-  sleep 2
-done
-
-if [[ "$resp" != "200" ]]; then
-  echo "failed to obtain token from Keycloak after retries: status=${resp}" >&2
-  echo "endpoint=${token_endpoint} client_id=${CLIENT_ID} user=${USERNAME}" >&2
+if [[ "$status" != "200" ]]; then
+  echo "failed to obtain token after readiness check: status=${status}" >&2
   cat "$tmp_token" >&2 || true
   exit 1
 fi
@@ -58,7 +48,6 @@ print(claims.get('sub') or claims.get('preferred_username') or claims.get('email
 PY
 )
 
-# --- Allowed tenant ---
 ok_status=$(curl -sS -o "$tmp_ok" -w "%{http_code}" -X POST "${ENGINE_URL}/v1/folders" \
   -H "Authorization: Bearer ${token}" \
   -H 'Content-Type: application/json' \
@@ -71,7 +60,6 @@ if [[ "$ok_status" != "200" ]]; then
   exit 1
 fi
 
-# --- Denied cross-tenant ---
 deny_status=$(curl -sS -o "$tmp_deny" -w "%{http_code}" -X POST "${ENGINE_URL}/v1/folders" \
   -H "Authorization: Bearer ${token}" \
   -H 'Content-Type: application/json' \
@@ -84,18 +72,14 @@ if [[ "$deny_status" != "403" ]]; then
   exit 1
 fi
 
-# Optional: strengthen proof by asserting error shape / code (only if your API includes it)
-# Example: {"error":{"code":"AUTHZ_DENY","reason":"tenant_mapping_denied",...}}
-python3 - <<'PY' "$tmp_deny" || true
+python3 - <<'PY' "$tmp_deny"
 import json,sys
-p=sys.argv[1]
-try:
-  body=json.load(open(p))
-except Exception:
-  sys.exit(0)
-# tighten these checks once your error schema is stable:
-# assert body.get("error",{}).get("code") in ("AUTHZ_DENY","FORBIDDEN")
-# assert "tenant" in json.dumps(body).lower()
+body=json.load(open(sys.argv[1]))
+err=body.get("error") or {}
+assert err.get("code") == "AUTHZ_DENY", f"unexpected code: {err.get('code')}"
+assert err.get("reason") == "tenant_mapping_denied", f"unexpected reason: {err.get('reason')}"
+assert err.get("tenant_id"), "missing tenant_id"
+assert (err.get("request_id") or err.get("correlation_id")), "missing request/correlation id"
 PY
 
-echo "OIDC_OK sub=${subject} allowed_parent=${PARENT_ALLOW} denied_parent=${PARENT_DENY}"
+echo "OIDC_OK sub=${subject} allowed_parent=${PARENT_ALLOW} denied_parent=${PARENT_DENY} deny_reason=tenant_mapping_denied"

@@ -10,5 +10,6 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/folders', [FolderController::class, 'create']);
 Route::post('/uploads/initiate', [UploadController::class, 'initiate']);
-Route::post('/uploads/complete', [UploadController::class, 'complete']);
+Route::put('/uploads/{uploadId}/chunk', [UploadController::class, 'uploadChunk']);
+Route::post('/uploads/{uploadId}/complete', [UploadController::class, 'complete']);
 Route::get('/tasks/{id}', [TaskController::class, 'show']);

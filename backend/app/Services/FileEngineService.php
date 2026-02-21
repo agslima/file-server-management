@@ -40,17 +40,31 @@ class FileEngineService
         return $this->withStatus($response);
     }
 
-    public function initiateUpload(array $payload, string $requestedBy, array $traceHeaders = []): array
+    public function initiateUpload(array $payload, array $traceHeaders = [], string $idempotencyKey = ''): array
     {
-        $payload['createdBy'] = $requestedBy;
-        return $this->withStatus($this->client()->withHeaders($traceHeaders)->post($this->base() . '/uploads/initiate', $payload));
+        $request = $this->client()->withHeaders($traceHeaders);
+        if ($idempotencyKey !== '') {
+            $request = $request->withHeaders(['X-Idempotency-Key' => $idempotencyKey]);
+        }
+
+        return $this->withStatus($request->post($this->base() . '/uploads:initiate', $payload));
     }
 
-    public function completeUpload(string $uploadId, array $traceHeaders = []): array
+    public function uploadChunk(string $uploadId, int $offset, string $content, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->client()->withHeaders($traceHeaders)->post($this->base() . '/uploads/complete', [
-            'uploadId' => $uploadId,
-        ]));
+        $request = $this->client()->withHeaders($traceHeaders)->withBody($content, 'application/octet-stream');
+
+        return $this->withStatus($request->put($this->base() . '/uploads/' . rawurlencode($uploadId) . ':chunk?offset=' . $offset));
+    }
+
+    public function completeUpload(string $uploadId, array $traceHeaders = [], string $idempotencyKey = ''): array
+    {
+        $request = $this->client()->withHeaders($traceHeaders);
+        if ($idempotencyKey !== '') {
+            $request = $request->withHeaders(['X-Idempotency-Key' => $idempotencyKey]);
+        }
+
+        return $this->withStatus($request->post($this->base() . '/uploads/' . rawurlencode($uploadId) . ':complete'));
     }
 
     public function getTask(string $id, array $traceHeaders = []): array

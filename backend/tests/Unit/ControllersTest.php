@@ -57,22 +57,31 @@ final class ControllersTest extends TestCase
 
     public function testInitiateAndCompleteUploadEndpoints(): void
     {
-        $controller = new UploadController(new FakeFileEngineService());
+        $engine = new FakeFileEngineService();
+        $controller = new UploadController($engine);
 
-        $initiate = $controller->initiate(Request::create('/uploads/initiate', 'POST', [
+        $initRequest = Request::create('/uploads/initiate', 'POST', [
             'path' => 'tenants/acme/reports',
             'filename' => 'a.txt',
             'mimeType' => 'text/plain',
             'requestedBy' => 'owner@example.com',
-        ]));
+        ]);
+        $initRequest->headers->set('X-Request-Id', 'req-upload-test');
+        $initiate = $controller->initiate($initRequest);
         self::assertSame(200, $initiate->getStatusCode());
-        self::assertSame('upl-1', $initiate->getData(true)['uploadId']);
+        self::assertSame('upl-1', $initiate->getData(true)['upload_id']);
 
-        $complete = $controller->complete(Request::create('/uploads/complete', 'POST', [
-            'uploadId' => 'upl-1',
-        ]));
+        $chunkRequest = Request::create('/uploads/upl-1/chunk?offset=0', 'PUT', [], [], [], [], 'hello');
+        $chunkRequest->headers->set('X-Request-Id', 'req-upload-test');
+        $chunk = $controller->uploadChunk($chunkRequest, 'upl-1');
+        self::assertSame(202, $chunk->getStatusCode());
+
+        $completeRequest = Request::create('/uploads/upl-1/complete', 'POST');
+        $completeRequest->headers->set('X-Request-Id', 'req-upload-test');
+        $complete = $controller->complete($completeRequest, 'upl-1');
         self::assertSame(200, $complete->getStatusCode());
-        self::assertSame('queued', $complete->getData(true)['status']);
+        self::assertSame('completed', $complete->getData(true)['status']);
+        self::assertSame('req-upload-test', $engine->lastRequestId);
     }
 
     public function testGetTaskEndpointReturnsTaskStatus(): void
@@ -102,6 +111,8 @@ final class ControllersTest extends TestCase
 
 final class FakeFileEngineService extends FileEngineService
 {
+    public string $lastRequestId = '';
+
     public function __construct()
     {
         parent::__construct(new HttpFactory(), 'http://example.test/v1');
@@ -119,24 +130,37 @@ final class FakeFileEngineService extends FileEngineService
         ];
     }
 
-    public function initiateUpload(array $payload, string $requestedBy, array $traceHeaders = []): array
+    public function initiateUpload(array $payload, array $traceHeaders = [], string $idempotencyKey = ""): array
     {
+        $this->lastRequestId = (string) ($traceHeaders['X-Request-Id'] ?? '');
         return [
             '_engine_http_status' => 200,
-            'uploadId' => 'upl-1',
-            'uploadUrl' => 'http://upload.local/upl-1',
-            'requestedBy' => $requestedBy,
+            'upload_id' => 'upl-1',
+            'upload_url' => 'http://upload.local/upl-1:chunk',
+            'staging_token' => 'upl-1',
             'payload' => $payload,
         ];
     }
 
-    public function completeUpload(string $uploadId, array $traceHeaders = []): array
+
+    public function uploadChunk(string $uploadId, int $offset, string $content, array $traceHeaders = []): array
     {
+        $this->lastRequestId = (string) ($traceHeaders['X-Request-Id'] ?? '');
+        return [
+            '_engine_http_status' => 202,
+            'upload_id' => $uploadId,
+            'offset' => $offset,
+            'bytes' => strlen($content),
+        ];
+    }
+
+    public function completeUpload(string $uploadId, array $traceHeaders = [], string $idempotencyKey = ""): array
+    {
+        $this->lastRequestId = (string) ($traceHeaders['X-Request-Id'] ?? '');
         return [
             '_engine_http_status' => 200,
-            'taskId' => 'task-complete',
-            'status' => 'queued',
-            'uploadId' => $uploadId,
+            'upload_id' => $uploadId,
+            'status' => 'completed',
         ];
     }
 
@@ -153,6 +177,8 @@ final class FakeFileEngineService extends FileEngineService
 
 final class DeniedFileEngineService extends FileEngineService
 {
+    public string $lastRequestId = '';
+
     public function __construct()
     {
         parent::__construct(new HttpFactory(), 'http://example.test/v1');

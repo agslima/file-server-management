@@ -114,7 +114,7 @@ service FileEngine {
 
 ### 5.2 REST (gRPC-Gateway)
 
-HTTP/JSON is **baseline** for `CreateFolder` and `GetTaskStatus` and **target-state** for upload routes and expanded read APIs. Treat non-baseline routes as illustrative until validated in the capability ledger.
+HTTP/JSON is **baseline** for `CreateFolder`, `GetTaskStatus`, and upload lifecycle routes; expanded read APIs outside the capability ledger remain target-state.
 
 ---
 

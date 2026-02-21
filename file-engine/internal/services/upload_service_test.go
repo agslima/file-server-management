@@ -181,7 +181,7 @@ func TestUploadServiceResumableUploadFinalize(t *testing.T) {
 	st := localstorage.New(t.TempDir())
 	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second})
 
-	session, err := svc.StartResumableUpload("/tenants/acme/docs/resume.txt")
+	session, err := svc.StartResumableUpload("/tenants/acme/docs/resume.txt", "")
 	if err != nil {
 		t.Fatalf("start resumable: %v", err)
 	}

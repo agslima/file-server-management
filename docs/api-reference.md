@@ -7,7 +7,7 @@ Filesystem mutations run **asynchronously** via a worker, so the API returns a *
 Route maturity and claim mapping: [`docs/route-maturity-matrix.md`](route-maturity-matrix.md).
 
 **Core domains**
-- Filesystem commands: create folders (baseline); uploads are target-state
+- Filesystem commands: create folders and upload lifecycle (`Initiate -> Upload chunk -> Complete`) are baseline-validated
 - Tasks: async status (`queued/running/success/failed/quarantined`)
 - Authorization: enforced at the **File Engine boundary** using **JWT → AuthContext** + **tenant membership** + **RBAC + path-based ACL (with inheritance)**
 

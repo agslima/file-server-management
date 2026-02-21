@@ -70,6 +70,7 @@ type UploadService struct {
 	mu               sync.RWMutex
 	metadata         map[string]UploadMetadata
 	idempotency      map[string]idempotencyRecord
+	initIdempotency  map[string]initIdempotencyRecord
 	dlq              map[string]ScanDLQEntry
 	dlqSeq           int64
 	resumable        map[string]*resumableUpload
@@ -87,6 +88,11 @@ type idempotencyRecord struct {
 	Path       string
 	Meta       UploadMetadata
 	ErrMessage string
+}
+
+type initIdempotencyRecord struct {
+	Path      string
+	SessionID string
 }
 
 type tenantRateWindow struct {
@@ -110,7 +116,7 @@ func NewUploadServiceWithLogger(st storage.Storage, scanner ports.MalwareScanner
 	}
 	return &UploadService{
 		st: st, scanner: scanner, policy: policy, log: logg,
-		metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, dlq: map[string]ScanDLQEntry{}, resumable: map[string]*resumableUpload{},
+		metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, initIdempotency: map[string]initIdempotencyRecord{}, dlq: map[string]ScanDLQEntry{}, resumable: map[string]*resumableUpload{},
 		rateByTenant: map[string]tenantRateWindow{},
 		governance: GovernancePolicy{
 			Default: TenantGovernancePolicy{QuotaBytes: policy.TenantQuotaBytes, ObjectLimit: policy.TenantObjectLimit},
@@ -119,16 +125,27 @@ func NewUploadServiceWithLogger(st storage.Storage, scanner ports.MalwareScanner
 	}
 }
 
-func (s *UploadService) StartResumableUpload(targetPath string) (string, error) {
+func (s *UploadService) StartResumableUpload(targetPath, idempotencyKey string) (string, error) {
 	normalized, err := security.NormalizeTenantPath(targetPath)
 	if err != nil {
 		return "", err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if idempotencyKey != "" {
+		if existing, ok := s.initIdempotency[idempotencyKey]; ok {
+			if existing.Path != normalized {
+				return "", errors.New("idempotency key already used for a different target path")
+			}
+			return existing.SessionID, nil
+		}
+	}
 	s.dlqSeq++
 	id := fmt.Sprintf("resumable-%d", s.dlqSeq)
 	s.resumable[id] = &resumableUpload{TargetPath: normalized}
+	if idempotencyKey != "" {
+		s.initIdempotency[idempotencyKey] = initIdempotencyRecord{Path: normalized, SessionID: id}
+	}
 	return id, nil
 }
 
@@ -273,7 +290,11 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	tctx, cancel := context.WithTimeout(ctx, s.policy.RequestTimeout)
 	defer cancel()
 
-	stagePath := path.Join("/quarantine", tenantID, fmt.Sprintf("upload-%d.bin", time.Now().UTC().UnixNano()))
+	stageName := strings.TrimSpace(path.Base(normalized))
+	if stageName == "" || stageName == "." || stageName == "/" {
+		stageName = "upload.bin"
+	}
+	stagePath := path.Join("/quarantine", tenantID, fmt.Sprintf("%d-%s", time.Now().UTC().UnixNano(), stageName))
 	h := sha256.New()
 	cr := &countingReader{r: content}
 	tr := io.TeeReader(cr, h)
