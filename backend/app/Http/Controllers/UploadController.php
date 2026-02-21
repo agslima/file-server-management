@@ -16,34 +16,55 @@ class UploadController extends Controller
     public function initiate(Request $request): JsonResponse
     {
         $path = (string) $request->input('path', '');
-        $filename = (string) $request->input('filename', '');
-        $mimeType = (string) $request->input('mimeType', '');
-
-        if ($path === '' || $filename === '' || $mimeType === '') {
-            return new JsonResponse(['message' => 'path, filename and mimeType are required'], 422);
+        if ($path === '') {
+            return new JsonResponse(['message' => 'path is required'], 422);
         }
 
-        $requestedBy = (string) ($request->input('requestedBy') ?? optional($request->user())->email ?? 'system');
+        $payload = $this->engine->initiateUpload(
+            ['path' => $path],
+            TraceHeaders::fromRequest($request),
+            (string) $request->header('X-Idempotency-Key', '')
+        );
 
-        $payload = $this->engine->initiateUpload([
-            'path' => $path,
-            'filename' => $filename,
-            'mimeType' => $mimeType,
-        ], $requestedBy, TraceHeaders::fromRequest($request));
-        $status = (int) ($payload['_engine_http_status'] ?? 200);
-        unset($payload['_engine_http_status']);
-
-        return new JsonResponse($payload, $status);
+        return $this->fromEnginePayload($payload);
     }
 
-    public function complete(Request $request): JsonResponse
+    public function uploadChunk(Request $request, string $uploadId): JsonResponse
     {
-        $uploadId = (string) $request->input('uploadId', '');
         if ($uploadId === '') {
             return new JsonResponse(['message' => 'uploadId is required'], 422);
         }
 
-        $payload = $this->engine->completeUpload($uploadId, TraceHeaders::fromRequest($request));
+        $offset = (int) $request->input('offset', 0);
+        $payload = (string) $request->getContent();
+
+        $response = $this->engine->uploadChunk(
+            $uploadId,
+            $offset,
+            $payload,
+            TraceHeaders::fromRequest($request)
+        );
+
+        return $this->fromEnginePayload($response);
+    }
+
+    public function complete(Request $request, string $uploadId): JsonResponse
+    {
+        if ($uploadId === '') {
+            return new JsonResponse(['message' => 'uploadId is required'], 422);
+        }
+
+        $payload = $this->engine->completeUpload(
+            $uploadId,
+            TraceHeaders::fromRequest($request),
+            (string) $request->header('X-Idempotency-Key', '')
+        );
+
+        return $this->fromEnginePayload($payload);
+    }
+
+    private function fromEnginePayload(array $payload): JsonResponse
+    {
         $status = (int) ($payload['_engine_http_status'] ?? 200);
         unset($payload['_engine_http_status']);
 

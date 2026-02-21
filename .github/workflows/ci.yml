@@ -47,6 +47,7 @@ jobs:
               - 'scripts/ledger-baseline.sh'
               - 'scripts/e2e/**'
               - 'scripts/wait-for-http.sh'
+              - 'scripts/wait-for-oidc-token.sh'
               - '.github/workflows/ci.yml'
               
   backend:
@@ -214,6 +215,49 @@ jobs:
           ./scripts/wait-for-http.sh http://localhost:8080/healthz 120
           ./scripts/wait-for-http.sh http://localhost:8081/healthz 120
           ./scripts/e2e/vs001_create_folder.sh
+
+
+  upload-lifecycle-e2e:
+    name: Upload Lifecycle E2E
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.file_engine == 'true' || needs.changes.outputs.infra == 'true' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run upload lifecycle docker-compose E2E
+        env:
+          COMPOSE_PROJECT_NAME: upload-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          trap 'docker compose down -v --remove-orphans' EXIT
+          docker compose build --pull file-engine file-engine-worker backend
+          docker compose up -d redis postgres file-engine file-engine-worker backend
+          ./scripts/wait-for-http.sh http://localhost:8080/healthz 120
+          ./scripts/wait-for-http.sh http://localhost:8081/healthz 120
+          timeout --signal=TERM 180 ./scripts/e2e/upload_lifecycle.sh
+
+
+
+  oidc-e2e:
+    name: OIDC Profile E2E
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.file_engine == 'true' || needs.changes.outputs.infra == 'true' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run OIDC docker-compose E2E (bounded)
+        env:
+          COMPOSE_PROJECT_NAME: oidc-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          ./scripts/e2e/run_oidc_profile.sh
+
 
 
   lint-go:

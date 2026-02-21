@@ -102,6 +102,7 @@ func (c *Container) Servers() *Servers {
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
 	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore, uploadSvc, tenantResolver)
 	httpSrv.Identity = identity.NewStore(pgPool)
+	httpSrv.UploadAuditor = auditor
 	httpSrv.AddReadyCheck("storage", func(ctx context.Context) error {
 		_, err := st.List(ctx, "/")
 		return err
