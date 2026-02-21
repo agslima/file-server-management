@@ -26,17 +26,21 @@ final class TraceHeaders
             'X-Correlation-Id' => $correlationId,
         ];
 
-        $traceparent = trim((string) $request->header('traceparent', ''));
-        if ($traceparent !== '') {
-            $headers['traceparent'] = $traceparent;
-        }
-
-        $baggage = trim((string) $request->header('baggage', ''));
-        if ($baggage !== '') {
-            $headers['baggage'] = $baggage;
-        }
+        self::maybeAttach($headers, 'traceparent', $request);
+        self::maybeAttach($headers, 'tracestate', $request);
+        self::maybeAttach($headers, 'baggage', $request);
 
         return $headers;
     }
-}
 
+    /**
+     * @param array<string,string> $headers
+     */
+    private static function maybeAttach(array &$headers, string $headerName, Request $request): void
+    {
+        $value = trim((string) $request->header($headerName, ''));
+        if ($value !== '') {
+            $headers[$headerName] = $value;
+        }
+    }
+}

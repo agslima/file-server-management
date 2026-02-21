@@ -2,7 +2,7 @@
 
 ## Goal
 
-Prove operators can detect and diagnose failures quickly with trace + metrics + alert rules.
+Prove operators can detect and diagnose OTEL/alerting failures quickly with deterministic drills and runbook-linked signals.
 
 ## Preconditions
 
@@ -10,36 +10,56 @@ Prove operators can detect and diagnose failures quickly with trace + metrics + 
 - Metrics endpoint available at `http://localhost:8080/metrics`.
 - Alert rules checked in under `monitoring/alerts/file-engine-alerts.yml`.
 
-## Drill script
+## Drill scripts
 
 ```bash
-./scripts/drills/observability_incident_drill.sh
+./scripts/check-otel-connectivity.sh
+./scripts/drills/production_deployment_hardening.sh
 ```
 
-Script confirms baseline signals are present and prints expected signatures for three break scenarios.
+`check-otel-connectivity.sh` fails fast when service OTEL exporter endpoints are misconfigured and verifies Jaeger actually contains exported traces from both `file-engine-api` and `file-engine-worker` after a backend-driven request.
 
-## Scenarios
+`production_deployment_hardening.sh` validates alert rules and runs three deterministic drills:
 
-1. **Break scanner**
-   - Set scanner backend to unreachable ClamAV endpoint.
+1. `sink_down.sh`
+2. `scanner_down.sh`
+3. `otel_exporter_down.sh`
+
+## Scenarios + expected deterministic signals
+
+1. **Sink down (`scripts/drills/sink_down.sh`)**
+   - Simulation: integration test drives immutable sink retries into dead-letter path.
    - Expected signals:
-     - logs: `upload.scan.completed` with `scan_error`
-     - metrics: `fileengine_scan_dlq_size > 0`, `fileengine_scan_backlog > 0`
-     - alert: `FileEngineScanDLQGrowing`
+     - `fileengine_audit_sink_failures_total` increments
+     - dead-letter payload exists for sink write attempts
+     - `fileengine_audit_sink_lag_ms` records lag movement
 
-2. **Break audit sink**
-   - Point SIEM/Loki sink endpoint to failing URL.
+2. **Scanner down (`scripts/drills/scanner_down.sh`)**
+   - Simulation: service test forces scanner failure path and enqueues scan DLQ entry.
    - Expected signals:
-     - metric increase: `fileengine_audit_sink_failures_total`
-     - lag movement: `fileengine_audit_sink_lag_ms`
-     - alert: `FileEngineAuditSinkFailures`
+     - upload scan failure metadata contains scanner error
+     - `fileengine_scan_dlq_size` increases
+     - operator remediation remains available through scan DLQ admin workflow
 
-3. **Slow DB**
-   - Inject latency/failure in Postgres path.
+3. **OTEL exporter down (`scripts/drills/otel_exporter_down.sh`)**
+   - Simulation: observability tests verify unsupported endpoint rejection + no-export fallback behavior.
    - Expected signals:
-     - queue lag growth (`fileengine_queue_lag_ms_max`)
-     - readiness degradation on `/readyz`
-     - traces in Jaeger show long DB spans
+     - startup validation rejects invalid exporter endpoint scheme
+     - no-export fallback is deterministic (`InitTracing` still returns shutdown handler)
+
+## Runbook closure checks
+
+For incident-drill closure, run:
+
+```bash
+./scripts/check-otel-connectivity.sh
+./scripts/drills/production_deployment_hardening.sh
+```
+
+Expected output markers:
+
+- `OTEL_CONNECTIVITY_OK`
+- `PRODUCTION_DEPLOYMENT_HARDENING_DRILLS_OK`
 
 ## Related assets
 
