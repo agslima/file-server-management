@@ -287,14 +287,6 @@ func (h *HTTPServer) emitUploadAudit(ctx context.Context, event, correlationID, 
 	})
 }
 
-func tenantFromNormalizedPath(p string) string {
-	parts := strings.Split(strings.TrimPrefix(p, "/"), "/")
-	if len(parts) > 1 {
-		return parts[1]
-	}
-	return ""
-}
-
 func (h *HTTPServer) allowTenantRequest(tenant string) bool {
 	h.rateMu.Lock()
 	defer h.rateMu.Unlock()

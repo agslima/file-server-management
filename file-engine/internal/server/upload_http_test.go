@@ -60,7 +60,7 @@ func TestUploadLifecycleEndpointsCleanAndDirty(t *testing.T) {
 		t.Fatalf("expected 202 got %d body=%s", chunkRR.Code, chunkRR.Body.String())
 	}
 
-	completeReq := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", nil)
+	completeReq := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
 	completeReq.Header.Set("X-Idempotency-Key", "complete-1")
 	completeReq.Header.Set("X-Request-Id", "req-upload-1")
 	completeRR := httptest.NewRecorder()
@@ -96,7 +96,7 @@ func TestUploadLifecycleEndpointsCleanAndDirty(t *testing.T) {
 		t.Fatalf("dirty chunk expected 202 got %d", dirtyChunkRR.Code)
 	}
 
-	dirtyComplete := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+dirtyUploadID+":complete", nil)
+	dirtyComplete := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+dirtyUploadID+":complete", http.NoBody)
 	dirtyCompleteRR := httptest.NewRecorder()
 	h.handleUploadComplete(dirtyCompleteRR, dirtyComplete)
 	if dirtyCompleteRR.Code != http.StatusForbidden {

@@ -1,8 +1,10 @@
 package services
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -112,7 +114,11 @@ func isZeroPolicy(p GovernancePolicy) bool {
 
 func readPolicySource(sourceURL string) ([]byte, error) {
 	if strings.HasPrefix(sourceURL, "http://") || strings.HasPrefix(sourceURL, "https://") {
-		resp, err := http.Get(sourceURL) // #nosec G107 -- operator-managed governance endpoint.
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, sourceURL, http.NoBody) // #nosec G107 -- operator-managed governance endpoint.
+		if err != nil {
+			return nil, fmt.Errorf("build governance policy request: %w", err)
+		}
+		resp, err := http.DefaultClient.Do(req) // #nosec G704 -- source URL is operator-managed governance endpoint.
 		if err != nil {
 			return nil, fmt.Errorf("read governance policy source: %w", err)
 		}
@@ -141,7 +147,7 @@ func signPolicy(p GovernancePolicy, key string) (string, error) {
 	}
 	h := hmac.New(sha256.New, []byte(key))
 	_, _ = h.Write(b)
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func (p GovernancePolicy) Validate() error {
