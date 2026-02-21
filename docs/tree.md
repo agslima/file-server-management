@@ -65,7 +65,6 @@
 │   ├── jwt_integration.md
 │   ├── observability.md
 │   ├── platform-engineers.md
-│   ├── postman_collection.json
 │   ├── prod-checklist.md
 │   ├── project-alignment-review.md
 │   ├── roadmap-ledger-gap-analysis.md
@@ -100,11 +99,6 @@
 │   │       └── google
 │   │           └── api
 │   │               └── http.proto
-│   ├── build
-│   │   └── docker
-│   │       ├── protoc-gen.Dockerfile
-│   │       ├── server.Dockerfile
-│   │       └── worker.Dockerfile
 │   ├── cmd
 │   │   ├── file-engine
 │   │   │   └── main.go
@@ -118,6 +112,7 @@
 │   │   └── worker
 │   │       └── main.go
 │   ├── config
+│   │   ├── governance-policy-source.example.json
 │   │   └── governance-policy.example.json
 │   ├── db
 │   │   ├── migrations
@@ -287,12 +282,6 @@
 │   │       ├── doc.go
 │   │       ├── worker.go
 │   │       └── worker_impl.go
-│   ├── pkg
-│   │   ├── generated
-│   │   │   ├── fileengine.pb.go
-│   │   │   ├── fileengine.pb.gw.go
-│   │   │   └── fileengine_grpc.pb.go
-│   │   └── util
 │   ├── proto
 │   │   ├── annotations.proto
 │   │   ├── fileengine.proto
@@ -343,16 +332,24 @@
 │   └── otel-collector-config.yaml
 └── scripts
     ├── architecture-conformance-check.sh
+    ├── check-otel-connectivity.sh
     ├── doc-drift-check.sh
     ├── doc-ownership-check.sh
     ├── drills
-    │   └── observability_incident_drill.sh
+    │   ├── observability_incident_drill.sh
+    │   ├── otel_exporter_down.sh
+    │   ├── production_deployment_hardening.sh
+    │   ├── scanner_down.sh
+    │   └── sink_down.sh
     ├── e2e
     │   ├── oidc_login_and_call_engine.sh
+    │   ├── run_oidc_profile.sh
+    │   ├── upload_lifecycle.sh
     │   └── vs001_create_folder.sh
     ├── ledger-baseline.sh
     ├── validate-alert-rules.sh
     ├── validate-observability-assets.sh
-    └── wait-for-http.sh
+    ├── wait-for-http.sh
+    └── wait-for-oidc-token.sh
 
-98 directories, 258 files
+93 directories, 260 files
