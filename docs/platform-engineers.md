@@ -150,3 +150,8 @@ Actions:
 - File server: snapshots or backup system depending on storage provider
 - Object storage: lifecycle policies for staging + quarantine buckets
 - RPO/RTO must be defined per environment
+
+
+## Named backup maintainer
+
+- Backup maintainer for Platform (observability/CI): **Agnaldo Silva Lima** (see `docs/ownership-backup-matrix.md`).

@@ -44,6 +44,13 @@ When any of these are promoted to required, update this doc and the branch prote
 
 ---
 
+
+## Branch protection mapping (Milestone 8)
+
+- Canonical mapping: `docs/branch-protection-mapping.md`.
+- Named domain backup maintainers: `docs/ownership-backup-matrix.md`.
+- Keep this document and branch-protection settings synchronized at each quarterly review.
+
 ## Quarterly alignment review cadence
 
 - Alignment review is updated **quarterly** in `docs/project-alignment-review.md` (minimum cadence: once per quarter).
