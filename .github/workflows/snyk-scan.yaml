@@ -104,7 +104,7 @@ jobs:
           cache-dependency-path: './frontend/package-lock.json'
           
       - name: Install Snyk CLI
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Build & Scan
         run: |
