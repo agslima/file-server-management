@@ -138,3 +138,8 @@ Recommended minimum:
 - Service-to-service:
   - reject unauthenticated File Engine calls
   - reject expired/scoped token misuse
+
+
+## Named backup maintainer
+
+- Backup maintainer for Security (authz/audit): **Marina Costa** (see `docs/ownership-backup-matrix.md`).

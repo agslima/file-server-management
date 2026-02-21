@@ -16,6 +16,8 @@ The `docs/` directory contains project-wide documentation for the File Server Ma
 - [Documentation Overview (this file)](README.md)
 - [Capability Ledger (claim -> validation mapping)](capability-ledger.md)
 - [Governance (merge gates)](governance.md)
+- [Branch Protection Mapping](branch-protection-mapping.md)
+- [Ownership Backup Matrix](ownership-backup-matrix.md)
 - [Project Alignment Review](project-alignment-review.md)
 - [Roadmap (staged milestones)](roadmap.md)
 
@@ -83,6 +85,8 @@ Assign owners and review cadence to prevent silent drift. Owners are roles (not 
 | `docs/capability-ledger.md` | Project Maintainers | Per release |
 | `docs/project-alignment-review.md` | Project Maintainers | Quarterly |
 | `docs/governance.md` | Project Maintainers | Quarterly |
+| `docs/branch-protection-mapping.md` | Project Maintainers | Quarterly |
+| `docs/ownership-backup-matrix.md` | Project Maintainers | Quarterly |
 | `docs/roadmap.md` | Platform Engineering | Monthly |
 | `docs/setup.md` | Developer Experience | Monthly |
 | `docs/contributors.md` | Developer Experience | Quarterly |
