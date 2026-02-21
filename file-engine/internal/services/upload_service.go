@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -31,16 +32,18 @@ type UploadPolicy struct {
 }
 
 type UploadMetadata struct {
-	TenantID    string
-	Path        string
-	StagePath   string
-	Size        int64
-	Checksum    string
-	ScanStatus  ports.MalwareScanStatus
-	ScannedBy   string
-	CreatedAt   time.Time
-	RetainUntil time.Time
-	LegalHold   bool
+	TenantID     string
+	Path         string
+	StagePath    string
+	Size         int64
+	Checksum     string
+	ScanStatus   ports.MalwareScanStatus
+	ScannedBy    string
+	StorageClass string
+	CreatedAt    time.Time
+	RetainUntil  time.Time
+	LegalHold    bool
+	ArchivedAt   time.Time
 }
 
 type ScanDLQEntry struct {
@@ -70,11 +73,16 @@ type UploadService struct {
 	mu               sync.RWMutex
 	metadata         map[string]UploadMetadata
 	idempotency      map[string]idempotencyRecord
+	initIdempotency  map[string]initIdempotencyRecord
 	dlq              map[string]ScanDLQEntry
 	dlqSeq           int64
 	resumable        map[string]*resumableUpload
 	rateByTenant     map[string]tenantRateWindow
 	governanceEvents []GovernanceEvent
+	sourcePolicy     GovernancePolicy
+	sourceVersion    string
+	driftDetected    bool
+	lastDriftCheck   time.Time
 }
 
 type resumableUpload struct {
@@ -87,6 +95,11 @@ type idempotencyRecord struct {
 	Path       string
 	Meta       UploadMetadata
 	ErrMessage string
+}
+
+type initIdempotencyRecord struct {
+	Path      string
+	SessionID string
 }
 
 type tenantRateWindow struct {
@@ -110,7 +123,7 @@ func NewUploadServiceWithLogger(st storage.Storage, scanner ports.MalwareScanner
 	}
 	return &UploadService{
 		st: st, scanner: scanner, policy: policy, log: logg,
-		metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, dlq: map[string]ScanDLQEntry{}, resumable: map[string]*resumableUpload{},
+		metadata: map[string]UploadMetadata{}, idempotency: map[string]idempotencyRecord{}, initIdempotency: map[string]initIdempotencyRecord{}, dlq: map[string]ScanDLQEntry{}, resumable: map[string]*resumableUpload{},
 		rateByTenant: map[string]tenantRateWindow{},
 		governance: GovernancePolicy{
 			Default: TenantGovernancePolicy{QuotaBytes: policy.TenantQuotaBytes, ObjectLimit: policy.TenantObjectLimit},
@@ -119,16 +132,27 @@ func NewUploadServiceWithLogger(st storage.Storage, scanner ports.MalwareScanner
 	}
 }
 
-func (s *UploadService) StartResumableUpload(targetPath string) (string, error) {
+func (s *UploadService) StartResumableUpload(targetPath, idempotencyKey string) (string, error) {
 	normalized, err := security.NormalizeTenantPath(targetPath)
 	if err != nil {
 		return "", err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if idempotencyKey != "" {
+		if existing, ok := s.initIdempotency[idempotencyKey]; ok {
+			if existing.Path != normalized {
+				return "", errors.New("idempotency key already used for a different target path")
+			}
+			return existing.SessionID, nil
+		}
+	}
 	s.dlqSeq++
 	id := fmt.Sprintf("resumable-%d", s.dlqSeq)
 	s.resumable[id] = &resumableUpload{TargetPath: normalized}
+	if idempotencyKey != "" {
+		s.initIdempotency[idempotencyKey] = initIdempotencyRecord{Path: normalized, SessionID: id}
+	}
 	return id, nil
 }
 
@@ -151,6 +175,15 @@ func (s *UploadService) FinalizeResumableUpload(ctx context.Context, sessionID, 
 	s.mu.Lock()
 	r, ok := s.resumable[sessionID]
 	if !ok {
+		if idempotencyKey != "" {
+			if existing, found := s.idempotency[idempotencyKey]; found {
+				s.mu.Unlock()
+				if existing.ErrMessage != "" {
+					return existing.Meta, errors.New(existing.ErrMessage)
+				}
+				return existing.Meta, nil
+			}
+		}
 		s.mu.Unlock()
 		return UploadMetadata{}, errors.New("resumable session not found")
 	}
@@ -180,6 +213,52 @@ func (s *UploadService) GovernanceEvents() []GovernanceEvent {
 	out := make([]GovernanceEvent, len(s.governanceEvents))
 	copy(out, s.governanceEvents)
 	return out
+}
+
+type EffectiveGovernancePolicy struct {
+	TenantID      string                 `json:"tenant_id"`
+	TenantPolicy  TenantGovernancePolicy `json:"tenant_policy"`
+	Lifecycle     LifecyclePolicy        `json:"lifecycle"`
+	PathHolds     []string               `json:"path_holds"`
+	SourceVersion string                 `json:"source_version,omitempty"`
+	DriftDetected bool                   `json:"drift_detected"`
+	LastDriftAt   time.Time              `json:"last_drift_check_at,omitempty"`
+}
+
+func (s *UploadService) EffectivePolicy(tenantID string) EffectiveGovernancePolicy {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return EffectiveGovernancePolicy{
+		TenantID:      tenantID,
+		TenantPolicy:  s.tenantGovernancePolicy(tenantID),
+		Lifecycle:     s.governance.Lifecycle,
+		PathHolds:     append([]string(nil), s.governance.PathHolds...),
+		SourceVersion: s.sourceVersion,
+		DriftDetected: s.driftDetected,
+		LastDriftAt:   s.lastDriftCheck,
+	}
+}
+
+func (s *UploadService) SetGovernanceSource(p GovernancePolicy, version string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sourcePolicy = p
+	s.sourceVersion = version
+}
+
+func (s *UploadService) CheckGovernanceDrift(actorID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastDriftCheck = time.Now().UTC()
+	drift := !reflect.DeepEqual(s.governance, s.sourcePolicy)
+	reason := "in_sync"
+	if drift {
+		reason = "runtime_policy_mismatch"
+	}
+	s.driftDetected = drift
+	s.appendGovernanceEventLocked(actorID, "control-plane", "policy_drift_check", "/governance/policy", "allow", reason)
+	observability.DefaultMetrics.ObserveGovernanceDrift(drift, reason)
+	return drift
 }
 
 func (s *UploadService) appendGovernanceEventLocked(actorID, tenantID, action, objectPath, decision, reason string) {
@@ -273,7 +352,11 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	tctx, cancel := context.WithTimeout(ctx, s.policy.RequestTimeout)
 	defer cancel()
 
-	stagePath := path.Join("/quarantine", tenantID, fmt.Sprintf("upload-%d.bin", time.Now().UTC().UnixNano()))
+	stageName := strings.TrimSpace(path.Base(normalized))
+	if stageName == "" || stageName == "." || stageName == "/" {
+		stageName = "upload.bin"
+	}
+	stagePath := path.Join("/quarantine", tenantID, fmt.Sprintf("%d-%s", time.Now().UTC().UnixNano(), stageName))
 	h := sha256.New()
 	cr := &countingReader{r: content}
 	tr := io.TeeReader(cr, h)
@@ -325,7 +408,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 		}
 	}
 	if s.policy.RequireCleanScan && scanStatus != ports.MalwareStatusClean {
-		meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: ports.MalwareStatusQuarantined, ScannedBy: scannedBy, CreatedAt: time.Now().UTC(), RetainUntil: time.Now().UTC().Add(time.Duration(tenantPolicy.RetentionSeconds) * time.Second), LegalHold: tenantPolicy.LegalHold || s.pathUnderLegalHold(normalized)}
+		meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: ports.MalwareStatusQuarantined, ScannedBy: scannedBy, StorageClass: "standard", CreatedAt: time.Now().UTC(), RetainUntil: time.Now().UTC().Add(time.Duration(tenantPolicy.RetentionSeconds) * time.Second), LegalHold: tenantPolicy.LegalHold || s.pathUnderLegalHold(normalized)}
 		s.mu.Lock()
 		if scanErrMessage != "" {
 			s.enqueueScanDLQLocked(meta, "scanner_error", scanAttempts, scanErrMessage)
@@ -342,7 +425,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	if err := s.st.Move(tctx, stagePath, normalized); err != nil {
 		return UploadMetadata{}, err
 	}
-	meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: scanStatus, ScannedBy: scannedBy, CreatedAt: time.Now().UTC(), RetainUntil: time.Now().UTC().Add(time.Duration(tenantPolicy.RetentionSeconds) * time.Second), LegalHold: tenantPolicy.LegalHold || s.pathUnderLegalHold(normalized)}
+	meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: scanStatus, ScannedBy: scannedBy, StorageClass: "standard", CreatedAt: time.Now().UTC(), RetainUntil: time.Now().UTC().Add(time.Duration(tenantPolicy.RetentionSeconds) * time.Second), LegalHold: tenantPolicy.LegalHold || s.pathUnderLegalHold(normalized)}
 	s.storeMeta(meta, idempotencyKey, "")
 	return meta, nil
 }
@@ -585,6 +668,9 @@ func (s *UploadService) DeleteObject(ctx context.Context, actorID, objectPath st
 
 func (s *UploadService) CleanupLifecycle(ctx context.Context) (map[string]CleanupReport, error) {
 	reports := map[string]CleanupReport{}
+	if rep := s.applyArchiveLifecycle(time.Now().UTC()); rep.Deleted > 0 || rep.Skipped > 0 {
+		reports["archive"] = rep
+	}
 	if ttl := time.Duration(s.governance.Lifecycle.QuarantineTTLSeconds) * time.Second; ttl > 0 {
 		rep, err := s.cleanupPrefix(ctx, "/quarantine", ttl)
 		if err != nil {
@@ -600,6 +686,38 @@ func (s *UploadService) CleanupLifecycle(ctx context.Context) (map[string]Cleanu
 		reports["staging"] = rep
 	}
 	return reports, nil
+}
+
+func (s *UploadService) applyArchiveLifecycle(now time.Time) CleanupReport {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	report := CleanupReport{}
+	for p, meta := range s.metadata {
+		if strings.EqualFold(meta.StorageClass, "archive") {
+			report.Skipped++
+			continue
+		}
+		tenantID := tenantFromPath(p)
+		policy := s.tenantGovernancePolicy(tenantID)
+		if policy.ArchiveAfterDays <= 0 {
+			report.Skipped++
+			continue
+		}
+		if meta.CreatedAt.IsZero() || now.Before(meta.CreatedAt.Add(time.Duration(policy.ArchiveAfterDays)*24*time.Hour)) {
+			report.Skipped++
+			continue
+		}
+		meta.StorageClass = "archive"
+		if strings.TrimSpace(policy.ArchiveClass) != "" {
+			meta.StorageClass = strings.TrimSpace(policy.ArchiveClass)
+		}
+		meta.ArchivedAt = now
+		s.metadata[p] = meta
+		report.Deleted++
+		s.appendGovernanceEventLocked("system", tenantID, "archive_transition", p, "allow", meta.StorageClass)
+		observability.DefaultMetrics.IncArchiveTransition()
+	}
+	return report
 }
 
 func (s *UploadService) cleanupPrefix(ctx context.Context, prefix string, ttl time.Duration) (CleanupReport, error) {

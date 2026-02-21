@@ -1,0 +1,22 @@
+{
+  "version": "2026-02-21T00:00:00Z",
+  "updated_at": "2026-02-21T00:00:00Z",
+  "signature": "<hmac_sha256_of_policy_json>",
+  "policy": {
+    "default": {
+      "quota_bytes": 104857600,
+      "object_limit": 10000,
+      "requests_per_minute": 120,
+      "retention_seconds": 604800,
+      "legal_hold": false,
+      "archive_after_days": 90,
+      "archive_storage_class": "archive"
+    },
+    "tenants": {},
+    "path_holds": [],
+    "lifecycle": {
+      "quarantine_ttl_seconds": 86400,
+      "orphan_staging_ttl_seconds": 86400
+    }
+  }
+}

@@ -1,0 +1,63 @@
+# Laravel / PHP
+/vendor/
+/node_modules/
+
+# Environment / secrets
+.env
+.env.*.local
+.env.local
+.env.testing
+.env.production
+.env.staging
+
+# Laravel caches & generated files
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+/storage/*.key
+/storage/app/*
+!/storage/app/.gitignore
+/storage/app/public/*
+!/storage/app/public/.gitignore
+
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# Frontend build artifacts
+/public/hot
+/public/storage
+/public/build
+/public/mix-manifest.json
+
+# Tests / coverage
+/coverage/
+/.phpunit.result.cache
+.phpunit.cache
+/.phpunit.cache
+
+# Tooling caches
+/.php-cs-fixer.cache
+/.phpstan.cache
+/.psalm.cache
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local overrides (optional)
+docker-compose.override.yml

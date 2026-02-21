@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -97,11 +98,29 @@ func (c *Container) Servers() *Servers {
 			c.Logger.Fatalf("apply governance policy: %v", err)
 		}
 	}
+	if sourcePath := strings.TrimSpace(getenv("GOVERNANCE_POLICY_SOURCE")); sourcePath != "" {
+		env, err := services.LoadGovernancePolicyFromSource(sourcePath, strings.TrimSpace(getenv("GOVERNANCE_POLICY_SOURCE_HMAC_KEY")))
+		if err != nil {
+			c.Logger.Fatalf("governance policy source: %v", err)
+		}
+		uploadSvc.SetGovernanceSource(env.Policy, env.Version)
+		interval := time.Duration(envInt64("GOVERNANCE_DRIFT_CHECK_INTERVAL_SECONDS", 60)) * time.Second
+		go func() {
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for range ticker.C {
+				if uploadSvc.CheckGovernanceDrift("system") {
+					c.Logger.Warnf("governance drift detected against source version=%s", env.Version)
+				}
+			}
+		}()
+	}
 	grpcHandler := handlers.NewGRPCHandler(q, objSvc, uploadSvc, aclStore, tenantResolver, c.Logger, auditor)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)
 	httpSrv := server.NewHTTPServer(c.Config.HTTPAddr, c.Config.GRPCAddr, c.Logger, verifier, st, aclStore, uploadSvc, tenantResolver)
 	httpSrv.Identity = identity.NewStore(pgPool)
+	httpSrv.UploadAuditor = auditor
 	httpSrv.AddReadyCheck("storage", func(ctx context.Context) error {
 		_, err := st.List(ctx, "/")
 		return err
@@ -113,6 +132,16 @@ func (c *Container) Servers() *Servers {
 		httpSrv.AddReadyCheck("postgres", func(ctx context.Context) error {
 			if err := pgPool.Ping(ctx); err != nil {
 				return err
+			}
+			return nil
+		})
+		httpSrv.AddReadyCheck("tenant-membership-schema", func(ctx context.Context) error {
+			var tablePresent bool
+			if err := pgPool.QueryRow(ctx, "SELECT to_regclass('public.user_tenants') IS NOT NULL").Scan(&tablePresent); err != nil {
+				return err
+			}
+			if !tablePresent {
+				return errors.New("tenant membership schema not ready")
 			}
 			return nil
 		})

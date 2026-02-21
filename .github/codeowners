@@ -3,7 +3,7 @@
 # ==================================
 
 # 1. Pipeline Integrity
-.github/workflows/    @agslima
+.github/              @agslima
 
 # 2. Policy Definitions
 k8s/policies/         @agslima
@@ -14,5 +14,8 @@ policies/             @agslima
 # 4. Infrastructure State
 k8s/resources/        @agslima
 
-# 5. Trivy allowlist
-.trivyignore          @agslima
+# 5. Snyk allowlist
+.snyk                @agslima
+
+# 6. Documentation 
+docs/

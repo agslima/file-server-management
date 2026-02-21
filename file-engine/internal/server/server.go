@@ -13,6 +13,7 @@ import (
 	"github.com/example/file-engine/internal/observability"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -56,10 +57,11 @@ type HTTPServer struct {
 	Verifier *auth.JWTVerifier
 	Storage  storage.Storage
 
-	ACLStore auth.ACLStore
-	Uploads  *services.UploadService
-	Tenants  auth.TenantResolver
-	Identity *identity.Store
+	ACLStore      auth.ACLStore
+	Uploads       *services.UploadService
+	Tenants       auth.TenantResolver
+	Identity      *identity.Store
+	UploadAuditor UploadAuditEmitter
 
 	ReadyChecks []readinessCheck
 
@@ -141,7 +143,7 @@ func (g *GRPCServer) Start() error {
 
 func (h *HTTPServer) Start() error {
 	ctx := context.Background()
-	mux := runtime.NewServeMux()
+	mux := runtime.NewServeMux(runtime.WithErrorHandler(gatewayErrorHandler))
 
 	conn, err := grpc.NewClient(h.GRPCAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -163,6 +165,19 @@ func (h *HTTPServer) Start() error {
 	root.HandleFunc("/readyz", h.handleReadyz)
 	root.HandleFunc("/v1/objects:download", h.handleDownload)
 	root.HandleFunc("/v1/objects:upload", h.handleUpload)
+	root.HandleFunc("/v1/uploads:initiate", h.handleUploadInitiate)
+	root.HandleFunc("/v1/uploads/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ":chunk") {
+			h.handleUploadChunk(w, r)
+			return
+		}
+		if strings.HasSuffix(r.URL.Path, ":complete") {
+			h.handleUploadComplete(w, r)
+			return
+		}
+		h.writeUploadError(w, r, http.StatusNotFound, "not_found", "upload endpoint not found", "")
+	})
+	root.HandleFunc("/v1/uploads/complete", h.handleUploadComplete)
 	root.HandleFunc("/admin/v1/tenants", h.handleAdminTenants)
 	root.HandleFunc("/admin/v1/users", h.handleAdminUsers)
 	root.HandleFunc("/admin/v1/memberships", h.handleAdminMemberships)
@@ -172,6 +187,8 @@ func (h *HTTPServer) Start() error {
 	root.HandleFunc("/admin/v1/quarantine:cleanup", h.handleQuarantineCleanup)
 	root.HandleFunc("/admin/v1/lifecycle:cleanup", h.handleLifecycleCleanup)
 	root.HandleFunc("/admin/v1/governance:delete", h.handleGovernanceDelete)
+	root.HandleFunc("/admin/v1/governance:effective", h.handleGovernanceEffective)
+	root.HandleFunc("/admin/v1/governance:drift-check", h.handleGovernanceDriftCheck)
 	root.Handle("/", auth.HTTPAuthMiddleware(h.Verifier, mux))
 
 	handler := h.instrumentHTTP(root)
@@ -197,6 +214,7 @@ func (h *HTTPServer) instrumentHTTP(next http.Handler) http.Handler {
 		if requestID == "" {
 			requestID = fmt.Sprintf("req-%d", time.Now().UTC().UnixNano())
 		}
+		r.Header.Set("X-Request-Id", requestID)
 		ww := &statusWriter{ResponseWriter: w, code: http.StatusOK}
 		ww.Header().Set("X-Request-Id", requestID)
 		start := time.Now()
@@ -217,6 +235,53 @@ type statusWriter struct {
 func (w *statusWriter) WriteHeader(statusCode int) {
 	w.code = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+type oidcAuthzError struct {
+	Code          string `json:"code"`
+	Reason        string `json:"reason"`
+	TenantID      string `json:"tenant_id,omitempty"`
+	RequestID     string `json:"request_id"`
+	CorrelationID string `json:"correlation_id"`
+}
+
+func gatewayErrorHandler(_ context.Context, mux *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
+	st := status.Convert(err)
+	if st.Code() != codes.PermissionDenied {
+		runtime.DefaultHTTPErrorHandler(context.Background(), mux, marshaler, w, r, err)
+		return
+	}
+
+	reason := "access_denied"
+	tenantID := ""
+	for _, detail := range st.Details() {
+		info, ok := detail.(*errdetails.ErrorInfo)
+		if !ok {
+			continue
+		}
+		if strings.TrimSpace(info.Reason) != "" {
+			reason = strings.ToLower(strings.TrimSpace(info.Reason))
+		}
+		tenantID = strings.TrimSpace(info.Metadata["tenant_id"])
+		break
+	}
+
+	requestID := strings.TrimSpace(r.Header.Get("X-Request-Id"))
+	if requestID == "" {
+		requestID = fmt.Sprintf("req-%d", time.Now().UTC().UnixNano())
+	}
+
+	w.Header().Set("Content-Type", marshaler.ContentType(nil))
+	w.WriteHeader(http.StatusForbidden)
+	_ = marshaler.NewEncoder(w).Encode(map[string]any{
+		"error": oidcAuthzError{
+			Code:          "AUTHZ_DENY",
+			Reason:        reason,
+			TenantID:      tenantID,
+			RequestID:     requestID,
+			CorrelationID: requestID,
+		},
+	})
 }
 
 func (h *HTTPServer) handleReadyz(w http.ResponseWriter, r *http.Request) {

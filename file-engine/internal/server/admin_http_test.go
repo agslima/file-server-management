@@ -140,3 +140,46 @@ func TestLifecycleCleanupEndpoint(t *testing.T) {
 		t.Fatalf("expected staging report, got %s", rr.Body.String())
 	}
 }
+
+func TestGovernanceEffectiveEndpoint(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
+	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{ArchiveAfterDays: 30}, Tenants: map[string]services.TenantGovernancePolicy{"acme": {ArchiveAfterDays: 7}}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/v1/governance:effective?tenant_id=acme", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleGovernanceEffective(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "archive_after_days") {
+		t.Fatalf("expected effective policy payload, got %s", rr.Body.String())
+	}
+}
+
+func TestGovernanceDriftCheckEndpoint(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
+	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{QuotaBytes: 10}, Tenants: map[string]services.TenantGovernancePolicy{}}); err != nil {
+		t.Fatalf("set runtime policy: %v", err)
+	}
+	uploads.SetGovernanceSource(services.GovernancePolicy{Default: services.TenantGovernancePolicy{QuotaBytes: 99}, Tenants: map[string]services.TenantGovernancePolicy{}}, "v1")
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/governance:drift-check", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleGovernanceDriftCheck(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "drift_detected") {
+		t.Fatalf("expected drift response payload, got %s", rr.Body.String())
+	}
+}

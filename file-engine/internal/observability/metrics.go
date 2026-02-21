@@ -69,6 +69,9 @@ type Metrics struct {
 	malwareScanDuration durationSummary
 	malwareScanVerdicts counterVec
 	quarantineTimeMs    durationSummary
+	governanceDrift     counterVec
+	governanceDriftOn   atomic.Int64
+	archiveTransitions  atomic.Int64
 
 	statusTransitions sync.Map
 	httpRequests      counterVec
@@ -193,6 +196,21 @@ func (m *Metrics) IncMalwareScanVerdict(verdict string) {
 	m.malwareScanVerdicts.inc(v)
 }
 
+func (m *Metrics) ObserveGovernanceDrift(drifted bool, reason string) {
+	state := "in_sync"
+	if drifted {
+		state = "drift"
+		m.governanceDriftOn.Store(1)
+	} else {
+		m.governanceDriftOn.Store(0)
+	}
+	m.governanceDrift.inc(fmt.Sprintf("%s|%s", state, sanitizeLabel(strings.ToLower(reason))))
+}
+
+func (m *Metrics) IncArchiveTransition() {
+	m.archiveTransitions.Add(1)
+}
+
 func (m *Metrics) SnapshotPrometheus() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# HELP fileengine_queue_depth Current queue depth\n")
@@ -247,6 +265,9 @@ func (m *Metrics) SnapshotPrometheus() string {
 	fmt.Fprintf(&b, "fileengine_quarantine_time_ms_count %d\n", qCount)
 	fmt.Fprintf(&b, "fileengine_quarantine_time_ms_sum %d\n", qSum)
 	fmt.Fprintf(&b, "fileengine_quarantine_time_ms_max %d\n", qMax)
+	fmt.Fprintf(&b, "fileengine_governance_drift_active %d\n", m.governanceDriftOn.Load())
+	fmt.Fprintf(&b, "fileengine_archive_transitions_total %d\n", m.archiveTransitions.Load())
+	emitCounterVec(&b, "fileengine_governance_drift_checks_total", []string{"state", "reason"}, m.governanceDrift.snapshot())
 
 	emitCounterVec(&b, "fileengine_http_requests_total", []string{"method", "route", "status"}, m.httpRequests.snapshot())
 	emitCounterVec(&b, "fileengine_grpc_requests_total", []string{"method", "code"}, m.grpcRequests.snapshot())

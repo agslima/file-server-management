@@ -1,14 +1,5 @@
 # Security Policy
 
-## Supported Versions
-
-As this is a Capstone Project for demonstration purposes, only the latest code in the `master` (or `main`) branch is currently supported and maintained.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| Latest  | :white_check_mark: |
-| Older   | :x:                |
-
 ## Reporting a Vulnerability
 
 We take the security of this microservice seriously. If you discover a security vulnerability within this project, please follow these steps:
@@ -17,7 +8,7 @@ We take the security of this microservice seriously. If you discover a security 
 Publicly creating an issue may put the application at risk before a patch is released. Please keep the vulnerability details private.
 
 ### 2. How to contact
-Please send an email to **[a.agnaldosilva at gmail.com]** with the subject: `[SECURITY] Vulnerability Report - DevOps Capstone`.
+Please send an email to **[a.agnaldosilva at gmail.com]** with the subject: `[SECURITY] Vulnerability Report`.
 
 In your email, please include:
 * Type of vulnerability (e.g., SQL Injection, XSS, RCE).

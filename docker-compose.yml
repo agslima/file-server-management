@@ -34,6 +34,7 @@ services:
       JWT_JWKS_URL: http://keycloak:8080/realms/file-engine/protocol/openid-connect/certs
       JWT_ISSUER: http://localhost:8082/realms/file-engine
       JWT_AUDIENCE: file-engine-dev
+      UPLOAD_REQUIRE_CLEAN_SCAN: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     volumes:
       - file_data:/mnt/files

@@ -1,0 +1,57 @@
+# =========================
+# Go build artifacts
+# =========================
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+*.test
+*.out
+*.prof
+*.cover
+coverage/
+cover.out
+
+# Common build/output folders (adjust to your repo)
+bin/
+dist/
+build/
+out/
+tmp/
+
+# If you name your compiled binary after the module/app, add it here too:
+# myapp
+
+# =========================
+# Go workspace & tooling
+# =========================
+# Go 1.18+ workspace
+go.work
+go.work.sum
+
+# Local environment overrides
+.env
+.env.*
+*.local
+
+# Editor/IDE
+.idea/
+.vscode/
+*.iml
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Dependency caches (usually NOT in repo)
+# =========================
+# These are normally outside the repo, but ignore if present
+/pkg/

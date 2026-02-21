@@ -19,6 +19,7 @@ import (
 	"github.com/example/file-engine/internal/observability"
 	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -86,7 +87,7 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 	}
 	if !allowed {
 		h.auditor.EmitTaskEvent(ctx, "auth.decision.denied", "", correlationIDFromContext(ctx), "tenant access denied")
-		return nil, status.Error(codes.PermissionDenied, "tenant access denied")
+		return nil, tenantMappingDeniedStatus(correlationIDFromContext(ctx), tenantID).Err()
 	}
 	h.auditor.EmitTaskEvent(ctx, "auth.decision.allowed", "", correlationIDFromContext(ctx), "tenant access allowed")
 
@@ -329,7 +330,7 @@ func (h *GRPCHandler) ensureTenantAccess(ctx context.Context, authCtx auth.AuthC
 	if !allowed {
 		h.auditor.EmitTaskEvent(ctx, "auth.decision.denied", "", correlationIDFromContext(ctx), "tenant access denied")
 		observability.DefaultMetrics.ObserveAuthzDecision(false, "tenant_membership")
-		return status.Error(codes.PermissionDenied, "tenant access denied")
+		return tenantMappingDeniedStatus(correlationIDFromContext(ctx), tenantID).Err()
 	}
 	if !auth.CanAccess(authCtx, p, perm, h.acl) {
 		h.auditor.EmitTaskEvent(ctx, "auth.decision.denied", "", correlationIDFromContext(ctx), "access denied")
@@ -339,6 +340,23 @@ func (h *GRPCHandler) ensureTenantAccess(ctx context.Context, authCtx auth.AuthC
 	h.auditor.EmitTaskEvent(ctx, "auth.decision.allowed", "", correlationIDFromContext(ctx), "access allowed")
 	observability.DefaultMetrics.ObserveAuthzDecision(true, "ok")
 	return nil
+}
+
+func tenantMappingDeniedStatus(correlationID, tenantID string) *status.Status {
+	st := status.New(codes.PermissionDenied, "tenant access denied")
+	withDetails, err := st.WithDetails(&errdetails.ErrorInfo{
+		Reason: "tenant_mapping_denied",
+		Domain: "file-engine.authz",
+		Metadata: map[string]string{
+			"tenant_id":      tenantID,
+			"correlation_id": correlationID,
+			"request_id":     correlationID,
+		},
+	})
+	if err != nil {
+		return st
+	}
+	return withDetails
 }
 
 func (h *GRPCHandler) emitReadAudit(ctx context.Context, action, tenantID string, authCtx auth.AuthContext, result, resourcePath string) {

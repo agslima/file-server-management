@@ -36,7 +36,7 @@ Key validations included:
 
 ## Local run (scaffold-level)
 
-For debugging the API/worker locally, follow `../docs/setup.md`. HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder` and `GetTaskStatus`; upload routes remain target-state.
+For debugging the API/worker locally, follow `../docs/setup.md`. HTTP/JSON is baseline for `CreateFolder` + `GetTaskStatus`, and upload lifecycle is baseline via engine HTTP endpoints (`/v1/uploads:initiate`, `/v1/uploads/{id}:chunk`, `/v1/uploads/{id}:complete`).
 
 ---
 

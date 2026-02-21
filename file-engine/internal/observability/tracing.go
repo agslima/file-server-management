@@ -68,7 +68,7 @@ func InitTracing(ctx context.Context, cfg TracingConfig) (func(context.Context) 
 
 	tp := sdktrace.NewTracerProvider(opts...)
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	return tp.Shutdown, nil
 }
 
