@@ -4,13 +4,17 @@
     "object_limit": 10000,
     "requests_per_minute": 120,
     "retention_seconds": 604800,
-    "legal_hold": false
+    "legal_hold": false,
+    "archive_after_days": 90,
+    "archive_storage_class": "archive"
   },
   "tenants": {
     "acme": {
       "quota_bytes": 52428800,
       "retention_seconds": 2592000,
-      "legal_hold": true
+      "legal_hold": true,
+      "archive_after_days": 30,
+      "archive_storage_class": "archive-cold"
     }
   },
   "path_holds": [

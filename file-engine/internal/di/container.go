@@ -97,6 +97,23 @@ func (c *Container) Servers() *Servers {
 			c.Logger.Fatalf("apply governance policy: %v", err)
 		}
 	}
+	if sourcePath := strings.TrimSpace(getenv("GOVERNANCE_POLICY_SOURCE")); sourcePath != "" {
+		env, err := services.LoadGovernancePolicyFromSource(sourcePath, strings.TrimSpace(getenv("GOVERNANCE_POLICY_SOURCE_HMAC_KEY")))
+		if err != nil {
+			c.Logger.Fatalf("governance policy source: %v", err)
+		}
+		uploadSvc.SetGovernanceSource(env.Policy, env.Version)
+		interval := time.Duration(envInt64("GOVERNANCE_DRIFT_CHECK_INTERVAL_SECONDS", 60)) * time.Second
+		go func() {
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for range ticker.C {
+				if uploadSvc.CheckGovernanceDrift("system") {
+					c.Logger.Warnf("governance drift detected against source version=%s", env.Version)
+				}
+			}
+		}()
+	}
 	grpcHandler := handlers.NewGRPCHandler(q, objSvc, uploadSvc, aclStore, tenantResolver, c.Logger, auditor)
 
 	grpcSrv := server.NewGRPCServer(c.Config.GRPCAddr, c.Logger, verifier, aclStore, grpcHandler)

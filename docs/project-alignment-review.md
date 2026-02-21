@@ -43,6 +43,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
+   - Governance next-step controls are now baseline-validated (`CL-049`): archive-tier lifecycle, external source policy loading/signature verification, runtime drift checks, and effective-policy operator visibility.
 3. **Backend maturity contract is consistent across core control docs.**
    - `CL-018` backend scaffold checks are now baseline-marked, `CL-020` adds executable backend↔file-engine VS-001 E2E validation, and `CL-031` tracks backend smoke execution (composer install + phpunit).
 4. **Target-state boundaries remain explicit.**

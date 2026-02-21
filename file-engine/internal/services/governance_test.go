@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,5 +30,26 @@ func TestGovernancePolicyValidateRejectsNegativeValues(t *testing.T) {
 	err := GovernancePolicy{Default: TenantGovernancePolicy{QuotaBytes: -1}, Tenants: map[string]TenantGovernancePolicy{}}.Validate()
 	if err == nil {
 		t.Fatalf("expected validation error")
+	}
+}
+
+func TestLoadGovernancePolicyFromSourceEnvelope(t *testing.T) {
+	d := t.TempDir()
+	p := filepath.Join(d, "source.json")
+	policy := GovernancePolicy{Default: TenantGovernancePolicy{ArchiveAfterDays: 7, ArchiveClass: "archive"}, Tenants: map[string]TenantGovernancePolicy{}}
+	sig, err := signPolicy(policy, "k")
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	payload, _ := json.Marshal(GovernancePolicyEnvelope{Policy: policy, Version: "v1", Signature: sig})
+	if err := os.WriteFile(p, payload, 0o600); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	env, err := LoadGovernancePolicyFromSource(p, "k")
+	if err != nil {
+		t.Fatalf("load source: %v", err)
+	}
+	if env.Policy.Default.ArchiveAfterDays != 7 || env.Version != "v1" {
+		t.Fatalf("unexpected source envelope: %+v", env)
 	}
 }
