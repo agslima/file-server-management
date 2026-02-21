@@ -10,10 +10,10 @@ Named primary and backup maintainers for core domains to reduce concentration ri
 
 | Domain | Primary maintainer | Backup maintainer | Reviewer rotation reference |
 | :-- | :-- | :-- | :-- |
-| Security (authz/audit) | Agnaldo Silva Lima | Marina Costa | `docs/security-reviewers.md` |
-| Platform (observability/CI) | Agnaldo Silva Lima | Rafael Nunes | `docs/platform-engineers.md` |
-| Backend control-plane | Agnaldo Silva Lima | Camila Rocha | `backend/AGENTS.md` |
-| Data plane (uploads/storage) | Agnaldo Silva Lima | Bruno Almeida | `file-engine/AGENTS.md` |
+| Security (authz/audit) | Agnaldo Silva Lima | Agnaldo Silva Lima | `docs/security-reviewers.md` |
+| Platform (observability/CI) | Agnaldo Silva Lima | Agnaldo Silva Lima | `docs/platform-engineers.md` |
+| Backend control-plane | Agnaldo Silva Lima | Agnaldo Silva Lima | `backend/AGENTS.md` |
+| Data plane (uploads/storage) | Agnaldo Silva Lima | Agnaldo Silva Lima | `file-engine/AGENTS.md` |
 
 ## Review expectations
 
