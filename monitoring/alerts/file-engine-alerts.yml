@@ -15,6 +15,38 @@ groups:
           severity: warning
         annotations:
           summary: "Queue lag is above threshold"
+      - alert: scanner_down
+        expr: max_over_time(fileengine_scanner_up[5m]) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scanner is down for longer than 5 minutes"
+          threshold: "scanner_up=0 for >=5m"
+      - alert: scan_queue_backlog
+        expr: fileengine_scan_backlog > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scan queue backlog is above 100 items"
+          threshold: "scan_backlog > 100 for >=15m"
+      - alert: quarantine_time_p95
+        expr: fileengine_quarantine_time_ms_p95 > 900000
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Quarantine time p95 is above 15 minutes"
+          threshold: "quarantine_time_ms_p95 > 900000 for >=15m"
+      - alert: scan_dlq_growth_rate
+        expr: increase(fileengine_scan_dlq_size[15m]) > 5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scan DLQ is growing faster than tolerated"
+          threshold: "increase(scan_dlq_size[15m]) > 5 for >=10m"
       - alert: FileEngineScanDLQGrowing
         expr: fileengine_scan_dlq_size > 0
         for: 15m

@@ -2,7 +2,10 @@
 set -euo pipefail
 
 ./scripts/validate-alert-rules.sh
+./scripts/check-malware-runbook.sh
 bash -n scripts/check-otel-connectivity.sh
+bash -n scripts/check-paging-delivery.sh
+bash -n scripts/check-malware-runbook.sh
 bash -n scripts/drills/observability_incident_drill.sh
 bash -n scripts/drills/production_deployment_hardening.sh
 bash -n scripts/drills/sink_down.sh
