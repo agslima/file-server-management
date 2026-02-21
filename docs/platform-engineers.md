@@ -154,4 +154,4 @@ Actions:
 
 ## Named backup maintainer
 
-- Backup maintainer for Platform (observability/CI): **Rafael Nunes** (see `docs/ownership-backup-matrix.md`).
+- Backup maintainer for Platform (observability/CI): **Agnaldo Silva Lima** (see `docs/ownership-backup-matrix.md`).
