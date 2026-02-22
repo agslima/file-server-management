@@ -1,0 +1,154 @@
+name: Security Scan (PR)
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: ["main"]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Change Detection
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.backend_any_changed == 'true' && 'true' || 'false') }}
+      frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.frontend_any_changed == 'true' && 'true' || 'false') }}
+      file_engine: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.file_engine_any_changed == 'true' && 'true' || 'false') }} 
+      docker: ${{ steps.filter.outputs.docker_any_changed }}
+      docker_files_json: ${{ steps.docker_files.outputs.all_changed_files }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      # - name: Secret Scanning (Gitleaks)
+      #   uses: gitleaks/gitleaks-action@v2
+      #    env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        id: filter
+        with:
+          files_yaml: |
+            backend:
+              - 'backend/composer.json'
+              - 'backend/composer.lock'
+            frontend:
+              - 'frontend/package.json'
+              - 'frontend/package-lock.json'
+              # optionally if ever used:
+              # - 'frontend/yarn.lock'
+              # - 'frontend/pnpm-lock.yaml'
+            file_engine:
+              - 'file-engine/go.mod'
+              - 'file-engine/go.sum'
+            docker:
+              - '**/Dockerfile*'
+              - 'docker-compose.yml'
+          base_sha: ${{ github.event.pull_request.base.sha }}
+          sha: ${{ github.event.pull_request.head.sha }}
+
+      # Produces a JSON array of ONLY the changed Docker-related files
+      # Example: ["backend/Dockerfile","docker-compose.yml","file-engine/api/Dockerfile"]
+      - name: Collect changed Dockerfiles/Compose (JSON)
+        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        id: docker_files
+        with:
+          files: |
+            **/Dockerfile*
+            docker-compose.yml
+          json: "true"
+
+  trivy-backend:
+    name: Trivy Gate - PHP (Composer deps)
+    needs: [changes]
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Trivy filesystem scan (libraries only)
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
+        with:
+          scan-type: 'fs'
+          scan-ref: 'backend'
+          scanners: 'vuln'
+          vuln-type: 'library'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'
+          ignore-unfixed: true
+
+  trivy-frontend:
+    name: Trivy Gate - Node.js (NPM deps)
+    needs: [changes]
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Trivy filesystem scan (libraries only)
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
+        with:
+          scan-type: 'fs'
+          scan-ref: 'frontend'
+          scanners: 'vuln'
+          vuln-type: 'library'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'
+          ignore-unfixed: true
+
+  trivy-file-engine:
+    name: Trivy Gate - Go (Go modules deps)
+    needs: [changes]
+    if: ${{ needs.changes.outputs.file_engine == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Trivy filesystem scan (libraries only)
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
+        with:
+          scan-type: 'fs'
+          scan-ref: 'file-engine'
+          scanners: 'vuln'
+          vuln-type: 'library'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'
+          ignore-unfixed: true
+
+  trivy-docker-config:
+    name: Trivy Gate - Dockerfiles & Compose (Config)
+    needs: [changes]
+    if: ${{ needs.changes.outputs.docker == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJSON(needs.changes.outputs.docker_files_json) }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Trivy config scan (changed file)
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518
+        with:
+          scan-type: 'config'
+          scan-ref: ${{ matrix.file }}
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'

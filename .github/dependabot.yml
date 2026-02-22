@@ -31,7 +31,7 @@ updates:
       - "backend"
 
   # 3. Go (File Engine) - Grouped
-  # Very important for Go: ensures go.mod and go.sum stay in sync for related updates
+  # Ensures go.mod and go.sum stay in sync for related updates
   - package-ecosystem: "gomod"
     directory: "/file-engine"
     schedule:
@@ -62,25 +62,6 @@ updates:
       - "frontend"
 
   # 5. Docker Configurations
-  # Since these are distinct directories, they must remain separate entries.
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "ci"
-    labels:
-      - "docker"
-  
-  - package-ecosystem: "docker"
-    directory: "/docker"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "ci"
-    labels:
-      - "docker"
-
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
