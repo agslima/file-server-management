@@ -35,9 +35,16 @@ These checks become required when matching paths are touched:
 | Path scope | Required checks |
 | :-- | :-- |
 | `file-engine/**` | `file-engine-dev` (`./file-engine/scripts/dev.sh`), gateway route race test, generated gateway drift check, `lint-go` |
+| `file-engine/internal/authz/**` | `Security reviewer` |
+| `monitoring/**` | `Platform reviewer` |
 | `backend/**` | Backend scaffold contract checks (`composer validate --strict` + VS-001 syntax/smoke checks) |
 | `frontend/**` | Frontend scaffold validation |
 | `docs/**` | Doc drift + governance hygiene checks (always-on) |
+
+Reviewer check expectations:
+
+- `Security reviewer` and `Platform reviewer` are path-scoped CI checks that codify reviewer rotation expectations into branch-protection-compatible status checks.
+- `.github/OWNERS` remains the canonical owner/approver/reviewer source; these path-scoped checks turn mapping guidance into enforceable CI expectations.
 
 ## Release-review branch protection audit checklist
 
