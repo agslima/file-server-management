@@ -1,6 +1,7 @@
 name: Security Scan (PR)
 
 on:
+  workflow_dispatch: {}
   pull_request:
     branches: ["main"]
     types: [opened, synchronize, reopened]
@@ -17,9 +18,9 @@ jobs:
     name: Change Detection
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend_any_changed }}
-      frontend: ${{ steps.filter.outputs.frontend_any_changed }}
-      file_engine: ${{ steps.filter.outputs.file_engine_any_changed }}
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.backend_any_changed == 'true' && 'true' || 'false') }}
+      frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.frontend_any_changed == 'true' && 'true' || 'false') }}
+      file_engine: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.file_engine_any_changed == 'true' && 'true' || 'false') }} 
       docker: ${{ steps.filter.outputs.docker_any_changed }}
       docker_files_json: ${{ steps.docker_files.outputs.all_changed_files }}
     steps:
@@ -51,6 +52,8 @@ jobs:
             docker:
               - '**/Dockerfile*'
               - 'docker-compose.yml'
+          base_sha: ${{ github.event.pull_request.base.sha }}
+          sha: ${{ github.event.pull_request.head.sha }}
 
       # Produces a JSON array of ONLY the changed Docker-related files
       # Example: ["backend/Dockerfile","docker-compose.yml","file-engine/api/Dockerfile"]
@@ -66,7 +69,7 @@ jobs:
   trivy-backend:
     name: Trivy Gate - PHP (Composer deps)
     needs: [changes]
-    if: needs.changes.outputs.backend == 'true'
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -87,7 +90,7 @@ jobs:
   trivy-frontend:
     name: Trivy Gate - Node.js (NPM deps)
     needs: [changes]
-    if: needs.changes.outputs.frontend == 'true'
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -108,7 +111,7 @@ jobs:
   trivy-file-engine:
     name: Trivy Gate - Go (Go modules deps)
     needs: [changes]
-    if: needs.changes.outputs.file_engine == 'true'
+    if: ${{ needs.changes.outputs.file_engine == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -129,7 +132,7 @@ jobs:
   trivy-docker-config:
     name: Trivy Gate - Dockerfiles & Compose (Config)
     needs: [changes]
-    if: needs.changes.outputs.docker == 'true'
+    if: ${{ needs.changes.outputs.docker == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
