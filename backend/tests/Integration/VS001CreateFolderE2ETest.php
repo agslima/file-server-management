@@ -14,6 +14,9 @@ final class VS001CreateFolderE2ETest extends TestCase
         if (!$this->isHealthy($backendUrl . '/healthz')) {
             self::markTestSkipped('backend is not reachable; start docker compose stack for VS-001 E2E validation');
         }
+        if (!$this->isFileEngineServiceRunning()) {
+            self::markTestSkipped('file-engine service is not running in docker compose; start full stack for VS-001 E2E validation');
+        }
 
         $parentPath = 'tenants/acme';
         $folderName = 'phpunit-vs001-' . time();
@@ -44,9 +47,10 @@ final class VS001CreateFolderE2ETest extends TestCase
 
         self::assertSame('success', $taskStatus);
 
+        $targetPath = escapeshellarg('/mnt/files/' . $parentPath . '/' . $folderName);
         $folderCheck = trim((string) shell_exec(sprintf(
-            'docker compose exec -T file-engine test -d %s && echo true || echo false',
-            escapeshellarg('/mnt/files/' . $parentPath . '/' . $folderName)
+            '(docker compose exec -T file-engine test -d %1$s || docker-compose exec -T file-engine test -d %1$s) >/dev/null 2>&1 && echo true || echo false',
+            $targetPath
         )));
 
         self::assertSame('true', $folderCheck);
@@ -57,6 +61,21 @@ final class VS001CreateFolderE2ETest extends TestCase
         $result = $this->requestJson('GET', $url);
 
         return $result['status'] === 200;
+    }
+
+    private function isFileEngineServiceRunning(): bool
+    {
+        $output = shell_exec(
+            'docker compose ps --services --status running 2>/dev/null || docker-compose ps --services --filter "status=running" 2>/dev/null'
+        );
+        if (!is_string($output) || trim($output) === '') {
+            return false;
+        }
+        $services = preg_split('/\R+/', trim($output));
+        if (!is_array($services)) {
+            return false;
+        }
+        return in_array('file-engine', $services, true);
     }
 
     /**

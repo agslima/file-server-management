@@ -26,7 +26,7 @@ class FileEngineService
             return $this->http->withToken($this->bearerToken);
         }
 
-        return $this->http;
+        return $this->http->withHeaders([]);
     }
 
     public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
