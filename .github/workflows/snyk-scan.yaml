@@ -6,15 +6,17 @@ on:
 
 permissions:
   contents: read
+env:
+  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
 jobs:
   changes:
     name: Change Detection
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend_any_changed }}
-      frontend: ${{ steps.filter.outputs.frontend_any_changed }}
-      file_engine: ${{ steps.filter.outputs.file_engine_any_changed }}
+      backend: ${{ steps.filter.outputs.backend_any_changed || github.event_name == 'workflow_dispatch' && 'true' }}
+      frontend: ${{ steps.filter.outputs.frontend_any_changed || github.event_name == 'workflow_dispatch' && 'true' }}
+      file_engine: ${{ steps.filter.outputs.file_engine_any_changed || github.event_name == 'workflow_dispatch' && 'true' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -33,26 +35,19 @@ jobs:
             file_engine:
               - 'file-engine/**'
               - '**/*.go'
-            docs:
-              - 'docs/**'
-              - '**.md'
-              
-  snyk-security:
-    name: Snyk Security Scan
+            
+  snyk-go:
+    name: Snyk Gate - Go
     needs: [changes]
-    if: >
-      needs.changes.outputs.backend == 'true' ||
-      needs.changes.outputs.frontend == 'true' ||
-      needs.changes.outputs.file_engine == 'true'
-      
+    if: needs.changes.outputs.file_engine == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     
-      - name: Set up Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      - name: Setup PHP
+        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
         with:
-          go-version-file: 'file-engine/go.mod' # Keep CI Go version aligned with module requirement
+          php-version: 8.2
 
       - name: Install Snyk CLI
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
@@ -63,11 +58,57 @@ jobs:
            go mod download
            go build ./... || echo "::warning::Build failed, Snyk might fail too"
       
-      - name: Run Snyk to check for vulnerabilities
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Snyk to check for vulnerabilities 
         run: |
            cd file-engine
            snyk test --file=go.mod --severity-threshold=high
+  
+  snyk-php:
+    name: Snyk Gate - PHP
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    
+      - name: Setup PHP
+        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
+        with:
+          php-version: 8.2
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+
+      - name: Install and Cache PHP Dependencies
+        uses: ramsey/composer-install@3cf229dc2919194e9e36783941438d17239e8520 # v3.1.1
+        with:
+          working-directory: './backend'
+
+      - name: Build & Scan
+        run: |
+          snyk test --file=composer.json --severity-threshold=high
+  
+  snyk-node:
+    name: Snyk Gate - Node.js
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    
+      - name: Set up Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+          
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
+
+      - name: Build & Scan
+        run: |
+          npm ci 
+          snyk test --file=package.json --severity-threshold=high
 
       
