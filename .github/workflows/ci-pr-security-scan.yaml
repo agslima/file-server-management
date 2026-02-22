@@ -1,40 +1,46 @@
 name: Security Scan
 on:
-  workflow_dispatch: {}
   pull_request:
     branches: ["main"] # Run 'test' (gate) on PRs
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
-env:
-  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   changes:
     name: Change Detection
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.filter.outputs.backend_any_changed || github.event_name == 'workflow_dispatch' && 'true' }}
-      frontend: ${{ steps.filter.outputs.frontend_any_changed || github.event_name == 'workflow_dispatch' && 'true' }}
-      file_engine: ${{ steps.filter.outputs.file_engine_any_changed || github.event_name == 'workflow_dispatch' && 'true' }}
+      backend: ${{ steps.filter.outputs.backend_any_changed }}
+      frontend: ${{ steps.filter.outputs.frontend_any_changed }}
+      file_engine: ${{ steps.filter.outputs.file_engine_any_changed }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
       - uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
         id: filter
         with:
           files_yaml: |
             backend:
-              - 'backend/**'
-              - '**/*.php'
+              - 'backend/composer.json'
+              - 'backend/composer.lock'
             frontend:
-              - 'frontend/**'
-              - 'ui/**'
+              - 'frontend/package.json'
             file_engine:
-              - 'file-engine/**'
-              - '**/*.go'
+              - 'file-engine/go.mod'
+              - 'file-engine/go.sum'
             
   snyk-go:
     name: Snyk Gate - Go
@@ -44,23 +50,27 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     
-      - name: Setup PHP
-        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
+      - name: Set up Go
+        uses: actions/setup-go@6044e13b5dc448c55e2357c09f80417699197238
         with:
-          php-version: 8.2
+          go-version: "1.24.x"
+          cache: true
+          cache-dependency-path: file-engine/go.sum
 
       - name: Install Snyk CLI
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
 
       - name: Prepare Go Environment
+        working-directory: file-engine
         run: |
            cd file-engine
            go mod download
-           go build ./... || echo "::warning::Build failed, Snyk might fail too"
       
-      - name: Run Snyk to check for vulnerabilities 
+      - name: Build & Scan
+        working-directory: file-engine
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-           cd file-engine
            snyk test --file=go.mod --severity-threshold=high
   
   snyk-php:
@@ -85,8 +95,15 @@ jobs:
           working-directory: './backend'
 
       - name: Build & Scan
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        working-directory: backend
         run: |
-          snyk test --file=composer.json --severity-threshold=high
+          if [ -f composer.lock ]; then
+            snyk test --file=composer.lock --severity-threshold=high
+          else
+            snyk test --file=composer.json --severity-threshold=high
+          fi
   
   snyk-node:
     name: Snyk Gate - Node.js
@@ -99,7 +116,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          node-version: '20'
+          node-version: '24.13.0'
           cache: 'npm'
           cache-dependency-path: './frontend/package-lock.json'
           
@@ -107,8 +124,9 @@ jobs:
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Build & Scan
+        working-directory: frontend
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          npm ci 
-          snyk test --file=package.json --severity-threshold=high
-
-      
+          npm ci
+          snyk test --file=package-lock.json --severity-threshold=high
