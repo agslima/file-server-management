@@ -634,6 +634,86 @@ func (s *UploadService) listQuarantineObjects(ctx context.Context) ([]storage.Ob
 	return s.listPrefixObjects(ctx, "/quarantine")
 }
 
+func (s *UploadService) MoveObject(ctx context.Context, actorID, sourcePath, destinationPath string) (UploadMetadata, error) {
+	src, err := security.NormalizeTenantPath(sourcePath)
+	if err != nil {
+		return UploadMetadata{}, err
+	}
+	dst, err := security.NormalizeTenantPath(destinationPath)
+	if err != nil {
+		return UploadMetadata{}, err
+	}
+	srcTenant := tenantFromPath(src)
+	dstTenant := tenantFromPath(dst)
+	if srcTenant == "" || srcTenant != dstTenant {
+		return UploadMetadata{}, errors.New("cross-tenant move is not allowed")
+	}
+
+	s.mu.Lock()
+	meta, ok := s.metadata[src]
+	if ok {
+		meta.Path = dst
+	}
+	s.mu.Unlock()
+
+	if err := s.st.Move(ctx, src, dst); err != nil {
+		return UploadMetadata{}, err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if ok {
+		delete(s.metadata, src)
+		s.metadata[dst] = meta
+	}
+	s.appendGovernanceEventLocked(actorID, srcTenant, "move", dst, "allow", "")
+	s.updateOperationalMetricsLocked()
+	return meta, nil
+}
+
+func (s *UploadService) RestoreQuarantinedObject(ctx context.Context, actorID, objectPath string, forceReprocess bool) (UploadMetadata, error) {
+	normalized, err := security.NormalizeTenantPath(objectPath)
+	if err != nil {
+		return UploadMetadata{}, err
+	}
+	tenantID := tenantFromPath(normalized)
+
+	s.mu.RLock()
+	meta, ok := s.metadata[normalized]
+	s.mu.RUnlock()
+	if !ok {
+		return UploadMetadata{}, errors.New("object metadata not found")
+	}
+	if strings.TrimSpace(meta.StagePath) == "" {
+		return UploadMetadata{}, errors.New("object has no quarantine stage path")
+	}
+
+	if forceReprocess {
+		result, _, err := s.scanWithRetry(ctx, meta.StagePath)
+		if err != nil {
+			return UploadMetadata{}, err
+		}
+		if result.Status != ports.MalwareStatusClean {
+			return UploadMetadata{}, errors.New("scan verdict not clean")
+		}
+		meta.ScanStatus = result.Status
+		meta.ScannedBy = result.Engine
+	} else {
+		meta.ScanStatus = ports.MalwareStatusClean
+	}
+
+	if err := s.st.Move(ctx, meta.StagePath, normalized); err != nil {
+		return UploadMetadata{}, err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.metadata[normalized] = meta
+	s.appendGovernanceEventLocked(actorID, tenantID, "restore_quarantine", normalized, "allow", map[bool]string{true: "force_reprocess", false: "operator_restore"}[forceReprocess])
+	s.updateOperationalMetricsLocked()
+	return meta, nil
+}
+
 func (s *UploadService) DeleteObject(ctx context.Context, actorID, objectPath string) error {
 	normalized, err := security.NormalizeTenantPath(objectPath)
 	if err != nil {

@@ -51,3 +51,35 @@ for item in "${required_api_methods[@]}"; do
 done
 
 echo "architecture conformance check passed"
+
+
+BOUNDARIES_DOC="docs/architecture_boundaries.md"
+if [[ ! -f "$BOUNDARIES_DOC" ]]; then
+  echo "missing $BOUNDARIES_DOC"
+  exit 1
+fi
+
+required_boundary_entries=(
+  '`internal/logger/*`'
+  '`internal/services/*`'
+  '`internal/app/*`'
+)
+
+for item in "${required_boundary_entries[@]}"; do
+  if ! contains_literal "$item" "$BOUNDARIES_DOC"; then
+    echo "$BOUNDARIES_DOC: missing boundary entry $item"
+    exit 1
+  fi
+done
+
+if rg -n "github.com/example/file-engine/internal/infra/logger" file-engine --glob '*.go' >/dev/null 2>&1; then
+  echo "deprecated logger import detected: internal/infra/logger"
+  exit 1
+fi
+
+if [[ -d file-engine/internal/infra/logger ]]; then
+  if find file-engine/internal/infra/logger -name '*.go' -print -quit | grep -q .; then
+    echo "deprecated package path file-engine/internal/infra/logger contains Go files"
+    exit 1
+  fi
+fi

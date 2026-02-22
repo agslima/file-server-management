@@ -29,6 +29,19 @@ func (h *HTTPServer) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.
 	return auth.AuthContext{}, false
 }
 
+func (h *HTTPServer) requireAuthenticated(w http.ResponseWriter, r *http.Request) (auth.AuthContext, bool) {
+	if h.Verifier == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return auth.AuthContext{}, false
+	}
+	authCtx, err := h.Verifier.ParseAuthContext(r.Header.Get("Authorization"))
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return auth.AuthContext{}, false
+	}
+	return authCtx, true
+}
+
 func (h *HTTPServer) handleScanDLQ(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.requireAdmin(w, r); !ok {
 		return
@@ -219,7 +232,7 @@ func (h *HTTPServer) handleGovernanceDelete(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	authCtx, ok := h.requireAdmin(w, r)
+	authCtx, ok := h.requireAuthenticated(w, r)
 	if !ok {
 		return
 	}
@@ -313,11 +326,77 @@ func (h *HTTPServer) handleAccessReview(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "identity store unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	rows, err := h.Identity.AccessReview(r.Context(), r.URL.Query().Get("tenant_id"))
+	tenantID := strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+	rows, err := h.Identity.AccessReview(r.Context(), tenantID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"memberships": rows})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"schema_version": "access_review.v1",
+		"generated_at":   time.Now().UTC().Format(time.RFC3339),
+		"tenant_filter":  tenantID,
+		"memberships":    rows,
+	})
+}
+
+func (h *HTTPServer) handleObjectMove(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAuthenticated(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		SourcePath      string `json:"source_path"`
+		DestinationPath string `json:"destination_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.SourcePath) == "" || strings.TrimSpace(req.DestinationPath) == "" {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	meta, err := h.Uploads.MoveObject(r.Context(), authCtx.EffectiveActorID(), req.SourcePath, req.DestinationPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "moved", "path": meta.Path})
+}
+
+func (h *HTTPServer) handleQuarantineRestore(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		Path           string `json:"path"`
+		ForceReprocess bool   `json:"force_reprocess"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Path) == "" {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	meta, err := h.Uploads.RestoreQuarantinedObject(r.Context(), authCtx.EffectiveActorID(), req.Path, req.ForceReprocess)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "restored", "path": meta.Path, "scan_status": meta.ScanStatus})
 }

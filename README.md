@@ -47,6 +47,7 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 
 - **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
 - **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
+- **Architecture Boundaries:** [`docs/architecture_boundaries.md`](docs/architecture_boundaries.md)
 - **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
 - **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
 - **Observability:** [`docs/observability.md`](docs/observability.md)
@@ -176,7 +177,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 - Create folders (policy-enforced naming)
 - Upload lifecycle is baseline-validated end-to-end (`Initiate -> Upload chunk -> Complete`) with scan-gated promote semantics and deterministic clean/dirty outcomes (`CL-047`, `CL-033`, `CL-040`).
-- Move/rename/write operations *(as tasks; target-state)*
+- Move/rename/delete/restore object operations *(API-level baseline validated; async task variants remain target-state)*
 
 ### Governance & security
 
@@ -185,6 +186,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - Multi-tenant enforcement via **server-side tenant mapping**
 - Upload quarantine + malware scan gate before publish (baseline guardrails + non-stub scanner adapter integration are validated)
 - Dual-layer audit (queryable + tamper-resistant sink) with baseline-validated external sink delivery adapters
+- Access review compliance exports are available via stable JSON contract + monthly operator report generator (`file-engine/scripts/export_access_review.sh`, `file-engine/scripts/generate_monthly_access_review_report.sh`).
 
 ---
 
