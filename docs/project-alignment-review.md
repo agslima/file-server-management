@@ -126,8 +126,8 @@ What threatens sustainability:
 
 1. **Promote VS-001 executable backend behavior checks in CI.**
    - `CL-020` is now CI-gated with docker-compose E2E coverage and deterministic `E2E_OK` output for machine checks.
-2. **Introduce branch-protection mapping docs for scoped jobs.**
-   - Document which required checks should be protected unconditionally vs conditionally by change scope.
+2. **Completed:** branch-protection mapping is now actionable in CI.
+   - Path-sensitive reviewer checks are represented as CI status checks for authz and monitoring change scopes.
 3. **Keep canonical setup references tight.**
    - Continue pruning stale path references when structure changes.
 
@@ -137,8 +137,8 @@ What threatens sustainability:
    - Add at least one additional named human owner/reviewer per domain.
 2. **Institutionalize claim-promotion discipline.**
    - Keep the policy: no top-level baseline marketing before ledger claim ID + runnable evidence + CI proof.
-3. **Track sustainability metrics.**
-   - Baseline claim pass rate, doc-drift failure count, and ownership coverage ratio.
+3. **Track sustainability metrics with release-ready artifacts.**
+   - Metrics now emit markdown for direct inclusion in PR/release notes.
 
 ---
 

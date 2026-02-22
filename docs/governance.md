@@ -48,7 +48,9 @@ When any of these are promoted to required, update this doc and the branch prote
 ## Branch protection mapping (Milestone 8)
 
 - Canonical mapping: `docs/branch-protection-mapping.md`.
+- Ownership source of truth: `.github/OWNERS`.
 - Named domain backup maintainers: `docs/ownership-backup-matrix.md`.
+- Path-scoped required reviewer checks are enforced in CI (`Security reviewer` for `file-engine/internal/authz/**`, `Platform reviewer` for `monitoring/**`).
 - Keep this document and branch-protection settings synchronized at each quarterly review.
 
 ## Quarterly alignment review cadence
