@@ -29,6 +29,7 @@ final class TraceHeaders
         self::maybeAttach($headers, 'traceparent', $request);
         self::maybeAttach($headers, 'tracestate', $request);
         self::maybeAttach($headers, 'baggage', $request);
+        self::maybeAttach($headers, 'Authorization', $request);
 
         return $headers;
     }

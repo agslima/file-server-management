@@ -67,6 +67,32 @@ class FileEngineService
         return $this->withStatus($request->post($this->base() . '/uploads/' . rawurlencode($uploadId) . ':complete'));
     }
 
+
+    public function moveObject(string $sourcePath, string $destinationPath, array $traceHeaders = []): array
+    {
+        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/objects:move', [
+            'source_path' => $sourcePath,
+            'destination_path' => $destinationPath,
+        ]));
+    }
+
+    public function deleteObject(string $path, array $traceHeaders = []): array
+    {
+        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/objects:delete', [
+            'path' => $path,
+        ]));
+    }
+
+    public function restoreQuarantinedObject(string $path, bool $forceReprocess, array $traceHeaders = []): array
+    {
+        $adminBase = preg_replace('#/v1$#', '', $this->base()) ?: $this->base();
+
+        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($adminBase . '/admin/v1/quarantine:restore', [
+            'path' => $path,
+            'force_reprocess' => $forceReprocess,
+        ]));
+    }
+
     public function getTask(string $id, array $traceHeaders = []): array
     {
         return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->get($this->base() . '/tasks/' . $id));
@@ -83,6 +109,7 @@ class FileEngineService
             'traceparent',
             'tracestate',
             'baggage',
+            'Authorization',
         ];
 
         $headers = [];

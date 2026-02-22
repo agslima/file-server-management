@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	adaptersecurity "github.com/example/file-engine/internal/adapters/security"
 	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
 	"github.com/example/file-engine/internal/app/ports"
 	"github.com/example/file-engine/internal/auth"
@@ -181,5 +182,41 @@ func TestGovernanceDriftCheckEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(rr.Body.String(), "drift_detected") {
 		t.Fatalf("expected drift response payload, got %s", rr.Body.String())
+	}
+}
+
+func TestObjectMoveEndpoint(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
+	if _, err := uploads.Upload(context.Background(), "/tenants/acme/docs/a.txt", []byte("x")); err != nil {
+		t.Fatalf("upload seed: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/objects:move", strings.NewReader(`{"source_path":"/tenants/acme/docs/a.txt","destination_path":"/tenants/acme/docs/b.txt"}`))
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleObjectMove(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestQuarantineRestoreEndpoint(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{RequestTimeout: time.Second, RequireCleanScan: true})
+	if _, err := uploads.Upload(context.Background(), "/tenants/acme/docs/eicar.txt", []byte("clean")); err == nil {
+		t.Fatal("expected upload to quarantine")
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/quarantine:restore", strings.NewReader(`{"path":"/tenants/acme/docs/eicar.txt","force_reprocess":false}`))
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleQuarantineRestore(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
 	}
 }
