@@ -1,0 +1,7 @@
+parameters:
+  paths:
+    - app
+    - routes
+  parallel:
+    maximumNumberOfProcesses: 1
+  level: 3

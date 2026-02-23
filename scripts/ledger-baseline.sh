@@ -26,6 +26,108 @@ else
 fi
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$default_project_name}"
 
+declare -A RESERVED_HOST_PORTS=()
+
+reserve_port() {
+  local port="$1"
+  RESERVED_HOST_PORTS["$port"]=1
+}
+
+# host_port_open tests whether a TCP connection to 127.0.0.1 on the specified port can be opened.
+host_port_open() {
+  local port="$1"
+  (exec 3<>"/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1
+}
+
+# find_available_port finds the first TCP port on localhost that is not open and prints it; accepts optional start and end range (defaults 15432 and 16432).
+find_available_port() {
+  local start="${1:-15432}"
+  local end="${2:-16432}"
+  local p
+  for ((p=start; p<=end; p++)); do
+    if [[ -n "${RESERVED_HOST_PORTS[$p]:-}" ]]; then
+      continue
+    fi
+    if ! host_port_open "$p"; then
+      reserve_port "$p"
+      echo "$p"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if [[ -z "${POSTGRES_HOST_PORT:-}" ]]; then
+  if host_port_open 5432; then
+    POSTGRES_HOST_PORT="$(find_available_port 15432 15531)" || {
+      echo "[fatal] failed to find an available fallback host port for postgres" >&2
+      exit 1
+    }
+    echo "[$(date +"%Y-%m-%dT%H:%M:%S%z")] [info] host port 5432 is in use; using POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT}"
+  else
+    POSTGRES_HOST_PORT="5432"
+  fi
+fi
+export POSTGRES_HOST_PORT
+reserve_port "$POSTGRES_HOST_PORT"
+
+if [[ -z "${REDIS_HOST_PORT:-}" ]]; then
+  if host_port_open 6379; then
+    REDIS_HOST_PORT="$(find_available_port 16379 16478)" || {
+      echo "[fatal] failed to find an available fallback host port for redis" >&2
+      exit 1
+    }
+    echo "[$(date +"%Y-%m-%dT%H:%M:%S%z")] [info] host port 6379 is in use; using REDIS_HOST_PORT=${REDIS_HOST_PORT}"
+  else
+    REDIS_HOST_PORT="6379"
+  fi
+fi
+export REDIS_HOST_PORT
+reserve_port "$REDIS_HOST_PORT"
+
+if [[ -z "${FILE_ENGINE_HTTP_HOST_PORT:-}" ]]; then
+  if host_port_open 8080; then
+    FILE_ENGINE_HTTP_HOST_PORT="$(find_available_port 18080 18179)" || {
+      echo "[fatal] failed to find an available fallback host port for file-engine http" >&2
+      exit 1
+    }
+    echo "[$(date +"%Y-%m-%dT%H:%M:%S%z")] [info] host port 8080 is in use; using FILE_ENGINE_HTTP_HOST_PORT=${FILE_ENGINE_HTTP_HOST_PORT}"
+  else
+    FILE_ENGINE_HTTP_HOST_PORT="8080"
+  fi
+fi
+export FILE_ENGINE_HTTP_HOST_PORT
+reserve_port "$FILE_ENGINE_HTTP_HOST_PORT"
+
+if [[ -z "${BACKEND_HOST_PORT:-}" ]]; then
+  if host_port_open 8081; then
+    BACKEND_HOST_PORT="$(find_available_port 18180 18279)" || {
+      echo "[fatal] failed to find an available fallback host port for backend http" >&2
+      exit 1
+    }
+    echo "[$(date +"%Y-%m-%dT%H:%M:%S%z")] [info] host port 8081 is in use; using BACKEND_HOST_PORT=${BACKEND_HOST_PORT}"
+  else
+    BACKEND_HOST_PORT="8081"
+  fi
+fi
+export BACKEND_HOST_PORT
+reserve_port "$BACKEND_HOST_PORT"
+
+if [[ -z "${FILE_ENGINE_GRPC_HOST_PORT:-}" ]]; then
+  if host_port_open 50051; then
+    FILE_ENGINE_GRPC_HOST_PORT="$(find_available_port 15532 15631)" || {
+      echo "[fatal] failed to find an available fallback host port for file-engine grpc" >&2
+      exit 1
+    }
+    echo "[$(date +"%Y-%m-%dT%H:%M:%S%z")] [info] host port 50051 is in use; using FILE_ENGINE_GRPC_HOST_PORT=${FILE_ENGINE_GRPC_HOST_PORT}"
+  else
+    FILE_ENGINE_GRPC_HOST_PORT="50051"
+  fi
+fi
+export FILE_ENGINE_GRPC_HOST_PORT
+reserve_port "$FILE_ENGINE_GRPC_HOST_PORT"
+
+# compose selects an available Docker Compose command ("docker compose" or "docker-compose") and forwards all arguments to it; exits with status 127 if neither command is found.
 compose() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     docker compose "$@"
@@ -86,11 +188,17 @@ run_claim() {
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# dump_debug prints a debug dump with mode, timeout, compose project name, resolved host ports, working directory and git SHA, then shows docker/docker-compose status and recent logs for postgres, file-engine, file-engine-worker, and backend.
 dump_debug() {
   echo "================ DEBUG DUMP ================"
   echo "[debug] mode=${LEDGER_MODE}"
   echo "[debug] timeout=${LEDGER_TIMEOUT_SECONDS}"
   echo "[debug] COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}"
+  echo "[debug] POSTGRES_HOST_PORT=${POSTGRES_HOST_PORT}"
+  echo "[debug] REDIS_HOST_PORT=${REDIS_HOST_PORT}"
+  echo "[debug] FILE_ENGINE_HTTP_HOST_PORT=${FILE_ENGINE_HTTP_HOST_PORT}"
+  echo "[debug] BACKEND_HOST_PORT=${BACKEND_HOST_PORT}"
+  echo "[debug] FILE_ENGINE_GRPC_HOST_PORT=${FILE_ENGINE_GRPC_HOST_PORT}"
   echo "[debug] pwd=$(pwd)"
   echo "[debug] git sha=$(git rev-parse --short HEAD 2>/dev/null || true)"
   echo
@@ -189,7 +297,7 @@ compose up -d postgres
 wait_for_postgres 90
 
 # Integration tests use FILEENGINE_TEST_POSTGRES_DSN when present.
-export FILEENGINE_TEST_POSTGRES_DSN="${FILEENGINE_TEST_POSTGRES_DSN:-postgres://fileengine:fileengine@127.0.0.1:5432/fileengine?sslmode=disable}"
+export FILEENGINE_TEST_POSTGRES_DSN="${FILEENGINE_TEST_POSTGRES_DSN:-postgres://fileengine:fileengine@127.0.0.1:${POSTGRES_HOST_PORT}/fileengine?sslmode=disable}"
 
 log "=== CL-003: Async create-folder integration ==="
 run_claim "CL-003" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v'
@@ -218,11 +326,11 @@ run_claim "CL-011" bash -lc './scripts/doc-drift-check.sh'
 if [[ "$RUN_CL020" == "1" ]]; then
   log "=== Infra: Full stack up for CL-020 ==="
   compose up -d redis file-engine file-engine-worker backend
-  wait_for_http_service "http://localhost:8080/readyz" 120
-  wait_for_http_service "http://localhost:8081/healthz" 120
+  wait_for_http_service "http://localhost:${FILE_ENGINE_HTTP_HOST_PORT}/readyz" 120
+  wait_for_http_service "http://localhost:${BACKEND_HOST_PORT}/healthz" 120
 
   log "=== CL-020: Backend VS-001 E2E ==="
-  run_claim "CL-020" bash -lc './scripts/e2e/vs001_create_folder.sh'
+  run_claim "CL-020" bash -lc "BACKEND_URL='http://localhost:${BACKEND_HOST_PORT}' ./scripts/e2e/vs001_create_folder.sh"
 else
   log "=== CL-020: skipped (RUN_CL020=${RUN_CL020}) ==="
 fi

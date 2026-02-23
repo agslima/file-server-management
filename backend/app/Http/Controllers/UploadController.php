@@ -22,7 +22,7 @@ class UploadController extends Controller
 
         $payload = $this->engine->initiateUpload(
             ['path' => $path],
-            TraceHeaders::fromRequest($request),
+            TraceHeaders::fromRequest($request, true),
             (string) $request->header('X-Idempotency-Key', '')
         );
 
@@ -42,7 +42,7 @@ class UploadController extends Controller
             $uploadId,
             $offset,
             $payload,
-            TraceHeaders::fromRequest($request)
+            TraceHeaders::fromRequest($request, true)
         );
 
         return $this->fromEnginePayload($response);
@@ -56,7 +56,7 @@ class UploadController extends Controller
 
         $payload = $this->engine->completeUpload(
             $uploadId,
-            TraceHeaders::fromRequest($request),
+            TraceHeaders::fromRequest($request, true),
             (string) $request->header('X-Idempotency-Key', '')
         );
 

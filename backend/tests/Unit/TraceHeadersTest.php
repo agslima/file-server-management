@@ -22,6 +22,29 @@ final class TraceHeadersTest extends TestCase
         self::assertArrayNotHasKey('tracestate', $headers);
     }
 
+
+    public function testAuthorizationHeaderIsExcludedByDefault(): void
+    {
+        $request = Request::create('/folders', 'POST', [], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer secret-token',
+        ]);
+
+        $headers = TraceHeaders::fromRequest($request);
+
+        self::assertArrayNotHasKey('Authorization', $headers);
+    }
+
+    public function testAuthorizationHeaderCanBeIncludedWhenRequested(): void
+    {
+        $request = Request::create('/folders', 'POST', [], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer secret-token',
+        ]);
+
+        $headers = TraceHeaders::fromRequest($request, true);
+
+        self::assertSame('Bearer secret-token', $headers['Authorization']);
+    }
+
     public function testTraceHeadersPreserveInboundTracingHeaders(): void
     {
         $request = Request::create('/folders', 'POST', [], [], [], [

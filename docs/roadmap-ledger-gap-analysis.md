@@ -15,7 +15,7 @@
 | Milestone 5 — Governance Hardening | Doc ownership metadata + quarterly alignment cadence + architecture conformance checks in CI | Governance claim `CL-041` validates key-doc ownership metadata check script, quarterly cadence documentation, and CI architecture conformance checks (proto sync + endpoint inventory) | **Implemented** |
 | Milestone 6 — Target-State Hardening Promotions | Promote target-state hardening into baseline claims | Enterprise identity (`CL-042`) plus upload/observability/storage/governance hardening (`CL-043`-`CL-046`) are baseline-validated | **Implemented** |
 | Milestone 7 — Production Operations Closure | Close remaining production-grade operational + documentation contract gaps | Upload API contract (`CL-047`), OTEL production drills (`CL-048`), governance next-step controls (`CL-049`), paging delivery (`CL-050`), scanner/on-call closure (`CL-051`), and README/route-matrix sync (`CL-052`) are implemented | **Implemented** |
-| Milestone 8 — Sustainability & Ownership Resilience | Reduce concentration risk and harden governance sustainability | Branch-protection mapping + named backups + sustainability metrics script are baseline-backed kickoff evidence (`CL-053`); broader multi-owner resilience remains open | **In progress** |
+| Milestone 8 — Sustainability & Ownership Resilience | Reduce concentration risk and harden governance sustainability | Kickoff (`CL-053`) is expanded by CI-enforced path-scoped reviewer checks, quarterly checklist generation, sustainability markdown artifact reporting, and a scripted new-maintainer operability drill (`CL-054`) | **Completed** |
 
 ## 7C synchronization audit (README + narrative docs)
 
@@ -32,7 +32,7 @@
 
 | Open area | Current evidence | What is still missing |
 | :-- | :-- | :-- |
-| Ownership resilience tasks | Quarterly review flags owner concentration as residual risk | Add named backup maintainers + branch-protection mapping + sustainability metrics tracking (Milestone 8) |
+| Ownership resilience human coverage | Milestone 8 automation controls are baseline-validated (`CL-053`, `CL-054`) | Add at least one additional human maintainer per critical domain to reduce single-owner concentration |
 
 ## Promotion discipline (unchanged)
 

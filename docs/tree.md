@@ -16,6 +16,7 @@
 │   │   │       ├── AuthController.php
 │   │   │       ├── Controller.php
 │   │   │       ├── FolderController.php
+│   │   │       ├── ObjectMutationController.php
 │   │   │       ├── TaskController.php
 │   │   │       └── UploadController.php
 │   │   ├── Services
@@ -55,10 +56,12 @@
 │   ├── api-reference.md
 │   ├── api_storage_authz.md
 │   ├── architecture.md
+│   ├── architecture_boundaries.md
 │   ├── architecture_file-engine.md
 │   ├── auth.md
 │   ├── branch-protection-mapping.md
 │   ├── capability-ledger.md
+│   ├── compliance-access-review-workflow.md
 │   ├── contributors.md
 │   ├── dataflow-security-risk-assessment.md
 │   ├── errors.md
@@ -175,18 +178,17 @@
 │   │   │   │   ├── fs.port.go
 │   │   │   │   ├── malware_scanner.port.go
 │   │   │   │   └── task_queue_port.go
-│   │   │   ├── services
+│   │   │   ├── tasks
+│   │   │   │   ├── audit_emitters.go
+│   │   │   │   ├── audit_emitters_test.go
+│   │   │   │   ├── audit_sinks.go
+│   │   │   │   ├── audit_sinks_test.go
 │   │   │   │   ├── doc.go
-│   │   │   │   └── file_service.go
-│   │   │   └── tasks
-│   │   │       ├── audit_emitters.go
-│   │   │       ├── audit_emitters_test.go
-│   │   │       ├── audit_sinks.go
-│   │   │       ├── audit_sinks_test.go
-│   │   │       ├── doc.go
-│   │   │       ├── processor.go
-│   │   │       ├── worker.go
-│   │   │       └── worker_test.go
+│   │   │   │   ├── processor.go
+│   │   │   │   ├── worker.go
+│   │   │   │   └── worker_test.go
+│   │   │   └── usecases
+│   │   │       └── doc.go
 │   │   ├── auth
 │   │   │   ├── README.md
 │   │   │   ├── acl.go
@@ -233,9 +235,6 @@
 │   │   ├── identity
 │   │   │   └── store.go
 │   │   ├── infra
-│   │   │   ├── logger
-│   │   │   │   ├── doc.go
-│   │   │   │   └── logger.go
 │   │   │   └── security
 │   │   │       ├── doc.go
 │   │   │       └── sftp_keyloader.go
@@ -294,6 +293,7 @@
 │   │   ├── export_access_review.sh
 │   │   ├── generate_grpc.sh
 │   │   ├── generate_grpc_docker.sh
+│   │   ├── generate_monthly_access_review_report.sh
 │   │   ├── scan_dlq.sh
 │   │   └── seed_identity.sh
 │   ├── tests
@@ -330,29 +330,37 @@
 │   └── nginx.conf
 ├── observability
 │   └── otel-collector-config.yaml
-└── scripts
-    ├── architecture-conformance-check.sh
-    ├── check-malware-runbook.sh
-    ├── check-otel-connectivity.sh
-    ├── check-paging-delivery.sh
-    ├── doc-drift-check.sh
-    ├── doc-ownership-check.sh
-    ├── drills
-    │   ├── observability_incident_drill.sh
-    │   ├── otel_exporter_down.sh
-    │   ├── production_deployment_hardening.sh
-    │   ├── scanner_down.sh
-    │   └── sink_down.sh
-    ├── e2e
-    │   ├── oidc_login_and_call_engine.sh
-    │   ├── run_oidc_profile.sh
-    │   ├── upload_lifecycle.sh
-    │   └── vs001_create_folder.sh
-    ├── ledger-baseline.sh
-    ├── sustainability-metrics.sh
-    ├── validate-alert-rules.sh
-    ├── validate-observability-assets.sh
-    ├── wait-for-http.sh
-    └── wait-for-oidc-token.sh
+├── scripts
+│   ├── architecture-conformance-check.sh
+│   ├── check-malware-runbook.sh
+│   ├── check-otel-connectivity.sh
+│   ├── check-owners-governance.sh
+│   ├── check-paging-delivery.sh
+│   ├── doc-drift-check.sh
+│   ├── doc-ownership-check.sh
+│   ├── drills
+│   │   ├── new_maintainer_operability_drill.sh
+│   │   ├── observability_incident_drill.sh
+│   │   ├── otel_exporter_down.sh
+│   │   ├── production_deployment_hardening.sh
+│   │   ├── restore-scan-dlq-drill.sh
+│   │   ├── rotate-secrets-drill.sh
+│   │   ├── scanner_down.sh
+│   │   └── sink_down.sh
+│   ├── e2e
+│   │   ├── mutation_surface.sh
+│   │   ├── oidc_login_and_call_engine.sh
+│   │   ├── run_oidc_profile.sh
+│   │   ├── upload_lifecycle.sh
+│   │   └── vs001_create_folder.sh
+│   ├── generate-quarterly-alignment-issue.sh
+│   ├── ledger-baseline.sh
+│   ├── sustainability-metrics.sh
+│   ├── validate-alert-rules.sh
+│   ├── validate-observability-assets.sh
+│   ├── wait-for-http.sh
+│   └── wait-for-oidc-token.sh
+└── tests
+    └── test_ci_pr_security_scan_change_detection.py
 
-91 directories, 265 files
+91 directories, 273 files

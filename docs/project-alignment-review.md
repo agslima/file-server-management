@@ -39,7 +39,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-053`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
+   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-057`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
@@ -50,6 +50,8 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
    - Upload pipeline operational closure for thresholds/on-call/escalation is promoted via `CL-051`; OTEL production deployment hardening is promoted via `CL-048`, paging-provider delivery via `CL-050`, documentation contract synchronization via `CL-052`, and immutable sink delivery remains promoted via `CL-035`.
 
 ### Alignment corrections completed in this cycle
+
+5. **Resolved:** architecture boundaries are now explicitly documented and conformance-checked (logger unification + package-boundary guardrails).
 
 1. **Resolved:** governance-vs-CI mismatch for doc/governance checks.
 2. **Resolved:** stale `docker/docker-compose.yml` references in canonical docs.
@@ -126,8 +128,8 @@ What threatens sustainability:
 
 1. **Promote VS-001 executable backend behavior checks in CI.**
    - `CL-020` is now CI-gated with docker-compose E2E coverage and deterministic `E2E_OK` output for machine checks.
-2. **Introduce branch-protection mapping docs for scoped jobs.**
-   - Document which required checks should be protected unconditionally vs conditionally by change scope.
+2. **Completed:** branch-protection mapping is now actionable in CI.
+   - Path-sensitive reviewer checks are represented as CI status checks for authz and monitoring change scopes.
 3. **Keep canonical setup references tight.**
    - Continue pruning stale path references when structure changes.
 
@@ -137,8 +139,8 @@ What threatens sustainability:
    - Add at least one additional named human owner/reviewer per domain.
 2. **Institutionalize claim-promotion discipline.**
    - Keep the policy: no top-level baseline marketing before ledger claim ID + runnable evidence + CI proof.
-3. **Track sustainability metrics.**
-   - Baseline claim pass rate, doc-drift failure count, and ownership coverage ratio.
+3. **Track sustainability metrics with release-ready artifacts.**
+   - Metrics now emit markdown for direct inclusion in PR/release notes.
 
 ---
 

@@ -47,6 +47,7 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 
 - **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
 - **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
+- **Architecture Boundaries:** [`docs/architecture_boundaries.md`](docs/architecture_boundaries.md)
 - **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
 - **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
 - **Observability:** [`docs/observability.md`](docs/observability.md)
@@ -61,6 +62,7 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
 - **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
 - **Branch protection mapping:** [`docs/branch-protection-mapping.md`](docs/branch-protection-mapping.md)
+- **Ownership source of truth:** [`.github/OWNERS`](.github/OWNERS)
 - **Ownership backup matrix:** [`docs/ownership-backup-matrix.md`](docs/ownership-backup-matrix.md)
 
 <details><summary><b>Operating guide</b></summary>
@@ -136,7 +138,8 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-050`](docs/capability-ledger.md#baseline-claims-implemented) | Paging-provider delivery validation: deterministic local webhook receiver confirms alert payload delivery in production-like drill path | ✅ | `./scripts/check-paging-delivery.sh` |
 | [`CL-051`](docs/capability-ledger.md#baseline-claims-implemented) | Scanner/upload operational closure: SLO thresholds + on-call/escalation runbook + operator-ready scanner drill transcript are baseline-validated | ✅ | `./scripts/validate-alert-rules.sh && ./scripts/check-malware-runbook.sh && ./scripts/drills/scanner_down.sh` |
 | [`CL-052`](docs/capability-ledger.md#baseline-claims-implemented) | Documentation contract synchronization: README, route maturity matrix, and roadmap-ledger gap analysis align with promoted baseline claims | ✅ | `./scripts/doc-drift-check.sh && rg -n -F "POST /v1/uploads:initiate" docs/route-maturity-matrix.md && rg -n -F "PUT /v1/uploads/{uploadId}:chunk" docs/route-maturity-matrix.md && rg -n -F "POST /v1/uploads/{uploadId}:complete" docs/route-maturity-matrix.md && rg -n -F "GET /readyz" docs/route-maturity-matrix.md && rg -n -F "OIDC profile end-to-end" docs/route-maturity-matrix.md && rg -n "Milestone 7 — Production Operations Closure.*Implemented|README wording drift corrected|Route maturity matrix refreshed" docs/roadmap-ledger-gap-analysis.md` |
-| [`CL-053`](docs/capability-ledger.md#baseline-claims-implemented) | Sustainability & ownership resilience kickoff: branch-protection mapping + named backups + deterministic release metrics report | ✅ | `./scripts/sustainability-metrics.sh && rg -n "branch-protection-mapping|ownership-backup-matrix" docs/governance.md` |
+| [`CL-053`](docs/capability-ledger.md#baseline-claims-implemented) | Sustainability & ownership resilience kickoff: branch-protection mapping + named backups + deterministic release metrics report | ✅ | `./scripts/sustainability-metrics.sh artifacts/sustainability-metrics.md && rg -n "branch-protection-mapping\|ownership-backup-matrix\|OWNERS" docs/governance.md` |
+| [`CL-054`](docs/capability-ledger.md#baseline-claims-implemented) | Sustainability closure: path-scoped reviewer checks (`Security reviewer`/`Platform reviewer`), quarterly alignment checklist generation, and new maintainer operability drill automation | ✅ | `./scripts/check-owners-governance.sh && ./scripts/generate-quarterly-alignment-issue.sh && ./scripts/drills/new_maintainer_operability_drill.sh` |
 | [`CL-045`](docs/capability-ledger.md#baseline-claims-implemented) | Storage contract maturity/parity hardening: normalized paths + deterministic list ordering + metadata/checksum + resumable semantics tests | ✅ | `cd file-engine && go test ./internal/adapters/storage/local ./internal/services -run "TestLocalStorageContractSuite|TestLocalStorageListMetadata|TestUploadServiceResumableUploadFinalize" -v` |
 | [`CL-046`](docs/capability-ledger.md#baseline-claims-implemented) | Governance controls baseline: startup-validated tenant policy config with quota/object/rate limits, retention/legal-hold delete protection, and policy-driven lifecycle cleanup controls | ✅ | `cd file-engine && go test ./internal/services ./internal/server -run "TestUploadServiceTenantPolicyQuotaFinalGate|TestUploadServiceRetentionBlocksDelete|TestUploadServiceLegalHoldBlocksDelete|TestGovernanceDeleteEndpointBlockedByRetention|TestLifecycleCleanupEndpoint" -v` |
 | [`CL-047`](docs/capability-ledger.md#baseline-claims-implemented) | Upload API contract (`Initiate -> Upload chunk -> Complete`) is stable with idempotency/retry semantics and deterministic clean/dirty outcomes | ✅ | `docker compose up -d --build redis postgres file-engine file-engine-worker backend && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/upload_lifecycle.sh && docker compose down -v` |
@@ -174,7 +177,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 - Create folders (policy-enforced naming)
 - Upload lifecycle is baseline-validated end-to-end (`Initiate -> Upload chunk -> Complete`) with scan-gated promote semantics and deterministic clean/dirty outcomes (`CL-047`, `CL-033`, `CL-040`).
-- Move/rename/write operations *(as tasks; target-state)*
+- Move/rename/delete/restore object operations *(API-level baseline validated; async task variants remain target-state)*
 
 ### Governance & security
 
@@ -183,6 +186,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - Multi-tenant enforcement via **server-side tenant mapping**
 - Upload quarantine + malware scan gate before publish (baseline guardrails + non-stub scanner adapter integration are validated)
 - Dual-layer audit (queryable + tamper-resistant sink) with baseline-validated external sink delivery adapters
+- Access review compliance exports are available via stable JSON contract + monthly operator report generator (`file-engine/scripts/export_access_review.sh`, `file-engine/scripts/generate_monthly_access_review_report.sh`).
 
 ---
 

@@ -64,6 +64,14 @@ lint-local:
 	golangci-lint --version
 	cd file-engine && golangci-lint run --fix --verbose
 
+.PHONY: lint-backend
+lint-backend: test-tools-image
+	$(call run-in-test-client,make lint-backend-local)
+
+.PHONY: lint-backend-local
+lint-backend-local:
+	cd backend && composer lint
+
 .PHONY: lint-ui
 lint-ui: test-tools-image
 	$(call run-in-test-client,make lint-ui-local)

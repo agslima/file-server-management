@@ -99,6 +99,7 @@ Identity lifecycle helpers:
 ```bash
 ./file-engine/scripts/seed_identity.sh
 TOKEN='<admin-access-token>' ./file-engine/scripts/export_access_review.sh
+TOKEN='<admin-access-token>' REPORT_MONTH='<YYYY-MM>' ./file-engine/scripts/generate_monthly_access_review_report.sh
 ```
 
 ### Observability profile (OTEL collector + Jaeger)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/example/file-engine/internal/auth"
+	"github.com/example/file-engine/internal/security"
 )
 
 func (h *HTTPServer) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.AuthContext, bool) {
@@ -241,6 +242,10 @@ func (h *HTTPServer) handleGovernanceDelete(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *HTTPServer) handleObjectDelete(w http.ResponseWriter, r *http.Request) {
+	h.handleGovernanceDelete(w, r)
+}
+
 func (h *HTTPServer) handleLifecycleCleanup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -313,11 +318,106 @@ func (h *HTTPServer) handleAccessReview(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "identity store unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	rows, err := h.Identity.AccessReview(r.Context(), r.URL.Query().Get("tenant_id"))
+	tenantID := strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+	rows, err := h.Identity.AccessReview(r.Context(), tenantID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"memberships": rows})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"schema_version": "access_review.v1",
+		"generated_at":   time.Now().UTC().Format(time.RFC3339),
+		"tenant_filter":  tenantID,
+		"memberships":    rows,
+	})
+}
+
+func (h *HTTPServer) handleObjectMove(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		SourcePath      string `json:"source_path"`
+		DestinationPath string `json:"destination_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	req.SourcePath = strings.TrimSpace(req.SourcePath)
+	req.DestinationPath = strings.TrimSpace(req.DestinationPath)
+	if req.SourcePath == "" || req.DestinationPath == "" {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	normalizedSourcePath, err := security.NormalizeTenantPath(req.SourcePath)
+	if err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	normalizedDestinationPath, err := security.NormalizeTenantPath(req.DestinationPath)
+	if err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	req.SourcePath = normalizedSourcePath
+	req.DestinationPath = normalizedDestinationPath
+	meta, err := h.Uploads.MoveObject(r.Context(), authCtx.EffectiveActorID(), req.SourcePath, req.DestinationPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "moved", "path": meta.Path})
+}
+
+func (h *HTTPServer) handleQuarantineRestore(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		Path           string `json:"path"`
+		ForceReprocess bool   `json:"force_reprocess"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	req.Path = strings.TrimSpace(req.Path)
+	if req.Path == "" {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	normalizedPath, err := security.NormalizeTenantPath(req.Path)
+	if err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	req.Path = normalizedPath
+	meta, err := h.Uploads.RestoreQuarantinedObject(r.Context(), authCtx.EffectiveActorID(), req.Path, req.ForceReprocess)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "restored", "path": meta.Path, "scan_status": meta.ScanStatus})
 }
