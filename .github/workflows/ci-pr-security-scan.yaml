@@ -58,6 +58,8 @@ jobs:
 
       - name: Compute flags + docker matrix JSON
         id: flags
+        env:
+          DOCKER_CHANGED_FILES: ${{ steps.docker_files.outputs.all_changed_files }}
         run: |
           set -euo pipefail
 
@@ -73,7 +75,7 @@ jobs:
           fi
 
           # Normalize docker file list -> JSON array
-          docker_json="$(printf '%s' "${{ steps.docker_files.outputs.all_changed_files }}" \
+          docker_json="$(printf '%s' "$DOCKER_CHANGED_FILES" \
             | jq -Rsc 'split("\n") | map(select(length > 0))')"
 
           echo "docker_files_json=$docker_json" >> "$GITHUB_OUTPUT"
