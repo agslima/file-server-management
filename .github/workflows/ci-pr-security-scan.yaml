@@ -42,8 +42,8 @@ jobs:
             docker:
               - '**/Dockerfile*'
               - 'docker-compose.yml'
-          base_sha: ${{ github.event.pull_request.base.sha }}
-          sha: ${{ github.event.pull_request.head.sha }}
+          base_sha: ${{ github.event.pull_request.base.sha || github.sha }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
        
       - name: Collect changed Dockerfiles/Compose (newline list)
         uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
@@ -53,8 +53,8 @@ jobs:
             **/Dockerfile*
             docker-compose.yml
           separator: "\n"
-          base_sha: ${{ github.event.pull_request.base.sha }}
-          sha: ${{ github.event.pull_request.head.sha }}
+          base_sha: ${{ github.event.pull_request.base.sha || github.sha }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Compute flags + docker matrix JSON
         id: flags

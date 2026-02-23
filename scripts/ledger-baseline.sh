@@ -26,6 +26,13 @@ else
 fi
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$default_project_name}"
 
+declare -A RESERVED_HOST_PORTS=()
+
+reserve_port() {
+  local port="$1"
+  RESERVED_HOST_PORTS["$port"]=1
+}
+
 # host_port_open tests whether a TCP connection to 127.0.0.1 on the specified port can be opened.
 host_port_open() {
   local port="$1"
@@ -38,7 +45,11 @@ find_available_port() {
   local end="${2:-16432}"
   local p
   for ((p=start; p<=end; p++)); do
+    if [[ -n "${RESERVED_HOST_PORTS[$p]:-}" ]]; then
+      continue
+    fi
     if ! host_port_open "$p"; then
+      reserve_port "$p"
       echo "$p"
       return 0
     fi
@@ -48,7 +59,7 @@ find_available_port() {
 
 if [[ -z "${POSTGRES_HOST_PORT:-}" ]]; then
   if host_port_open 5432; then
-    POSTGRES_HOST_PORT="$(find_available_port)" || {
+    POSTGRES_HOST_PORT="$(find_available_port 15432 15531)" || {
       echo "[fatal] failed to find an available fallback host port for postgres" >&2
       exit 1
     }
@@ -58,10 +69,11 @@ if [[ -z "${POSTGRES_HOST_PORT:-}" ]]; then
   fi
 fi
 export POSTGRES_HOST_PORT
+reserve_port "$POSTGRES_HOST_PORT"
 
 if [[ -z "${REDIS_HOST_PORT:-}" ]]; then
   if host_port_open 6379; then
-    REDIS_HOST_PORT="$(find_available_port 16379 17379)" || {
+    REDIS_HOST_PORT="$(find_available_port 16379 16478)" || {
       echo "[fatal] failed to find an available fallback host port for redis" >&2
       exit 1
     }
@@ -71,10 +83,11 @@ if [[ -z "${REDIS_HOST_PORT:-}" ]]; then
   fi
 fi
 export REDIS_HOST_PORT
+reserve_port "$REDIS_HOST_PORT"
 
 if [[ -z "${FILE_ENGINE_HTTP_HOST_PORT:-}" ]]; then
   if host_port_open 8080; then
-    FILE_ENGINE_HTTP_HOST_PORT="$(find_available_port 18080 19080)" || {
+    FILE_ENGINE_HTTP_HOST_PORT="$(find_available_port 18080 18179)" || {
       echo "[fatal] failed to find an available fallback host port for file-engine http" >&2
       exit 1
     }
@@ -84,10 +97,11 @@ if [[ -z "${FILE_ENGINE_HTTP_HOST_PORT:-}" ]]; then
   fi
 fi
 export FILE_ENGINE_HTTP_HOST_PORT
+reserve_port "$FILE_ENGINE_HTTP_HOST_PORT"
 
 if [[ -z "${BACKEND_HOST_PORT:-}" ]]; then
   if host_port_open 8081; then
-    BACKEND_HOST_PORT="$(find_available_port 18081 19081)" || {
+    BACKEND_HOST_PORT="$(find_available_port 18180 18279)" || {
       echo "[fatal] failed to find an available fallback host port for backend http" >&2
       exit 1
     }
@@ -97,10 +111,11 @@ if [[ -z "${BACKEND_HOST_PORT:-}" ]]; then
   fi
 fi
 export BACKEND_HOST_PORT
+reserve_port "$BACKEND_HOST_PORT"
 
 if [[ -z "${FILE_ENGINE_GRPC_HOST_PORT:-}" ]]; then
   if host_port_open 50051; then
-    FILE_ENGINE_GRPC_HOST_PORT="$(find_available_port 15051 16051)" || {
+    FILE_ENGINE_GRPC_HOST_PORT="$(find_available_port 15532 15631)" || {
       echo "[fatal] failed to find an available fallback host port for file-engine grpc" >&2
       exit 1
     }
@@ -110,6 +125,7 @@ if [[ -z "${FILE_ENGINE_GRPC_HOST_PORT:-}" ]]; then
   fi
 fi
 export FILE_ENGINE_GRPC_HOST_PORT
+reserve_port "$FILE_ENGINE_GRPC_HOST_PORT"
 
 # compose selects an available Docker Compose command ("docker compose" or "docker-compose") and forwards all arguments to it; exits with status 127 if neither command is found.
 compose() {

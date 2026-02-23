@@ -15,7 +15,7 @@ class TaskController extends Controller
 
     public function show(Request $request, string $id): JsonResponse
     {
-        $payload = $this->engine->getTask($id, TraceHeaders::fromRequest($request));
+        $payload = $this->engine->getTask($id, TraceHeaders::fromRequest($request, true));
         $status = (int) ($payload['_engine_http_status'] ?? 200);
         unset($payload['_engine_http_status']);
 

@@ -23,7 +23,7 @@ class FolderController extends Controller
 
         $requestedBy = (string) ($request->input('requestedBy') ?? optional($request->user())->email ?? 'system');
 
-        $payload = $this->engine->createFolder($path, $folderName, $requestedBy, TraceHeaders::fromRequest($request));
+        $payload = $this->engine->createFolder($path, $folderName, $requestedBy, TraceHeaders::fromRequest($request, true));
         $status = (int) ($payload['_engine_http_status'] ?? 200);
         unset($payload['_engine_http_status']);
 
