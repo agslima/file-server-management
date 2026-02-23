@@ -75,8 +75,14 @@ jobs:
           fi
 
           # Normalize docker file list -> JSON array
-          docker_json="$(printf '%s' "$DOCKER_CHANGED_FILES" \
-            | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            docker_json="$(find . -type f \( -name 'Dockerfile*' -o -name 'docker-compose.yml' \) \
+              | sed 's|^\./||' \
+              | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          else
+            docker_json="$(printf '%s' "$DOCKER_CHANGED_FILES" \
+              | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          fi
 
           echo "docker_files_json=$docker_json" >> "$GITHUB_OUTPUT"
 

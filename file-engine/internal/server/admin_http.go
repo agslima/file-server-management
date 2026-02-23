@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/example/file-engine/internal/auth"
+	"github.com/example/file-engine/internal/security"
 )
 
 func (h *HTTPServer) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.AuthContext, bool) {
@@ -349,10 +350,28 @@ func (h *HTTPServer) handleObjectMove(w http.ResponseWriter, r *http.Request) {
 		SourcePath      string `json:"source_path"`
 		DestinationPath string `json:"destination_path"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.SourcePath) == "" || strings.TrimSpace(req.DestinationPath) == "" {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
+	req.SourcePath = strings.TrimSpace(req.SourcePath)
+	req.DestinationPath = strings.TrimSpace(req.DestinationPath)
+	if req.SourcePath == "" || req.DestinationPath == "" {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	normalizedSourcePath, err := security.NormalizeTenantPath(req.SourcePath)
+	if err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	normalizedDestinationPath, err := security.NormalizeTenantPath(req.DestinationPath)
+	if err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	req.SourcePath = normalizedSourcePath
+	req.DestinationPath = normalizedDestinationPath
 	meta, err := h.Uploads.MoveObject(r.Context(), authCtx.EffectiveActorID(), req.SourcePath, req.DestinationPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)
@@ -379,10 +398,21 @@ func (h *HTTPServer) handleQuarantineRestore(w http.ResponseWriter, r *http.Requ
 		Path           string `json:"path"`
 		ForceReprocess bool   `json:"force_reprocess"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Path) == "" {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
+	req.Path = strings.TrimSpace(req.Path)
+	if req.Path == "" {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	normalizedPath, err := security.NormalizeTenantPath(req.Path)
+	if err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	req.Path = normalizedPath
 	meta, err := h.Uploads.RestoreQuarantinedObject(r.Context(), authCtx.EffectiveActorID(), req.Path, req.ForceReprocess)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)

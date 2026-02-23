@@ -53,6 +53,7 @@ jobs:
               - '.github/workflows/ci.yml'
             authz:
               - 'file-engine/internal/authz/**'
+              - 'file-engine/tests/integration/**authz**'
             monitoring:
               - 'monitoring/**'
               
