@@ -26,11 +26,13 @@ else
 fi
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$default_project_name}"
 
+# host_port_open tests whether a TCP connection to 127.0.0.1 on the specified port can be opened.
 host_port_open() {
   local port="$1"
   (exec 3<>"/dev/tcp/127.0.0.1/${port}") >/dev/null 2>&1
 }
 
+# find_available_port finds the first TCP port on localhost that is not open and prints it; accepts optional start and end range (defaults 15432 and 16432).
 find_available_port() {
   local start="${1:-15432}"
   local end="${2:-16432}"
@@ -109,6 +111,7 @@ if [[ -z "${FILE_ENGINE_GRPC_HOST_PORT:-}" ]]; then
 fi
 export FILE_ENGINE_GRPC_HOST_PORT
 
+# compose selects an available Docker Compose command ("docker compose" or "docker-compose") and forwards all arguments to it; exits with status 127 if neither command is found.
 compose() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     docker compose "$@"
@@ -169,6 +172,7 @@ run_claim() {
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# dump_debug prints a debug dump with mode, timeout, compose project name, resolved host ports, working directory and git SHA, then shows docker/docker-compose status and recent logs for postgres, file-engine, file-engine-worker, and backend.
 dump_debug() {
   echo "================ DEBUG DUMP ================"
   echo "[debug] mode=${LEDGER_MODE}"

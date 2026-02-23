@@ -20,6 +20,11 @@ class FileEngineService
         return rtrim($this->baseUrl ?? config('services.fileengine.base_url', 'http://file-engine:8080/v1'), '/');
     }
 
+    /**
+     * Provide a PendingRequest configured for this service's HTTP calls.
+     *
+     * @return PendingRequest A PendingRequest configured with an Authorization bearer token if a non-empty bearer token is set, otherwise a PendingRequest with no additional headers.
+     */
     private function client(): PendingRequest
     {
         if (($this->bearerToken ?? '') !== '') {
@@ -29,6 +34,15 @@ class FileEngineService
         return $this->http->withHeaders([]);
     }
 
+    /**
+     * Creates a folder under the specified parent path in the File Engine.
+     *
+     * @param string $path Parent path where the folder will be created.
+     * @param string $folderName Name of the folder to create.
+     * @param string $requestedBy Identifier of the actor requesting the creation.
+     * @param string[] $traceHeaders Optional trace headers (e.g. X-Request-Id, traceparent, Authorization) to include on the request.
+     * @return array The response payload as an associative array; includes `_engine_http_status` with the HTTP status code.
+     */
     public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
     {
         $response = $this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/folders', [
@@ -57,6 +71,14 @@ class FileEngineService
         return $this->withStatus($request->put($this->base() . '/uploads/' . rawurlencode($uploadId) . ':chunk?offset=' . $offset));
     }
 
+    /**
+     * Completes an in-progress upload session for the given upload ID.
+     *
+     * @param string $uploadId The upload session identifier.
+     * @param array $traceHeaders Optional trace and authorization headers to include (allowed: `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`, `Authorization`).
+     * @param string $idempotencyKey Optional idempotency key to make the request idempotent.
+     * @return array The response payload as an associative array, augmented with an `_engine_http_status` key containing the HTTP status code.
+     */
     public function completeUpload(string $uploadId, array $traceHeaders = [], string $idempotencyKey = ''): array
     {
         $request = $this->requestWithTraceHeaders($traceHeaders);
@@ -68,6 +90,14 @@ class FileEngineService
     }
 
 
+    /**
+     * Moves an object from a source path to a destination path in the remote file engine.
+     *
+     * @param string $sourcePath The source object's path.
+     * @param string $destinationPath The destination path for the object.
+     * @param array $traceHeaders Optional trace or authentication headers to forward with the request.
+     * @return array The file-engine response payload with an added '_engine_http_status' key containing the HTTP status code.
+     */
     public function moveObject(string $sourcePath, string $destinationPath, array $traceHeaders = []): array
     {
         return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/objects:move', [
@@ -76,6 +106,13 @@ class FileEngineService
         ]));
     }
 
+    /**
+     * Deletes an object at the given path in the File Engine.
+     *
+     * @param string $path The filesystem-like path of the object to delete.
+     * @param array $traceHeaders Optional trace-related headers (e.g. `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`, `Authorization`) to include on the request.
+     * @return array The parsed response payload merged into an array and augmented with `_engine_http_status` containing the HTTP status code.
+     */
     public function deleteObject(string $path, array $traceHeaders = []): array
     {
         return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/objects:delete', [
@@ -83,6 +120,14 @@ class FileEngineService
         ]));
     }
 
+    /**
+     * Restores a quarantined object identified by its storage path.
+     *
+     * @param string $path The storage path of the quarantined object to restore.
+     * @param bool $forceReprocess If true, force the object to be reprocessed after restoration.
+     * @param array $traceHeaders Optional trace-related headers to include with the request.
+     * @return array The response payload as an associative array, augmented with `_engine_http_status`.
+     */
     public function restoreQuarantinedObject(string $path, bool $forceReprocess, array $traceHeaders = []): array
     {
         $adminBase = preg_replace('#/v1$#', '', $this->base()) ?: $this->base();
@@ -93,14 +138,27 @@ class FileEngineService
         ]));
     }
 
+    /**
+     * Retrieve a task by its identifier from the File Engine service.
+     *
+     * @param string $id The task identifier.
+     * @param array $traceHeaders Optional trace-related headers to include (e.g. `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`, `Authorization`).
+     * @return array The parsed JSON response augmented with an `_engine_http_status` entry containing the HTTP status code.
+     */
     public function getTask(string $id, array $traceHeaders = []): array
     {
         return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->get($this->base() . '/tasks/' . $id));
     }
 
     /**
-     * @param array<string,mixed> $traceHeaders
-     */
+         * Create a PendingRequest preconfigured with trace and authorization headers extracted from the provided headers.
+         *
+         * Only the following header names are forwarded when present as non-empty strings: `X-Request-Id`, `X-Correlation-Id`,
+         * `traceparent`, `tracestate`, `baggage`, and `Authorization`. Values are trimmed before being applied.
+         *
+         * @param array<string,mixed> $traceHeaders Candidate header names mapped to values; only string, non-empty values for the listed headers are used.
+         * @return PendingRequest The HTTP pending request with the selected headers applied.
+         */
     private function requestWithTraceHeaders(array $traceHeaders): PendingRequest
     {
         $allowed = [

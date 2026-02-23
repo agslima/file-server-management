@@ -9,6 +9,7 @@ required_refs=(
 
 [[ -f .github/OWNERS ]] || { echo ".github/OWNERS missing" >&2; exit 1; }
 
+# contains_literal checks whether the specified file contains the given literal string.
 contains_literal() {
   local value="$1"
   local file="$2"
