@@ -26,13 +26,13 @@ class ObjectMutationController extends Controller
      */
     public function move(Request $request): JsonResponse
     {
-        $sourcePath = (string) $request->input('sourcePath', '');
-        $destinationPath = (string) $request->input('destinationPath', '');
+        $sourcePath = (string) ($request->input('sourcePath') ?? $request->input('source_path', ''));
+        $destinationPath = (string) ($request->input('destinationPath') ?? $request->input('destination_path', ''));
         if ($sourcePath === '' || $destinationPath === '') {
             return new JsonResponse(['message' => 'sourcePath and destinationPath are required'], 422);
         }
 
-        return $this->fromEnginePayload($this->engine->moveObject($sourcePath, $destinationPath, TraceHeaders::fromRequest($request)));
+        return $this->fromEnginePayload($this->engine->moveObject($sourcePath, $destinationPath, TraceHeaders::fromRequest($request, true)));
     }
 
     /**
@@ -50,7 +50,7 @@ class ObjectMutationController extends Controller
             return new JsonResponse(['message' => 'path is required'], 422);
         }
 
-        return $this->fromEnginePayload($this->engine->deleteObject($path, TraceHeaders::fromRequest($request)));
+        return $this->fromEnginePayload($this->engine->deleteObject($path, TraceHeaders::fromRequest($request, true)));
     }
 
     /**
@@ -70,8 +70,8 @@ class ObjectMutationController extends Controller
 
         return $this->fromEnginePayload($this->engine->restoreQuarantinedObject(
             $path,
-            (bool) $request->boolean('forceReprocess', false),
-            TraceHeaders::fromRequest($request)
+            $request->boolean('forceReprocess', $request->boolean('force_reprocess', false)),
+            TraceHeaders::fromRequest($request, true)
         ));
     }
 

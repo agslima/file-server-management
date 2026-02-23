@@ -24,6 +24,10 @@ contains_literal() {
 for ref in "${required_refs[@]}"; do
   file="${ref%%:*}"
   needle="${ref##*:}"
+  if [[ ! -f "$file" ]]; then
+    echo "$file: not found — referenced needle $needle" >&2
+    exit 1
+  fi
   if ! contains_literal "$needle" "$file"; then
     echo "$file: missing reference to $needle" >&2
     exit 1

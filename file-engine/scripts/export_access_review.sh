@@ -12,9 +12,14 @@ set -euo pipefail
 : "${TOKEN:?set TOKEN to an admin bearer token}"
 : "${BASE_URL:=http://localhost:8080}"
 
+urlencode() {
+  python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"
+}
+
 query=""
 if [[ -n "${TENANT_ID:-}" ]]; then
-  query="?tenant_id=${TENANT_ID}"
+  ENCODED_TENANT_ID="$(urlencode "$TENANT_ID")"
+  query="?tenant_id=${ENCODED_TENANT_ID}"
 fi
 
 payload="$(curl -fsS "${BASE_URL}/admin/v1/access-review${query}" \

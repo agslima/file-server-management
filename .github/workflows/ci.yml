@@ -242,6 +242,7 @@ jobs:
   sustainability-metrics:
     name: Sustainability metrics
     needs: changes
+    if: ${{ needs.changes.outputs.infra == 'true' || needs.changes.outputs.monitoring == 'true' }}
     permissions:
       contents: read
     runs-on: ubuntu-latest

@@ -232,7 +232,7 @@ func (h *HTTPServer) handleGovernanceDelete(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	authCtx, ok := h.requireAuthenticated(w, r)
+	authCtx, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -252,6 +252,10 @@ func (h *HTTPServer) handleGovernanceDelete(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HTTPServer) handleObjectDelete(w http.ResponseWriter, r *http.Request) {
+	h.handleGovernanceDelete(w, r)
 }
 
 func (h *HTTPServer) handleLifecycleCleanup(w http.ResponseWriter, r *http.Request) {
@@ -346,7 +350,7 @@ func (h *HTTPServer) handleObjectMove(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	authCtx, ok := h.requireAuthenticated(w, r)
+	authCtx, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}

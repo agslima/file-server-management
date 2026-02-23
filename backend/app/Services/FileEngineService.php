@@ -11,6 +11,7 @@ class FileEngineService
     public function __construct(
         private readonly HttpFactory $http,
         private readonly ?string $baseUrl = null,
+        private readonly ?string $adminBaseUrl = null,
         private readonly ?string $bearerToken = null,
     ) {
     }
@@ -19,6 +20,35 @@ class FileEngineService
     {
         return rtrim($this->baseUrl ?? config('services.fileengine.base_url', 'http://file-engine:8080/v1'), '/');
     }
+
+    private function adminBase(): string
+    {
+        $configured = trim((string) ($this->adminBaseUrl ?? config('services.fileengine.admin_base_url', '')));
+        if ($configured !== '') {
+            return rtrim($configured, '/');
+        }
+
+        $base = $this->base();
+        $parts = parse_url($base);
+        if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
+            throw new \RuntimeException(sprintf('invalid file-engine base URL: %s', $base));
+        }
+
+        $path = $parts['path'] ?? '';
+        $path = preg_replace('#/v1/?$#', '', $path) ?? $path;
+        $path = rtrim($path, '/');
+
+        $adminBase = sprintf('%s://%s', $parts['scheme'], $parts['host']);
+        if (isset($parts['port'])) {
+            $adminBase .= ':' . $parts['port'];
+        }
+        if ($path !== '') {
+            $adminBase .= $path;
+        }
+
+        return $adminBase;
+    }
+
 
     /**
      * Provide a PendingRequest configured for this service's HTTP calls.
@@ -31,7 +61,7 @@ class FileEngineService
             return $this->http->withToken($this->bearerToken);
         }
 
-        return $this->http->withHeaders([]);
+        return $this->http->withHeaders([]); // No service-level auth configured; return bare client.
     }
 
     /**
@@ -130,9 +160,7 @@ class FileEngineService
      */
     public function restoreQuarantinedObject(string $path, bool $forceReprocess, array $traceHeaders = []): array
     {
-        $adminBase = preg_replace('#/v1$#', '', $this->base()) ?: $this->base();
-
-        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($adminBase . '/admin/v1/quarantine:restore', [
+        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->adminBase() . '/admin/v1/quarantine:restore', [
             'path' => $path,
             'force_reprocess' => $forceReprocess,
         ]));
@@ -151,10 +179,10 @@ class FileEngineService
     }
 
     /**
-         * Create a PendingRequest preconfigured with trace and authorization headers extracted from the provided headers.
+         * Create a PendingRequest preconfigured with trace headers extracted from the provided headers.
          *
          * Only the following header names are forwarded when present as non-empty strings: `X-Request-Id`, `X-Correlation-Id`,
-         * `traceparent`, `tracestate`, `baggage`, and `Authorization`. Values are trimmed before being applied.
+         * `traceparent`, `tracestate`, and `baggage`. Values are trimmed before being applied.
          *
          * @param array<string,mixed> $traceHeaders Candidate header names mapped to values; only string, non-empty values for the listed headers are used.
          * @return PendingRequest The HTTP pending request with the selected headers applied.
@@ -167,7 +195,6 @@ class FileEngineService
             'traceparent',
             'tracestate',
             'baggage',
-            'Authorization',
         ];
 
         $headers = [];
@@ -181,6 +208,13 @@ class FileEngineService
                 continue;
             }
             $headers[$name] = $clean;
+        }
+
+        if (($this->bearerToken ?? '') === '') {
+            $authorization = $traceHeaders['Authorization'] ?? null;
+            if (is_string($authorization) && trim($authorization) !== '') {
+                $headers['Authorization'] = trim($authorization);
+            }
         }
 
         return $this->client()->withHeaders($headers);

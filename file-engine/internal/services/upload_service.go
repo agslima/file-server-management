@@ -297,7 +297,7 @@ func (s *UploadService) Upload(ctx context.Context, targetPath string, content [
 func (s *UploadService) UploadStream(ctx context.Context, targetPath string, content io.Reader, idempotencyKey string) (UploadMetadata, error) {
 	normalized, err := security.NormalizeTenantPath(targetPath)
 	if err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("normalize tenant path %q: %w", targetPath, err)
 	}
 
 	if idempotencyKey != "" {
@@ -362,7 +362,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	tr := io.TeeReader(cr, h)
 
 	if err := s.st.AtomicWrite(tctx, stagePath, tr); err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("write staged object %q: %w", stagePath, err)
 	}
 	if s.policy.MaxObjectSizeBytes > 0 && cr.n > s.policy.MaxObjectSizeBytes {
 		_ = s.st.Delete(tctx, stagePath)
@@ -423,7 +423,7 @@ func (s *UploadService) UploadStream(ctx context.Context, targetPath string, con
 	}
 
 	if err := s.st.Move(tctx, stagePath, normalized); err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("storage move %q -> %q: %w", stagePath, normalized, err)
 	}
 	meta := UploadMetadata{TenantID: tenantID, Path: normalized, StagePath: stagePath, Size: cr.n, Checksum: checksum, ScanStatus: scanStatus, ScannedBy: scannedBy, StorageClass: "standard", CreatedAt: time.Now().UTC(), RetainUntil: time.Now().UTC().Add(time.Duration(tenantPolicy.RetentionSeconds) * time.Second), LegalHold: tenantPolicy.LegalHold || s.pathUnderLegalHold(normalized)}
 	s.storeMeta(meta, idempotencyKey, "")
@@ -555,7 +555,7 @@ func (s *UploadService) RetryScanDLQ(ctx context.Context, id string) (UploadMeta
 		entry.LastError = err.Error()
 		s.dlq[id] = entry
 		s.updateOperationalMetricsLocked()
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("scan %q: %w", e.StagePath, err)
 	}
 	if result.Status != ports.MalwareStatusClean {
 		entry.LastError = "scan verdict not clean"
@@ -637,11 +637,11 @@ func (s *UploadService) listQuarantineObjects(ctx context.Context) ([]storage.Ob
 func (s *UploadService) MoveObject(ctx context.Context, actorID, sourcePath, destinationPath string) (UploadMetadata, error) {
 	src, err := security.NormalizeTenantPath(sourcePath)
 	if err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("normalize tenant path %q: %w", sourcePath, err)
 	}
 	dst, err := security.NormalizeTenantPath(destinationPath)
 	if err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("normalize tenant path %q: %w", destinationPath, err)
 	}
 	srcTenant := tenantFromPath(src)
 	dstTenant := tenantFromPath(dst)
@@ -657,7 +657,7 @@ func (s *UploadService) MoveObject(ctx context.Context, actorID, sourcePath, des
 	s.mu.Unlock()
 
 	if err := s.st.Move(ctx, src, dst); err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("storage move %q -> %q: %w", src, dst, err)
 	}
 
 	s.mu.Lock()
@@ -674,7 +674,7 @@ func (s *UploadService) MoveObject(ctx context.Context, actorID, sourcePath, des
 func (s *UploadService) RestoreQuarantinedObject(ctx context.Context, actorID, objectPath string, forceReprocess bool) (UploadMetadata, error) {
 	normalized, err := security.NormalizeTenantPath(objectPath)
 	if err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("normalize tenant path %q: %w", objectPath, err)
 	}
 	tenantID := tenantFromPath(normalized)
 
@@ -691,7 +691,7 @@ func (s *UploadService) RestoreQuarantinedObject(ctx context.Context, actorID, o
 	if forceReprocess {
 		result, _, err := s.scanWithRetry(ctx, meta.StagePath)
 		if err != nil {
-			return UploadMetadata{}, err
+			return UploadMetadata{}, fmt.Errorf("scan %q: %w", meta.StagePath, err)
 		}
 		if result.Status != ports.MalwareStatusClean {
 			return UploadMetadata{}, errors.New("scan verdict not clean")
@@ -703,7 +703,7 @@ func (s *UploadService) RestoreQuarantinedObject(ctx context.Context, actorID, o
 	}
 
 	if err := s.st.Move(ctx, meta.StagePath, normalized); err != nil {
-		return UploadMetadata{}, err
+		return UploadMetadata{}, fmt.Errorf("storage move %q -> %q: %w", meta.StagePath, normalized, err)
 	}
 
 	s.mu.Lock()

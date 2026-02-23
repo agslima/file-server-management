@@ -21,7 +21,7 @@
             "@php artisan key:generate"
         ],
         "lint": [
-            "@php vendor/bin/phpstan analyse --debug --no-progress --memory-limit=512M"
+            "@php vendor/bin/phpstan analyse --no-progress --memory-limit=512M"
         ],
         "test": [
             "@php vendor/bin/phpunit --colors=always"

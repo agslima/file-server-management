@@ -50,9 +50,6 @@ for item in "${required_api_methods[@]}"; do
   fi
 done
 
-echo "architecture conformance check passed"
-
-
 BOUNDARIES_DOC="docs/architecture_boundaries.md"
 if [[ ! -f "$BOUNDARIES_DOC" ]]; then
   echo "missing $BOUNDARIES_DOC"
@@ -72,9 +69,18 @@ for item in "${required_boundary_entries[@]}"; do
   fi
 done
 
-if rg -n "github.com/example/file-engine/internal/infra/logger" file-engine --glob '*.go' >/dev/null 2>&1; then
-  echo "deprecated logger import detected: internal/infra/logger"
-  exit 1
+if command -v rg >/dev/null 2>&1; then
+  if rg -n "github.com/example/file-engine/internal/infra/logger" file-engine --glob '*.go' >/tmp/arch_conformance_logger_hits.txt; then
+    echo "deprecated logger import detected:" >&2
+    cat /tmp/arch_conformance_logger_hits.txt >&2
+    exit 1
+  fi
+else
+  if grep -R -n --include='*.go' "github.com/example/file-engine/internal/infra/logger" file-engine >/tmp/arch_conformance_logger_hits.txt; then
+    echo "deprecated logger import detected:" >&2
+    cat /tmp/arch_conformance_logger_hits.txt >&2
+    exit 1
+  fi
 fi
 
 if [[ -d file-engine/internal/infra/logger ]]; then
@@ -83,3 +89,5 @@ if [[ -d file-engine/internal/infra/logger ]]; then
     exit 1
   fi
 fi
+
+echo "architecture conformance check passed"

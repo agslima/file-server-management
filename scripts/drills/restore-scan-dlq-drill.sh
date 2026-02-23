@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../.." && pwd)"
+scan_dlq_script="$repo_root/file-engine/scripts/scan_dlq.sh"
+
 mode="dry-run"
 if [[ "${1:-}" == "--apply" ]]; then
   mode="apply"
@@ -12,7 +16,7 @@ if [[ "$mode" == "apply" ]]; then
     echo "TOKEN is required for --apply" >&2
     exit 1
   fi
-  ./file-engine/scripts/scan_dlq.sh list >/dev/null
+  "$scan_dlq_script" "$TOKEN"
 fi
 
 echo "1) review DLQ backlog and select retry candidates"

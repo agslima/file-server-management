@@ -201,6 +201,22 @@ func TestObjectMoveEndpoint(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
 	}
+
+	if _, err := st.Open(context.Background(), "/tenants/acme/docs/a.txt"); err == nil {
+		t.Fatalf("expected source object to be moved away")
+	}
+	dstReader, err := st.Open(context.Background(), "/tenants/acme/docs/b.txt")
+	if err != nil {
+		t.Fatalf("expected destination object to exist: %v", err)
+	}
+	defer dstReader.Close()
+	buf := new(bytes.Buffer)
+	if _, err := buf.ReadFrom(dstReader); err != nil {
+		t.Fatalf("read destination object: %v", err)
+	}
+	if buf.String() != "x" {
+		t.Fatalf("expected destination content x, got %q", buf.String())
+	}
 }
 
 func TestQuarantineRestoreEndpoint(t *testing.T) {
@@ -218,5 +234,21 @@ func TestQuarantineRestoreEndpoint(t *testing.T) {
 	h.handleQuarantineRestore(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	restoredReader, err := st.Open(context.Background(), "/tenants/acme/docs/eicar.txt")
+	if err != nil {
+		t.Fatalf("expected restored object to exist at original path: %v", err)
+	}
+	defer restoredReader.Close()
+	buf := new(bytes.Buffer)
+	if _, err := buf.ReadFrom(restoredReader); err != nil {
+		t.Fatalf("read restored object: %v", err)
+	}
+	if buf.String() != "clean" {
+		t.Fatalf("expected restored content clean, got %q", buf.String())
+	}
+	if _, err := st.Open(context.Background(), "/quarantine/acme/docs/eicar.txt"); err == nil {
+		t.Fatalf("expected quarantine object to be removed after restore")
 	}
 }
