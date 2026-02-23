@@ -22,7 +22,7 @@ jobs:
       frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.frontend_any_changed == 'true' && 'true' || 'false') }}
       file_engine: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.file_engine_any_changed == 'true' && 'true' || 'false') }} 
       docker: ${{ steps.filter.outputs.docker_any_changed }}
-      docker_files_json: ${{ steps.docker_files.outputs.all_changed_files }}
+      docker_files_json: ${{ steps.docker_files_matrix.outputs.json }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -64,7 +64,18 @@ jobs:
           files: |
             **/Dockerfile*
             docker-compose.yml
-          json: "true"
+          separator: "\n"
+
+      - name: Normalize Docker file list for matrix
+        id: docker_files_matrix
+        shell: bash
+        run: |
+          {
+            echo 'json<<EOF'
+            printf '%s' "${{ steps.docker_files.outputs.all_changed_files }}" | jq -Rsc 'split("\n") | map(select(length > 0))'
+            echo
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
   trivy-backend:
     name: Trivy Gate - PHP (Composer deps)
