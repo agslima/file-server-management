@@ -29,19 +29,6 @@ func (h *HTTPServer) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.
 	return auth.AuthContext{}, false
 }
 
-func (h *HTTPServer) requireAuthenticated(w http.ResponseWriter, r *http.Request) (auth.AuthContext, bool) {
-	if h.Verifier == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return auth.AuthContext{}, false
-	}
-	authCtx, err := h.Verifier.ParseAuthContext(r.Header.Get("Authorization"))
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return auth.AuthContext{}, false
-	}
-	return authCtx, true
-}
-
 func (h *HTTPServer) handleScanDLQ(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.requireAdmin(w, r); !ok {
 		return

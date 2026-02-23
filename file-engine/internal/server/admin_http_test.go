@@ -209,7 +209,11 @@ func TestObjectMoveEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected destination object to exist: %v", err)
 	}
-	defer dstReader.Close()
+	t.Cleanup(func() {
+		if closeErr := dstReader.Close(); closeErr != nil {
+			t.Errorf("close destination object: %v", closeErr)
+		}
+	})
 	buf := new(bytes.Buffer)
 	if _, err := buf.ReadFrom(dstReader); err != nil {
 		t.Fatalf("read destination object: %v", err)
@@ -240,7 +244,11 @@ func TestQuarantineRestoreEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected restored object to exist at original path: %v", err)
 	}
-	defer restoredReader.Close()
+	t.Cleanup(func() {
+		if closeErr := restoredReader.Close(); closeErr != nil {
+			t.Errorf("close restored object: %v", closeErr)
+		}
+	})
 	buf := new(bytes.Buffer)
 	if _, err := buf.ReadFrom(restoredReader); err != nil {
 		t.Fatalf("read restored object: %v", err)
