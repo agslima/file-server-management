@@ -364,7 +364,7 @@ cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuth
 
 ## Key flows
 
-**Target-state upload API flow (storage guardrails are baseline-validated; endpoint contract is not yet baseline-promoted):**
+**Baseline-validated upload API flow (`CL-047`) with storage guardrails (`CL-033`, `CL-040`):**
 
 ```mermaid
 sequenceDiagram
