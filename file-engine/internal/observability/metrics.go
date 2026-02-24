@@ -2,6 +2,7 @@ package observability
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync"
@@ -346,11 +347,10 @@ func (m *Metrics) SnapshotPrometheus() string {
 
 func stringifyTenantBytes(values map[string]int64) map[string]int64 {
 	out := map[string]int64{}
-	for tenant, v := range values {
-		out[tenant] = v
-	}
+	maps.Copy(out, values)
 	return out
 }
+
 func emitCounterVec(b *strings.Builder, metric string, labels []string, values map[string]int64) {
 	keys := make([]string, 0, len(values))
 	for k := range values {
