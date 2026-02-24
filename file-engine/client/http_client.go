@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -44,7 +45,7 @@ func NewHTTPClient(baseURL, token string) *HTTPClient {
 	return &HTTPClient{baseURL: strings.TrimRight(baseURL, "/"), token: strings.TrimSpace(token), client: &http.Client{Timeout: 10 * time.Second}}
 }
 
-func (c *HTTPClient) doJSON(ctx context.Context, method, endpoint string, body any, out any) error {
+func (c *HTTPClient) doJSON(ctx context.Context, method, endpoint string, body, out any) error {
 	var payload io.Reader = http.NoBody
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -63,7 +64,7 @@ func (c *HTTPClient) doJSON(ctx context.Context, method, endpoint string, body a
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req) // #nosec G107 G704 -- Base URL is configured by trusted caller for this internal client.
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func (c *HTTPClient) InitiateUpload(ctx context.Context, path string) (UploadIni
 }
 
 func (c *HTTPClient) UploadChunk(ctx context.Context, uploadID string, offset int64, data []byte) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.baseURL+"/v1/uploads/"+url.PathEscape(uploadID)+":chunk?offset="+fmt.Sprintf("%d", offset), bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.baseURL+"/v1/uploads/"+url.PathEscape(uploadID)+":chunk?offset="+strconv.FormatInt(offset, 10), bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func (c *HTTPClient) UploadChunk(ctx context.Context, uploadID string, offset in
 	if c.token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.token)
 	}
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req) // #nosec G107 G704 -- Base URL is configured by trusted caller for this internal client.
 	if err != nil {
 		return err
 	}
