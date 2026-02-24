@@ -7,6 +7,15 @@ This runbook covers backup strategy, restore simulation, and disaster drills for
 - Storage object state (tenant files and staged/quarantine objects)
 - Secondary audit sink resilience (DLQ catch-up workflow)
 
+## Recovery objectives (dev-grade contract)
+
+- **DB restore RTO:** `PT30M`
+- **DB RPO:** `PT24H`
+- **Storage restore RTO:** `PT45M`
+- **Storage RPO:** `PT24H`
+
+These defaults are encoded in script env vars and can be overridden per environment.
+
 ## Backup strategy
 
 ### DB backups
@@ -19,14 +28,13 @@ This runbook covers backup strategy, restore simulation, and disaster drills for
 - Retention: keep daily snapshots for 14 days minimum.
 - Artifact naming: `storage-<UTC_TIMESTAMP>.tar.gz`.
 
-### Local/dev simulation
-Use:
+### Local/dev simulation (script-backed)
 
 ```bash
 ./scripts/backup_restore_simulation.sh
 ```
 
-The script performs deterministic backup+restore simulation using local docker-compose services and validates restore signals.
+The script prints each backup/restore step, includes active RTO/RPO targets in output, and emits `BACKUP_RESTORE_SIMULATION_OK`.
 
 ## Restore steps
 
@@ -39,9 +47,9 @@ The script performs deterministic backup+restore simulation using local docker-c
    - integrity verification job (`./scripts/integrity_verify_job.sh`)
    - mutation/read canary (for example `./scripts/e2e/vs001_create_folder.sh`)
 
-## Disaster drills
+## Disaster drills (script-backed)
 
-Run the three deterministic drills:
+Run the three drills:
 
 ```bash
 ./scripts/drills/db_restore_replay.sh
@@ -50,18 +58,35 @@ Run the three deterministic drills:
 ```
 
 Expected outcomes:
-- DB restore/replay drill finishes with explicit success marker.
-- Storage corruption drill detects corruption via integrity verification endpoint.
+- DB restore/replay drill prints deterministic step logs and exits with `DB_RESTORE_REPLAY_DRILL_OK`.
+- Storage corruption drill prints deterministic operator steps and exits with `STORAGE_CORRUPTION_DRILL_GUIDE_OK`.
 - Audit sink drill proves sink outage behavior and documents DLQ catch-up path.
 
-## Integrity verification job
-
-Use the periodic job wrapper:
+## Integrity verification policy (sample-based)
 
 ```bash
 ./scripts/integrity_verify_job.sh
 ```
 
-- Calls `POST /admin/v1/integrity:verify` with configurable sample size.
-- Returns non-zero when mismatches are detected.
-- Emits failure signal consumable by schedulers and alerting wrappers.
+Configurable policy controls:
+- `SAMPLE_SIZE` (default `25`)
+- `FAILURE_THRESHOLD` (default `0`)
+- `IGNORE_PATHS` (comma-separated false-positive suppression list)
+
+Semantics:
+- The endpoint returns `409` only when `failed > failure_threshold` after ignore-path filtering.
+- The response includes `ignored_failures`, `sample_size`, and `failure_threshold` for auditability.
+
+## Audit-ready evidence bundle
+
+Generate one-command evidence pack:
+
+```bash
+./scripts/generate_durability_evidence_pack.sh
+```
+
+The pack includes:
+- access review command pointers
+- durability config snapshot (RTO/RPO + integrity policy defaults)
+- drill transcript pointers
+- deterministic marker: `DURABILITY_EVIDENCE_PACK_OK`

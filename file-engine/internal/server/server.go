@@ -195,6 +195,8 @@ func (h *HTTPServer) Start() error {
 	root.HandleFunc("/v1/objects:delete", h.handleObjectDelete)
 	root.HandleFunc("/admin/v1/governance:effective", h.handleGovernanceEffective)
 	root.HandleFunc("/admin/v1/governance:drift-check", h.handleGovernanceDriftCheck)
+	root.HandleFunc("/admin/v1/governance:policy", h.handleGovernancePolicyUpdate)
+	root.HandleFunc("/admin/tenants/", h.handleTenantEvidence)
 	root.HandleFunc("/admin/v1/cost:tenants", h.handleTenantCostReport)
 	root.HandleFunc("/admin/v1/integrity:verify", h.handleIntegrityVerify)
 	root.Handle("/", auth.HTTPAuthMiddleware(h.Verifier, mux))

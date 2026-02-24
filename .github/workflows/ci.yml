@@ -155,6 +155,9 @@ jobs:
         
       - name: Run gateway route test (explicit)
         run: cd file-engine && go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v
+
+      - name: Enforce API compatibility policy + golden fixtures
+        run: ./scripts/check-api-compatibility.sh
     
       - name: Ensure generated gateway artifacts are in sync
         run: |
