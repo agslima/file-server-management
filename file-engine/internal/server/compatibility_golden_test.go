@@ -18,10 +18,21 @@ import (
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/services"
 	pb "github.com/example/file-engine/pkg/generated"
+	jwtgo "github.com/golang-jwt/jwt/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+func signedAdminToken(t *testing.T, secret string) string {
+	t.Helper()
+	tk := jwtgo.NewWithClaims(jwtgo.SigningMethodHS256, jwtgo.MapClaims{"sub": "alice", "roles": []string{"admin"}, "exp": time.Now().Add(time.Hour).Unix()})
+	signed, err := tk.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+	return "Bearer " + signed
+}
 
 func TestCompatibilityReadyzGolden(t *testing.T) {
 	h := &HTTPServer{}
@@ -103,6 +114,60 @@ func TestCompatibilityUploadLifecycleGolden(t *testing.T) {
 	completeBody["stage_path"] = "<stage_path>"
 	completeJSON, _ := json.Marshal(completeBody)
 	assertMatchesFixture(t, completeJSON, "upload_complete.json")
+}
+
+func TestCompatibilityUploadThrottledGolden(t *testing.T) {
+	secret := "test-secret"
+	verifier, _ := auth.NewJWTVerifier(secret, "", "", "")
+	acl := auth.NewInMemoryACLStore()
+	_ = acl.SetACL(auth.ACL{Path: "/tenants/acme", PrincipalID: "role:viewer", Permissions: map[auth.Permission]bool{auth.PermWrite: true}})
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{MaxObjectSizeBytes: 4096, TenantQuotaBytes: 10 * 1024, RequestTimeout: time.Second, RequireCleanScan: true})
+	h := &HTTPServer{Verifier: verifier, ACLStore: acl, Uploads: uploads, Tenants: auth.NewInMemoryTenantResolver(map[string][]string{"alice": {"acme"}}), MaxUploadBytes: 4096, UploadTimeout: time.Second, sem: make(chan struct{}, 1), rateByTenant: map[string]int{"acme": 40}, rateByActor: map[string]int{"alice": 20}, rateReset: time.Now().Add(time.Second)}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/objects:upload?path=/tenants/acme/docs/report.txt", bytes.NewBufferString("hello"))
+	req.Header.Set("Authorization", signedToken(t, secret))
+	req.Header.Set("X-Request-Id", "req-compat-throttle")
+	rr := httptest.NewRecorder()
+	h.handleUpload(rr, req)
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	assertMatchesFixture(t, rr.Body.Bytes(), "upload_throttled.json")
+}
+
+func TestCompatibilityGovernanceDeleteRetentionBlockGolden(t *testing.T) {
+	secret := "test-secret"
+	verifier, _ := auth.NewJWTVerifier(secret, "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
+	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{RetentionSeconds: 3600}, Tenants: map[string]services.TenantGovernancePolicy{}}); err != nil {
+		t.Fatalf("set policy: %v", err)
+	}
+	if _, err := uploads.Upload(context.Background(), "/tenants/acme/docs/a.txt", []byte("x")); err != nil {
+		t.Fatalf("upload seed: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/governance:delete", strings.NewReader(`{"path":"/tenants/acme/docs/a.txt"}`))
+	req.Header.Set("Authorization", signedAdminToken(t, secret))
+	rr := httptest.NewRecorder()
+	h.handleGovernanceDelete(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected 409 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	assertTextFixture(t, rr.Body.Bytes(), "governance_delete_retention_block.txt")
+}
+
+func assertTextFixture(t *testing.T, got []byte, fixtureName string) {
+	t.Helper()
+	fixturePath := filepath.Join("testdata", "compat", fixtureName)
+	wantRaw, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("read fixture %s: %v", fixtureName, err)
+	}
+	if string(got) != string(wantRaw) {
+		t.Fatalf("fixture mismatch for %s\nwant=%q\ngot=%q", fixtureName, string(wantRaw), string(got))
+	}
 }
 
 func assertMatchesFixture(t *testing.T, got []byte, fixtureName string) {

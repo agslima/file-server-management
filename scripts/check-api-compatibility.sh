@@ -3,4 +3,30 @@ set -euo pipefail
 
 cd file-engine
 
-go test ./internal/server -run "TestCompatibilityReadyzGolden|TestCompatibilityAuthzDenyGolden|TestCompatibilityUploadLifecycleGolden" -v
+go test ./internal/server -run "TestCompatibilityReadyzGolden|TestCompatibilityAuthzDenyGolden|TestCompatibilityUploadLifecycleGolden|TestCompatibilityUploadThrottledGolden|TestCompatibilityGovernanceDeleteRetentionBlockGolden" -v
+cd ..
+
+# Compatibility policy enforcement for /v1 changes in PR context.
+if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
+  git fetch --depth=1 origin "${GITHUB_BASE_REF}" >/dev/null 2>&1 || true
+  base_ref="origin/${GITHUB_BASE_REF}"
+  if git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
+    changed="$(git diff --name-only "${base_ref}...HEAD")"
+    if echo "$changed" | rg -q "^(file-engine/internal/server/(server.go|upload_http.go|admin_http.go)|file-engine/api/proto/fileengine.proto|file-engine/proto/fileengine.proto)$"; then
+      has_version_update=0
+      if echo "$changed" | rg -q "^docs/api-versioning-policy.md$"; then
+        has_version_update=1
+      fi
+      has_docs_update=0
+      if echo "$changed" | rg -q "^(README.md|docs/client-sdks.md|docs/route-maturity-matrix.md|docs/generated/endpoint-inventory.md)$"; then
+        has_docs_update=1
+      fi
+      if [[ $has_version_update -eq 0 || $has_docs_update -eq 0 ]]; then
+        echo "breaking-change policy gate: /v1 surface changed without required docs updates (api-versioning-policy + consumer docs)" >&2
+        exit 1
+      fi
+    fi
+  fi
+fi
+
+echo "API_COMPATIBILITY_OK"

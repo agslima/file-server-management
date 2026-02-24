@@ -237,14 +237,21 @@ func (h *HTTPServer) writeUploadError(w http.ResponseWriter, r *http.Request, st
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	requestID := requestCorrelationID(r)
+	errorCode := "UPLOAD_ERROR"
+	retryable := false
+	if statusCode == http.StatusTooManyRequests {
+		errorCode = "THROTTLED"
+		retryable = true
+	}
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"error": map[string]any{
-			"code":           "UPLOAD_ERROR",
+			"code":           errorCode,
 			"reason":         reason,
 			"message":        message,
 			"tenant_id":      tenantID,
 			"request_id":     requestID,
 			"correlation_id": requestID,
+			"retryable":      retryable,
 		},
 	})
 }
