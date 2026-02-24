@@ -39,7 +39,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-057`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
+   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-061`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).

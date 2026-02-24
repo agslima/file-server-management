@@ -82,9 +82,9 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-016`](docs/capability-ledger.md#baseline-claims-implemented) | Generated gateway artifacts remain in sync with proto | ✅ | `cd file-engine && ./scripts/generate_grpc_docker.sh && cd .. && git diff --exit-code && test -z "$(git status --porcelain)"` |
 | [`CL-017`](docs/capability-ledger.md#baseline-claims-implemented) | Worker performance guardrails (status retries + task timeout) for async create-folder | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` |
 | [`CL-018`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 scaffold contract (create-folder forward + task polling wiring checks) | ✅ | `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php` |
-| [`CL-020`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 docker-compose E2E (forward create-folder + poll task to success + folder existence) | 🟡 | `docker compose up -d --build && ./scripts/wait-for-http.sh http://localhost:8080/healthz 60 && ./scripts/wait-for-http.sh http://localhost:8081/healthz 60 && ./scripts/e2e/vs001_create_folder.sh && docker compose down -v` |
-| [`CL-022`](docs/capability-ledger.md#baseline-claims-implemented) | Audit coverage for read/list/download actions (`object.list`, `object.read`, `object.download`) | 🟡 | `cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v` |
-| [`CL-025`](docs/capability-ledger.md#baseline-claims-implemented) | Upload pipeline baseline: staged quarantine write + atomic promote (no partial final object visibility) | 🟡 | `cd file-engine && go test ./tests/integration -run TestStagedUploadAtomicPromote -v` |
+| [`CL-020`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 docker-compose E2E (forward create-folder + poll task to success + folder existence) | ✅ | `docker compose up -d --build && ./scripts/wait-for-http.sh http://localhost:8080/healthz 60 && ./scripts/wait-for-http.sh http://localhost:8081/healthz 60 && ./scripts/e2e/vs001_create_folder.sh && docker compose down -v` |
+| [`CL-022`](docs/capability-ledger.md#baseline-claims-implemented) | Audit coverage for read/list/download actions (`object.list`, `object.read`, `object.download`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v` |
+| [`CL-025`](docs/capability-ledger.md#baseline-claims-implemented) | Upload pipeline baseline: staged quarantine write + atomic promote (no partial final object visibility) | ✅ | `cd file-engine && go test ./tests/integration -run TestStagedUploadAtomicPromote -v` |
 | [`CL-031`](docs/capability-ledger.md#baseline-claims-implemented) | Backend baseline smoke suite (composer install + phpunit) | ✅ | `docker compose run --rm --no-deps backend sh -lc 'composer install --no-interaction && ./vendor/bin/phpunit -c phpunit.xml'` |
 | [`CL-032`](docs/capability-ledger.md#baseline-claims-implemented) | Audit table append-only enforcement (UPDATE/DELETE rejected for app DB user) | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditEventsAppendOnlyEnforced -v` |
 | [`CL-033`](docs/capability-ledger.md#baseline-claims-implemented) | Upload malware gating: dirty scan blocks promote, clean scan promotes from quarantine | ✅ | `cd file-engine && go test ./tests/integration -run TestUploadScanGateDirtyPreventsPromotion -v` |
@@ -109,6 +109,10 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-046`](docs/capability-ledger.md#baseline-claims-implemented) | Governance controls baseline: startup-validated tenant policy config with quota/object/rate limits, retention/legal-hold delete protection, and policy-driven lifecycle cleanup controls | ✅ | `cd file-engine && go test ./internal/services ./internal/server -run "TestUploadServiceTenantPolicyQuotaFinalGate|TestUploadServiceRetentionBlocksDelete|TestUploadServiceLegalHoldBlocksDelete|TestGovernanceDeleteEndpointBlockedByRetention|TestLifecycleCleanupEndpoint" -v` |
 | [`CL-047`](docs/capability-ledger.md#baseline-claims-implemented) | Upload API contract (`Initiate -> Upload chunk -> Complete`) is stable with idempotency/retry semantics and deterministic clean/dirty outcomes | ✅ | `docker compose up -d --build redis postgres file-engine file-engine-worker backend && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/upload_lifecycle.sh && docker compose down -v` |
 | [`CL-049`](docs/capability-ledger.md#baseline-claims-implemented) | Governance control-plane next step: archive-tier lifecycle transitions, external policy source distribution, drift-detection metrics/audit signal, and effective-policy operator endpoint | ✅ | `cd file-engine && go test ./internal/services ./internal/server ./internal/observability -run "TestLoadGovernancePolicyFromSourceEnvelope|TestUploadServiceArchiveLifecycleTransition|TestUploadServiceGovernanceDriftDetection|TestGovernanceEffectiveEndpoint|TestGovernanceDriftCheckEndpoint|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v` |
+| [`CL-058`](docs/capability-ledger.md#baseline-claims-implemented) | Enterprise readiness v2 baseline: deterministic k6 smoke/soak load profiles, tenant+actor fairness throttles, queue backpressure reject signaling, and per-tenant cost usage report endpoint | ✅ | `cd file-engine && go test ./internal/observability ./internal/server ./internal/handlers -run "TestTenantUsageSnapshot|TestTenantCostReportEndpoint|TestCreateFolderQueueUnavailableReturnsUnavailable" -v` |
+| [`CL-059`](docs/capability-ledger.md#baseline-claims-implemented) | Data durability & recovery baseline: backup/restore simulation scripts, disaster drill suite (DB restore/replay, storage corruption detection, audit sink outage catch-up), and integrity verification endpoint/job with failure metrics | ✅ | `cd file-engine && go test ./internal/server ./internal/observability -run "TestIntegrityVerifyEndpointDetectsCorruption|TestTenantUsageSnapshot|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v && bash -n scripts/backup_restore_simulation.sh scripts/integrity_verify_job.sh scripts/drills/db_restore_replay.sh scripts/drills/storage_corruption_drill.sh scripts/drills/audit_sink_catchup_drill.sh` |
+| [`CL-060`](docs/capability-ledger.md#baseline-claims-implemented) | API productization baseline: explicit versioning policy, thin Go+PHP SDK layers, and frozen compatibility fixtures/gates for upload lifecycle, readiness, and authz-deny envelope stability | ✅ | `./scripts/check-api-compatibility.sh && cd file-engine && go test ./client -v && cd ../backend && php -l app/Clients/FileEngineClient.php && php -l app/Services/FileEngineService.php` |
+| [`CL-061`](docs/capability-ledger.md#baseline-claims-implemented) | Maintenance-cost reduction baseline: legacy dual-path entrypoint removed, architecture conformance now enforces generated-doc freshness + no handler/server direct DB imports, and docs artifacts (endpoint inventory/route inventory/dashboard refs) are auto-generated | ✅ | `./scripts/generate-doc-artifacts.sh && ./scripts/architecture-conformance-check.sh && ./scripts/doc-drift-check.sh` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
@@ -121,6 +125,8 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 **Architecture & Implementation:**
 
 - **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
+- **API Versioning Policy:** [`docs/api-versioning-policy.md`](docs/api-versioning-policy.md)
+- **Client SDKs (thin):** [`docs/client-sdks.md`](docs/client-sdks.md)
 - **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
 - **Architecture Boundaries:** [`docs/architecture_boundaries.md`](docs/architecture_boundaries.md)
 - **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
@@ -148,6 +154,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 
 </details>
 
+> [!Warning]
 > If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ---
@@ -172,7 +179,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - Browse folders (tree navigation, directory listing)
 - Metadata display (size, timestamps, ownership) with backend-specific best-effort fields
 - **Baseline-validated read path:** list results + size/timestamps/ownership metadata + download path normalization validated by [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented)
-- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary; verified by unit + integration coverage in [`file-engine/internal/handlers/grpc_handler_test.go`](file-engine/internal/handlers/grpc_handler_test.go) and [`file-engine/tests/integration/read_list_authz_integration_test.go`](file-engine/tests/integration/read_list_authz_integration_test.go)
+- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary; verified by unit + integration coverage in [`[1]`](file-engine/internal/handlers/grpc_handler_test.go) and [`[2]`](file-engine/tests/integration/read_list_authz_integration_test.go)
 
 ### Write path (async)
 
@@ -357,7 +364,7 @@ cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuth
 
 ## Key flows
 
-**Target-state upload API flow (storage guardrails are baseline-validated; endpoint contract is not yet baseline-promoted):**
+**Baseline-validated upload API flow (`CL-047`) with storage guardrails (`CL-033`, `CL-040`):**
 
 ```mermaid
 sequenceDiagram

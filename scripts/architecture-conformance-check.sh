@@ -7,6 +7,25 @@ cd "$ROOT_DIR"
 
 cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto
 
+./scripts/generate-doc-artifacts.sh >/tmp/doc_artifacts_generate.log
+if ! git diff --quiet -- docs/generated/endpoint-inventory.md docs/generated/route-maturity-matrix.md docs/generated/dashboard-references.md; then
+  echo "generated docs are stale; run ./scripts/generate-doc-artifacts.sh" >&2
+  git diff -- docs/generated/endpoint-inventory.md docs/generated/route-maturity-matrix.md docs/generated/dashboard-references.md >&2 || true
+  exit 1
+fi
+
+if [[ -f file-engine/cmd/main.go ]]; then
+  echo "legacy dual-path entrypoint file-engine/cmd/main.go must not exist"
+  exit 1
+fi
+
+if rg -n "database/sql|jackc/pgx|gorm.io|sqlx" file-engine/internal/handlers file-engine/internal/server --glob '*.go' >/tmp/arch_conformance_db_hits.txt; then
+  echo "direct DB-layer access import detected in handlers/server:" >&2
+  cat /tmp/arch_conformance_db_hits.txt >&2
+  exit 1
+fi
+
+
 MATRIX="docs/route-maturity-matrix.md"
 APIREF="docs/api-reference.md"
 

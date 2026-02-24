@@ -41,17 +41,20 @@ func (h *HTTPServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx = context.WithValue(ctx, uploadCorrelationIDKey{}, authn.correlationID)
 
-	if !h.allowTenantRequest(authn.tenantID) {
+	if !h.allowTenantRequest(authn.tenantID, authn.authCtx.UserID) {
+		observability.DefaultMetrics.IncRateLimitBlock("request", "tenant_or_actor_rps")
+		h.emitUploadAudit(ctx, "upload.throttled", authn.correlationID, authn.normalized, authn.tenantID)
 		h.writeUploadError(w, r, http.StatusTooManyRequests, "rate_limited", "rate limit exceeded", authn.tenantID)
 		return
 	}
-	select {
-	case h.sem <- struct{}{}:
-		defer func() { <-h.sem }()
-	default:
+	release, ok := h.acquireUploadConcurrency(authn.tenantID, authn.authCtx.UserID)
+	if !ok {
+		observability.DefaultMetrics.IncRateLimitBlock("concurrency", "tenant_or_actor_uploads")
+		h.emitUploadAudit(ctx, "upload.throttled", authn.correlationID, authn.normalized, authn.tenantID)
 		h.writeUploadError(w, r, http.StatusTooManyRequests, "concurrency_limited", "too many concurrent uploads", authn.tenantID)
 		return
 	}
+	defer release()
 
 	r.Body = http.MaxBytesReader(w, r.Body, h.MaxUploadBytes)
 	if h.UploadTimeout > 0 {
@@ -60,12 +63,14 @@ func (h *HTTPServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 	}
 	idk := strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
-	if _, err := h.Uploads.UploadStream(ctx, authn.normalized, r.Body, idk); err != nil {
+	meta, err := h.Uploads.UploadStream(ctx, authn.normalized, r.Body, idk)
+	if err != nil {
 		h.writeUploadError(w, r, mapUploadServiceErrorToStatus(err), "upload_failed", err.Error(), authn.tenantID)
 		return
 	}
 	h.emitUploadAudit(ctx, "upload.direct.completed", authn.correlationID, authn.normalized, authn.tenantID)
 	observability.DefaultMetrics.ObserveUploadDurationMs(time.Since(start).Milliseconds())
+	observability.DefaultMetrics.AddTenantUploadedBytes(authn.tenantID, meta.Size)
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -287,14 +292,55 @@ func (h *HTTPServer) emitUploadAudit(ctx context.Context, event, correlationID, 
 	})
 }
 
-func (h *HTTPServer) allowTenantRequest(tenant string) bool {
+func (h *HTTPServer) allowTenantRequest(tenant, actor string) bool {
 	h.rateMu.Lock()
 	defer h.rateMu.Unlock()
+	if h.rateByTenant == nil {
+		h.rateByTenant = map[string]int{}
+	}
+	if h.rateByActor == nil {
+		h.rateByActor = map[string]int{}
+	}
 	now := time.Now()
 	if now.After(h.rateReset) {
 		h.rateByTenant = map[string]int{}
-		h.rateReset = now.Add(time.Minute)
+		h.rateByActor = map[string]int{}
+		h.rateReset = now.Add(time.Second)
 	}
 	h.rateByTenant[tenant]++
-	return h.rateByTenant[tenant] <= 120
+	h.rateByActor[actor]++
+	return h.rateByTenant[tenant] <= 40 && h.rateByActor[actor] <= 20
+}
+
+func (h *HTTPServer) acquireUploadConcurrency(tenant, actor string) (func(), bool) {
+	select {
+	case h.sem <- struct{}{}:
+	default:
+		return nil, false
+	}
+	h.rateMu.Lock()
+	if h.concurrentByTenant == nil {
+		h.concurrentByTenant = map[string]int{}
+	}
+	if h.concurrentByActor == nil {
+		h.concurrentByActor = map[string]int{}
+	}
+	h.concurrentByTenant[tenant]++
+	h.concurrentByActor[actor]++
+	ok := h.concurrentByTenant[tenant] <= 8 && h.concurrentByActor[actor] <= 4
+	if !ok {
+		h.concurrentByTenant[tenant]--
+		h.concurrentByActor[actor]--
+		h.rateMu.Unlock()
+		<-h.sem
+		return nil, false
+	}
+	h.rateMu.Unlock()
+	return func() {
+		h.rateMu.Lock()
+		h.concurrentByTenant[tenant]--
+		h.concurrentByActor[actor]--
+		h.rateMu.Unlock()
+		<-h.sem
+	}, true
 }

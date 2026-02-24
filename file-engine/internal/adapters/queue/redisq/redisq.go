@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -15,7 +16,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var ErrTaskNotFound = errors.New("task not found")
+var (
+	ErrTaskNotFound     = errors.New("task not found")
+	ErrQueueUnavailable = errors.New("queue unavailable")
+)
 
 type TaskPayload struct {
 	ID     string            `json:"id"`
@@ -116,7 +120,9 @@ func (q *RedisQueue) Enqueue(ctx context.Context, payload *TaskPayload) error {
 		return err
 	}
 	if err := q.client.RPush(ctx, "tasks", string(b)).Err(); err != nil {
-		return err
+		observability.DefaultMetrics.IncQueueBackpressureReject()
+		q.log.Event("error", "queue.enqueue.rejected", map[string]any{"event": "queue.backpressure.reject", "reason": err.Error(), "task_id": payload.ID, "correlation_id": payload.Params["correlation_id"]})
+		return fmt.Errorf("%w: %w", ErrQueueUnavailable, err)
 	}
 	observability.DefaultMetrics.IncEnqueued()
 	q.observeQueueDepth(ctx, payload.ID, payload.Params["correlation_id"])
