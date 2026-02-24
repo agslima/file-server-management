@@ -121,6 +121,13 @@ check_canonical_agents_links() {
 check_precedence_consistency
 check_canonical_agents_links
 
+
+./scripts/generate-doc-artifacts.sh >/tmp/doc_artifacts_generate.log
+if ! git diff --quiet -- docs/generated/endpoint-inventory.md docs/generated/route-maturity-matrix.md docs/generated/dashboard-references.md; then
+  echo "generated docs drift detected; run ./scripts/generate-doc-artifacts.sh"
+  fail=1
+fi
+
 if [[ "$fail" -ne 0 ]]; then
   echo "doc drift check failed"
   exit 1

@@ -36,6 +36,9 @@ Baseline onboarding is `./file-engine/scripts/dev.sh`; root `docker-compose.yml`
 ### API & Integration
 
 - [API Reference (gRPC + HTTP)](api-reference.md)
+- [Generated Endpoint Inventory](generated/endpoint-inventory.md)
+- [Generated Route Maturity Inventory](generated/route-maturity-matrix.md)
+- [Generated Dashboard References](generated/dashboard-references.md)
 - [API Storage + Automatic Authorization Enforcement](api_storage_authz.md)
 - [Errors & Status Codes](errors.md)
 

@@ -260,3 +260,41 @@ func TestQuarantineRestoreEndpoint(t *testing.T) {
 		t.Fatalf("expected quarantine object to be removed after restore")
 	}
 }
+
+func TestTenantCostReportEndpoint(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	h := &HTTPServer{Verifier: verifier}
+	req := httptest.NewRequest(http.MethodGet, "/admin/v1/cost:tenants", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleTenantCostReport(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "tenants") {
+		t.Fatalf("expected tenants payload got %s", rr.Body.String())
+	}
+}
+
+func TestIntegrityVerifyEndpointDetectsCorruption(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{RequestTimeout: time.Second})
+	if _, err := uploads.Upload(context.Background(), "/tenants/acme/docs/a.txt", []byte("clean")); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	if err := st.AtomicWrite(context.Background(), "/tenants/acme/docs/a.txt", bytes.NewBufferString("tampered")); err != nil {
+		t.Fatalf("tamper: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/integrity:verify?sample_size=5", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleIntegrityVerify(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected 409 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "checksum_mismatch") {
+		t.Fatalf("expected checksum_mismatch got %s", rr.Body.String())
+	}
+}

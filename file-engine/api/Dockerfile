@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o file-engine ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o file-engine ./cmd/file-engine
 
 FROM alpine:3.23
 RUN apk add --no-cache ca-certificates

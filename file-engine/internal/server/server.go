@@ -65,12 +65,15 @@ type HTTPServer struct {
 
 	ReadyChecks []readinessCheck
 
-	MaxUploadBytes int64
-	UploadTimeout  time.Duration
-	sem            chan struct{}
-	rateMu         sync.Mutex
-	rateByTenant   map[string]int
-	rateReset      time.Time
+	MaxUploadBytes     int64
+	UploadTimeout      time.Duration
+	sem                chan struct{}
+	rateMu             sync.Mutex
+	rateByTenant       map[string]int
+	rateByActor        map[string]int
+	rateReset          time.Time
+	concurrentByTenant map[string]int
+	concurrentByActor  map[string]int
 }
 
 func NewGRPCServer(addr string, logg *logger.Logger, verifier *auth.JWTVerifier, store auth.ACLStore, handler pb.FileEngineServer) *GRPCServer {
@@ -84,7 +87,7 @@ func NewHTTPServer(addr, grpcAddr string, logg *logger.Logger, verifier *auth.JW
 	return &HTTPServer{
 		Addr: addr, GRPCAddr: grpcAddr, Log: logg, Verifier: verifier, Storage: st, ACLStore: store, Uploads: uploads, Tenants: tenants,
 		MaxUploadBytes: 20 * 1024 * 1024, UploadTimeout: 30 * time.Second,
-		sem: make(chan struct{}, 8), rateByTenant: map[string]int{}, rateReset: time.Now().Add(time.Minute),
+		sem: make(chan struct{}, 8), rateByTenant: map[string]int{}, rateByActor: map[string]int{}, concurrentByTenant: map[string]int{}, concurrentByActor: map[string]int{}, rateReset: time.Now().Add(time.Minute),
 	}
 }
 
@@ -192,6 +195,8 @@ func (h *HTTPServer) Start() error {
 	root.HandleFunc("/v1/objects:delete", h.handleObjectDelete)
 	root.HandleFunc("/admin/v1/governance:effective", h.handleGovernanceEffective)
 	root.HandleFunc("/admin/v1/governance:drift-check", h.handleGovernanceDriftCheck)
+	root.HandleFunc("/admin/v1/cost:tenants", h.handleTenantCostReport)
+	root.HandleFunc("/admin/v1/integrity:verify", h.handleIntegrityVerify)
 	root.Handle("/", auth.HTTPAuthMiddleware(h.Verifier, mux))
 
 	handler := h.instrumentHTTP(root)

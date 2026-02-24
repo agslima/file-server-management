@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/example/file-engine/internal/auth"
+	"github.com/example/file-engine/internal/observability"
 	"github.com/example/file-engine/internal/security"
 )
 
@@ -420,4 +421,51 @@ func (h *HTTPServer) handleQuarantineRestore(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"status": "restored", "path": meta.Path, "scan_status": meta.ScanStatus})
+}
+
+func (h *HTTPServer) handleTenantCostReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, ok := h.requireAdmin(w, r); !ok {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"generated_at": time.Now().UTC().Format(time.RFC3339),
+		"tenants":      observability.DefaultMetrics.TenantUsageSnapshot(),
+	})
+}
+
+func (h *HTTPServer) handleIntegrityVerify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	sampleSize := 10
+	if raw := strings.TrimSpace(r.URL.Query().Get("sample_size")); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v <= 0 {
+			http.Error(w, "invalid sample_size", http.StatusBadRequest)
+			return
+		}
+		sampleSize = v
+	}
+	report := h.Uploads.VerifyIntegritySample(r.Context(), authCtx.EffectiveActorID(), sampleSize)
+	statusCode := http.StatusOK
+	if report.Failed > 0 {
+		statusCode = http.StatusConflict
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(report)
 }

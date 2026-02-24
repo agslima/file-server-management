@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Clients\FileEngineClient;
 use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 
 class FileEngineService
@@ -49,19 +49,14 @@ class FileEngineService
         return $adminBase;
     }
 
-
-    /**
-     * Provide a PendingRequest configured for this service's HTTP calls.
-     *
-     * @return PendingRequest A PendingRequest configured with an Authorization bearer token if a non-empty bearer token is set, otherwise a PendingRequest with no additional headers.
-     */
-    private function client(): PendingRequest
+    private function apiClient(): FileEngineClient
     {
-        if (($this->bearerToken ?? '') !== '') {
-            return $this->http->withToken($this->bearerToken);
-        }
+        return new FileEngineClient($this->http, $this->base(), (string) ($this->bearerToken ?? ''));
+    }
 
-        return $this->http->withHeaders([]); // No service-level auth configured; return bare client.
+    private function adminClient(): FileEngineClient
+    {
+        return new FileEngineClient($this->http, $this->adminBase(), (string) ($this->bearerToken ?? ''));
     }
 
     /**
@@ -75,30 +70,28 @@ class FileEngineService
      */
     public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
     {
-        $response = $this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/folders', [
+        $response = $this->apiClient()->post('/folders', [
             'parentPath' => $path,
             'folderName' => $folderName,
             'requestedBy' => $requestedBy,
-        ]);
+        ], $this->filteredTraceHeaders($traceHeaders));
 
         return $this->withStatus($response);
     }
 
     public function initiateUpload(array $payload, array $traceHeaders = [], string $idempotencyKey = ''): array
     {
-        $request = $this->requestWithTraceHeaders($traceHeaders);
+        $headers = $this->filteredTraceHeaders($traceHeaders);
         if ($idempotencyKey !== '') {
-            $request = $request->withHeaders(['X-Idempotency-Key' => $idempotencyKey]);
+            $headers['X-Idempotency-Key'] = $idempotencyKey;
         }
 
-        return $this->withStatus($request->post($this->base() . '/uploads:initiate', $payload));
+        return $this->withStatus($this->apiClient()->post('/uploads:initiate', $payload, $headers));
     }
 
     public function uploadChunk(string $uploadId, int $offset, string $content, array $traceHeaders = []): array
     {
-        $request = $this->requestWithTraceHeaders($traceHeaders)->withBody($content, 'application/octet-stream');
-
-        return $this->withStatus($request->put($this->base() . '/uploads/' . rawurlencode($uploadId) . ':chunk?offset=' . $offset));
+        return $this->withStatus($this->apiClient()->putRaw('/uploads/' . rawurlencode($uploadId) . ':chunk?offset=' . $offset, $content, $this->filteredTraceHeaders($traceHeaders)));
     }
 
     /**
@@ -111,12 +104,12 @@ class FileEngineService
      */
     public function completeUpload(string $uploadId, array $traceHeaders = [], string $idempotencyKey = ''): array
     {
-        $request = $this->requestWithTraceHeaders($traceHeaders);
+        $headers = $this->filteredTraceHeaders($traceHeaders);
         if ($idempotencyKey !== '') {
-            $request = $request->withHeaders(['X-Idempotency-Key' => $idempotencyKey]);
+            $headers['X-Idempotency-Key'] = $idempotencyKey;
         }
 
-        return $this->withStatus($request->post($this->base() . '/uploads/' . rawurlencode($uploadId) . ':complete'));
+        return $this->withStatus($this->apiClient()->post('/uploads/' . rawurlencode($uploadId) . ':complete', [], $headers));
     }
 
 
@@ -130,10 +123,10 @@ class FileEngineService
      */
     public function moveObject(string $sourcePath, string $destinationPath, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/objects:move', [
+        return $this->withStatus($this->apiClient()->post('/objects:move', [
             'source_path' => $sourcePath,
             'destination_path' => $destinationPath,
-        ]));
+        ], $this->filteredTraceHeaders($traceHeaders)));
     }
 
     /**
@@ -145,9 +138,9 @@ class FileEngineService
      */
     public function deleteObject(string $path, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->base() . '/objects:delete', [
+        return $this->withStatus($this->apiClient()->post('/objects:delete', [
             'path' => $path,
-        ]));
+        ], $this->filteredTraceHeaders($traceHeaders)));
     }
 
     /**
@@ -160,10 +153,10 @@ class FileEngineService
      */
     public function restoreQuarantinedObject(string $path, bool $forceReprocess, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->post($this->adminBase() . '/admin/v1/quarantine:restore', [
+        return $this->withStatus($this->adminClient()->post('/admin/v1/quarantine:restore', [
             'path' => $path,
             'force_reprocess' => $forceReprocess,
-        ]));
+        ], $this->filteredTraceHeaders($traceHeaders)));
     }
 
     /**
@@ -175,19 +168,15 @@ class FileEngineService
      */
     public function getTask(string $id, array $traceHeaders = []): array
     {
-        return $this->withStatus($this->requestWithTraceHeaders($traceHeaders)->get($this->base() . '/tasks/' . $id));
+        return $this->withStatus($this->apiClient()->get('/tasks/' . $id, $this->filteredTraceHeaders($traceHeaders)));
     }
 
+
     /**
-         * Create a PendingRequest preconfigured with trace headers extracted from the provided headers.
-         *
-         * Only the following header names are forwarded when present as non-empty strings: `X-Request-Id`, `X-Correlation-Id`,
-         * `traceparent`, `tracestate`, and `baggage`. Values are trimmed before being applied.
-         *
-         * @param array<string,mixed> $traceHeaders Candidate header names mapped to values; only string, non-empty values for the listed headers are used.
-         * @return PendingRequest The HTTP pending request with the selected headers applied.
-         */
-    private function requestWithTraceHeaders(array $traceHeaders): PendingRequest
+     * @param array<string,mixed> $traceHeaders
+     * @return array<string,string>
+     */
+    private function filteredTraceHeaders(array $traceHeaders): array
     {
         $allowed = [
             'X-Request-Id',
@@ -217,9 +206,8 @@ class FileEngineService
             }
         }
 
-        return $this->client()->withHeaders($headers);
+        return $headers;
     }
-
     private function withStatus(Response $response): array
     {
         $payload = $response->json();
