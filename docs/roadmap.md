@@ -4,6 +4,11 @@
 [//]: # (review_cadence: Monthly)
 [//]: # (last_reviewed: 2026-02-21)
 
+<!--
+Build an enterprise-credible File Server platform with a PHP control-plane and a Go File Engine, focused on multi-tenant governance (RBAC/authz), auditability, and operational safety.
+Progress is only considered “done” when it’s provable via the Capability Ledger (runnable validations + CI regression gates), so the repo functions like a real production platform—not just a demo.
+-->
+
 A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
 
 ---
