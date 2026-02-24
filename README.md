@@ -154,6 +154,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 
 </details>
 
+> [!Warning]
 > If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ---
@@ -178,7 +179,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - Browse folders (tree navigation, directory listing)
 - Metadata display (size, timestamps, ownership) with backend-specific best-effort fields
 - **Baseline-validated read path:** list results + size/timestamps/ownership metadata + download path normalization validated by [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented)
-- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary; verified by unit + integration coverage in [`file-engine/internal/handlers/grpc_handler_test.go`](file-engine/internal/handlers/grpc_handler_test.go) and [`file-engine/tests/integration/read_list_authz_integration_test.go`](file-engine/tests/integration/read_list_authz_integration_test.go)
+- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary; verified by unit + integration coverage in [`[1]`](file-engine/internal/handlers/grpc_handler_test.go) and [`[2]`](file-engine/tests/integration/read_list_authz_integration_test.go)
 
 ### Write path (async)
 
