@@ -28,6 +28,9 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 
 </div>
 
+> [!Note]
+> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
+
 ## TL;DR
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
@@ -37,8 +40,6 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **Auditing:** persisted task status + task audit events + append-only DB enforcement + external sink delivery are baseline-validated.
 - **Observability:** correlation IDs are baseline; OTEL export wiring is baseline-validated for API + worker entrypoints; collector/backend deployment hardening is baseline-validated with deterministic connectivity + drill scripts; paging-provider delivery is baseline-validated through a deterministic webhook drill path.
 
-> [!Note]
-> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
 ---
 
 ## Canonical doc map
