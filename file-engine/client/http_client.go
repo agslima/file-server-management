@@ -171,10 +171,7 @@ func (c *HTTPClient) DoWithRetry(ctx context.Context, op func(context.Context) e
 			if attempt == opt.MaxAttempts {
 				break
 			}
-			delay := time.Duration(float64(opt.BaseDelay) * math.Pow(2, float64(attempt-1)))
-			if delay > opt.MaxDelay {
-				delay = opt.MaxDelay
-			}
+			delay := min(time.Duration(float64(opt.BaseDelay)*math.Pow(2, float64(attempt-1))), opt.MaxDelay)
 			select {
 			case <-ctx.Done():
 				return ctx.Err()

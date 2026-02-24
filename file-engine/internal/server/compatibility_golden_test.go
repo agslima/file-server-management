@@ -165,7 +165,7 @@ func assertTextFixture(t *testing.T, got []byte, fixtureName string) {
 	if err != nil {
 		t.Fatalf("read fixture %s: %v", fixtureName, err)
 	}
-	if string(got) != string(wantRaw) {
+	if !bytes.Equal(got, wantRaw) {
 		t.Fatalf("fixture mismatch for %s\nwant=%q\ngot=%q", fixtureName, string(wantRaw), string(got))
 	}
 }

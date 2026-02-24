@@ -540,7 +540,7 @@ func (h *HTTPServer) handleIntegrityVerify(w http.ResponseWriter, r *http.Reques
 	}
 	ignorePaths := map[string]struct{}{}
 	if raw := strings.TrimSpace(r.URL.Query().Get("ignore_paths")); raw != "" {
-		for _, part := range strings.Split(raw, ",") {
+		for part := range strings.SplitSeq(raw, ",") {
 			path := strings.TrimSpace(part)
 			if path != "" {
 				ignorePaths[path] = struct{}{}
