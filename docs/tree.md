@@ -12,7 +12,8 @@
 │   ├── api.php
 │   ├── app
 │   │   ├── Clients
-│   │   │   └── FileEngineClient.php
+│   │   │   ├── FileEngineClient.php
+│   │   │   └── FileEngineException.php
 │   │   ├── Http
 │   │   │   └── Controllers
 │   │   │       ├── AuthController.php
@@ -25,8 +26,6 @@
 │   │   │   └── FileEngineService.php
 │   │   └── Support
 │   │       └── TraceHeaders.php
-│   ├── bootstrap
-│   │   └── cache
 │   ├── composer.json
 │   ├── composer.lock
 │   ├── config
@@ -37,7 +36,6 @@
 │   │   └── api.php
 │   ├── scripts
 │   │   └── smoke.sh
-│   ├── storage
 │   └── tests
 │       ├── Integration
 │       │   └── VS001CreateFolderE2ETest.php
@@ -88,7 +86,8 @@
 │   │   ├── data-durability-recovery.md
 │   │   ├── governance-controls-operations.md
 │   │   ├── malware-gate-operations.md
-│   │   └── observability-incident-drill.md
+│   │   ├── observability-incident-drill.md
+│   │   └── scale-fairness-operations.md
 │   ├── security-reviewers.md
 │   ├── setup.md
 │   ├── storage_backends.md
@@ -117,7 +116,8 @@
 │   ├── client
 │   │   ├── doc.go
 │   │   ├── grpc_client.go
-│   │   └── http_client.go
+│   │   ├── http_client.go
+│   │   └── http_client_test.go
 │   ├── cmd
 │   │   ├── file-engine
 │   │   │   └── main.go
@@ -280,9 +280,11 @@
 │   │   │   ├── testdata
 │   │   │   │   └── compat
 │   │   │   │       ├── authz_deny.json
+│   │   │   │       ├── governance_delete_retention_block.txt
 │   │   │   │       ├── readyz_ok.json
 │   │   │   │       ├── upload_complete.json
-│   │   │   │       └── upload_initiate.json
+│   │   │   │       ├── upload_initiate.json
+│   │   │   │       └── upload_throttled.json
 │   │   │   ├── upload_http.go
 │   │   │   └── upload_http_test.go
 │   │   ├── services
@@ -369,6 +371,7 @@
 │   ├── drills
 │   │   ├── audit_sink_catchup_drill.sh
 │   │   ├── db_restore_replay.sh
+│   │   ├── dependency_backpressure.sh
 │   │   ├── new_maintainer_operability_drill.sh
 │   │   ├── observability_incident_drill.sh
 │   │   ├── otel_exporter_down.sh
@@ -387,6 +390,8 @@
 │   │   └── vs001_create_folder.sh
 │   ├── generate-doc-artifacts.sh
 │   ├── generate-quarterly-alignment-issue.sh
+│   ├── generate_durability_evidence_pack.sh
+│   ├── generate_tenant_compliance_packet.sh
 │   ├── integrity_verify_job.sh
 │   ├── ledger-baseline.sh
 │   ├── sustainability-metrics.sh
@@ -397,4 +402,4 @@
 └── tests
     └── test_ci_pr_security_scan_change_detection.py
 
-99 directories, 299 files
+96 directories, 307 files
