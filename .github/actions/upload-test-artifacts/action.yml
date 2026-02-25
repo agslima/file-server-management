@@ -1,0 +1,29 @@
+name: 'Upload Test Artifacts'
+description: 'Standardized test artifact upload with consistent naming and always() condition'
+
+inputs:
+  component-name:
+    description: 'Component name for artifact naming'
+    required: true
+  artifact-type:
+    description: 'Type of artifact (e.g., results, coverage, test-results)'
+    required: false
+    default: 'results'
+  file-paths:
+    description: 'File patterns to upload (single path or YAML multiline string)'
+    required: true
+  retention-days:
+    description: 'Number of days to retain artifacts (7=test results, 30=coverage, 14=logs, 90=releases)'
+    required: false
+    default: '7'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Upload ${{ inputs.component-name }} ${{ inputs.artifact-type }}
+      if: always()
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4  # v5.0.0
+      with:
+        name: ${{ inputs.component-name }}-${{ inputs.artifact-type }}
+        path: ${{ inputs.file-paths }}
+        retention-days: ${{ inputs.retention-days }}
