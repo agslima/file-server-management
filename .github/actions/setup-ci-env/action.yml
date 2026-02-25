@@ -22,8 +22,7 @@ runs:
         
         # Load all versions from .versions.yaml
         echo "go_version=$(yq '.languages.go' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "python_version=$(yq '.languages.python' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "poetry_version=$(yq '.build_tools.poetry' .versions.yaml)" >> $GITHUB_OUTPUT
+        # echo "python_version=$(yq '.languages.python' .versions.yaml)" >> $GITHUB_OUTPUT
         echo "golangci_lint_version=$(yq '.go_tools.golangci_lint' .versions.yaml)" >> $GITHUB_OUTPUT
         echo "protobuf_version=$(yq '.protobuf.protobuf' .versions.yaml)" >> $GITHUB_OUTPUT
         echo "protoc_gen_go_version=$(yq '.protobuf.protoc_gen_go' .versions.yaml)" >> $GITHUB_OUTPUT
@@ -38,8 +37,7 @@ runs:
         echo "gocover_cobertura_version=$(yq '.go_tools.gocover_cobertura' .versions.yaml)" >> $GITHUB_OUTPUT
         echo "goimports_version=$(yq '.go_tools.goimports' .versions.yaml)" >> $GITHUB_OUTPUT
         echo "crane_version=$(yq '.go_tools.crane' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "helm_version=$(yq '.testing_tools.helm' .versions.yaml)" >> $GITHUB_OUTPUT
-
+        
     - name: Install base dependencies
       shell: bash
       run: |
@@ -52,40 +50,6 @@ runs:
       with:
         python-version: ${{ steps.versions.outputs.python_version }}
         cache: 'pip'
-
-    - name: Cache Poetry dependencies
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
-      with:
-        path: |
-          ~/.cache/pypoetry
-          ~/.cache/pip
-        key: ${{ runner.os }}-poetry-${{ steps.versions.outputs.poetry_version }}-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-${{ steps.versions.outputs.poetry_version }}-
-          ${{ runner.os }}-poetry-
-
-    - name: Install Poetry
-      shell: bash
-      run: |
-        pip install --break-system-packages poetry==${{ steps.versions.outputs.poetry_version }} || pip install poetry==${{ steps.versions.outputs.poetry_version }}
-
-    - name: Install Helm
-      uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4  # v4.3.1
-      with:
-        version: ${{ steps.versions.outputs.helm_version }}
-
-    - name: Cache Helm plugins
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
-      with:
-        path: ~/.local/share/helm/plugins
-        key: ${{ runner.os }}-helm-plugins-${{ hashFiles('.github/actions/setup-ci-env/action.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-helm-plugins-
-
-    - name: Install Helm Push plugin
-      shell: bash
-      run: |
-        helm plugin install https://github.com/chartmuseum/helm-push || echo "Helm push plugin may already be installed"
 
     - name: Set up Go
       uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
@@ -183,8 +147,6 @@ runs:
       run: |
         echo "=== Verifying tool installations ==="
         echo "Python: $(python3 --version || echo 'not installed')"
-        echo "Poetry: $(poetry --version || echo 'not installed')"
-        echo "Helm: $(helm version --short || echo 'not installed')"
         echo "Go: $(go version || echo 'not installed')"
         echo "ko: $(ko version || echo 'not installed')"
         echo "golangci-lint: $(golangci-lint --version || echo 'not installed')"
@@ -193,5 +155,4 @@ runs:
         echo "shellcheck: $(shellcheck --version | head -n 2 || echo 'not installed')"
         echo "addlicense: $(addlicense >/dev/null 2>&1 || echo 'installed')"
         echo "goimports: $(goimports --help >/dev/null 2>&1 || echo 'installed')"
-        echo "black: $(black --version || echo 'not installed')"
         echo "==================================="
