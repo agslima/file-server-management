@@ -40,46 +40,19 @@ NODEJS_VERSION := $(shell $(YQ) '.linting.nodejs' .versions.yaml)
 
 # Go modules with specific patterns from CI
 GO_MODULES := \
-	api \
-	health-monitors/syslog-health-monitor \
-	health-monitors/csp-health-monitor \
-	health-monitors/kubernetes-object-monitor \
-	platform-connectors \
-	health-events-analyzer \
-	fault-quarantine \
-	labeler \
-	node-drainer \
-	fault-remediation \
-	janitor \
-	metadata-collector \
-	event-exporter \
-	store-client \
-	commons
+	file-engine
 
 
 # Python modules
 PYTHON_MODULES := \
-	health-monitors/gpu-health-monitor
+	tests
 
 # Container-only modules
 CONTAINER_MODULES := \
-	log-collector \
-    gpu-reset
-
-# Special modules requiring private repo access
-PRIVATE_MODULES := \
-	health-monitors/csp-health-monitor \
-	health-events-analyzer \
-	fault-quarantine \
-	labeler \
-	node-drainer \
-	fault-remediation \
-	janitor
-
-# Modules requiring kubebuilder for tests
-KUBEBUILDER_MODULES := \
-	node-drainer \
-	fault-remediation
+	backend \
+    file-engine \
+    file-engine\api \
+    frontend
 
 # Default target
 .PHONY: all
