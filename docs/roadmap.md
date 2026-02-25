@@ -1,13 +1,13 @@
+<!--
+Build an enterprise-credible File Server platform with a PHP control-plane and a Go File Engine, focused on multi-tenant governance (RBAC/authz), auditability, and operational safety.
+Progress is only considered “done” when it’s provable via the Capability Ledger (runnable validations + CI regression gates), so the repo functions like a real production platform—not just a demo.
+-->
+
 # Roadmap — Staged Milestones
 
 [//]: # (owner: Platform Engineering)
 [//]: # (review_cadence: Monthly)
 [//]: # (last_reviewed: 2026-02-24)
-
-<!--
-Build an enterprise-credible File Server platform with a PHP control-plane and a Go File Engine, focused on multi-tenant governance (RBAC/authz), auditability, and operational safety.
-Progress is only considered “done” when it’s provable via the Capability Ledger (runnable validations + CI regression gates), so the repo functions like a real production platform—not just a demo.
--->
 
 A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
 
@@ -35,6 +35,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Lock down the smallest stable baseline and prevent doc/runtime drift.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. CI gates baseline tests with no bypasses.
@@ -47,6 +49,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 1 — Read Path Baseline (2–4 weeks)
 
 **Goal:** Deliver a minimal, validated read/list flow.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -61,6 +65,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Harden the async create-folder flow as a stable reference slice.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Async create-folder passes integration tests with task status persistence + audit events.
@@ -73,6 +79,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 3 — Upload Pipeline (6–10 weeks)
 
 **Goal:** Introduce quarantine → scan → promote for uploads.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -87,6 +95,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Close the loop on operational visibility and audit durability.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. OTEL export wired for API + worker (basic traces).
@@ -100,6 +110,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Prevent regressions and reduce operational risk.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Doc ownership metadata added to key docs.
@@ -111,6 +123,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 6 — Target-State Hardening Promotions (16–24 weeks)
 
 **Goal:** Convert currently documented target-state controls into baseline-validated capabilities.
+
+**Status:** ✅ complete
 
 **Completion evidence**
 
@@ -131,6 +145,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 7 — Production Operations Closure (24–32 weeks)
 
 **Goal:** Close remaining production-grade gaps after baseline promotion work.
+
+**Status:** ✅ complete
 
 **Current progress**
 
