@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -217,6 +218,31 @@ func (s *UploadService) SetGovernancePolicy(p GovernancePolicy) error {
 	}
 	s.governance = p
 	return nil
+}
+
+func (s *UploadService) UpdateGovernancePolicy(actorID string, p GovernancePolicy) (string, string, error) {
+	if err := p.Validate(); err != nil {
+		return "", "", err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if p.Tenants == nil {
+		p.Tenants = map[string]TenantGovernancePolicy{}
+	}
+	beforeHash := governancePolicyHash(s.governance)
+	afterHash := governancePolicyHash(p)
+	s.governance = p
+	s.appendGovernanceEventLocked(actorID, "control-plane", "policy_update", "/governance/policy", "allow", fmt.Sprintf("before_hash=%s after_hash=%s", beforeHash, afterHash))
+	return beforeHash, afterHash, nil
+}
+
+func governancePolicyHash(p GovernancePolicy) string {
+	b, err := json.Marshal(p)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *UploadService) GovernanceEvents() []GovernanceEvent {

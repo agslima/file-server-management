@@ -38,6 +38,10 @@ Run locally:
 ./scripts/check-api-compatibility.sh
 ```
 
+CI enforcement adds a policy guard for pull requests: when `/v1` surface files change (`server.go`, `upload_http.go`, `admin_http.go`, or proto mirrors), the PR must also update:
+- `docs/api-versioning-policy.md`
+- and at least one consumer-facing compatibility doc (`README.md`, `docs/client-sdks.md`, `docs/route-maturity-matrix.md`, or `docs/generated/endpoint-inventory.md`).
+
 ## Deprecation process
 
 1. Mark behavior/field as deprecated in docs and changelog.

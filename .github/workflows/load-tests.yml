@@ -1,0 +1,40 @@
+name: Load Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  k6-smoke:
+    name: k6 smoke
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup k6
+        uses: grafana/setup-k6-action@3f4d35f66f7fed25badef2f0ee9f2897f7273e31 # v1.1.0
+      - name: Run deterministic smoke profile
+        run: |
+          cd file-engine
+          BASE_URL=http://127.0.0.1:65535 k6 run --vus 2 --duration 20s tests/load/smoke.js
+
+  k6-soak:
+    name: k6 soak (nightly)
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup k6
+        uses: grafana/setup-k6-action@3f4d35f66f7fed25badef2f0ee9f2897f7273e31 # v1.1.0
+      - name: Run nightly soak profile
+        run: |
+          cd file-engine
+          BASE_URL=http://127.0.0.1:65535 k6 run tests/load/soak.js

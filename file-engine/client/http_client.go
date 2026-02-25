@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -17,6 +19,61 @@ type HTTPClient struct {
 	baseURL string
 	token   string
 	client  *http.Client
+}
+
+type APIError struct {
+	StatusCode    int
+	Code          string
+	Reason        string
+	Message       string
+	RequestID     string
+	CorrelationID string
+	Retryable     bool
+	RawBody       string
+}
+
+func (e *APIError) Error() string {
+	if e == nil {
+		return ""
+	}
+	if e.Code != "" || e.Reason != "" {
+		return fmt.Sprintf("http %d %s/%s: %s", e.StatusCode, e.Code, e.Reason, e.Message)
+	}
+	return fmt.Sprintf("http %d: %s", e.StatusCode, strings.TrimSpace(e.RawBody))
+}
+
+func (e *APIError) Temporary() bool {
+	if e == nil {
+		return false
+	}
+	return e.Retryable || e.StatusCode == http.StatusTooManyRequests || e.StatusCode >= 500
+}
+
+func AsAPIError(err error) (*APIError, bool) {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr, true
+	}
+	return nil, false
+}
+
+type RetryOptions struct {
+	MaxAttempts int
+	BaseDelay   time.Duration
+	MaxDelay    time.Duration
+}
+
+func (o RetryOptions) normalize() RetryOptions {
+	if o.MaxAttempts <= 0 {
+		o.MaxAttempts = 3
+	}
+	if o.BaseDelay <= 0 {
+		o.BaseDelay = 200 * time.Millisecond
+	}
+	if o.MaxDelay <= 0 {
+		o.MaxDelay = 2 * time.Second
+	}
+	return o
 }
 
 type UploadInitiateResponse struct {
@@ -71,12 +128,60 @@ func (c *HTTPClient) doJSON(ctx context.Context, method, endpoint string, body, 
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		raw, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(raw))
+		return parseAPIError(resp.StatusCode, raw)
 	}
 	if out == nil {
 		return nil
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+func parseAPIError(status int, raw []byte) error {
+	apiErr := &APIError{StatusCode: status, RawBody: string(raw)}
+	var payload struct {
+		Error struct {
+			Code          string `json:"code"`
+			Reason        string `json:"reason"`
+			Message       string `json:"message"`
+			RequestID     string `json:"request_id"`
+			CorrelationID string `json:"correlation_id"`
+			Retryable     bool   `json:"retryable"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(raw, &payload); err == nil && payload.Error.Code != "" {
+		apiErr.Code = payload.Error.Code
+		apiErr.Reason = payload.Error.Reason
+		apiErr.Message = payload.Error.Message
+		apiErr.RequestID = payload.Error.RequestID
+		apiErr.CorrelationID = payload.Error.CorrelationID
+		apiErr.Retryable = payload.Error.Retryable
+	}
+	return apiErr
+}
+
+func (c *HTTPClient) DoWithRetry(ctx context.Context, op func(context.Context) error, opt RetryOptions) error {
+	opt = opt.normalize()
+	var lastErr error
+	for attempt := 1; attempt <= opt.MaxAttempts; attempt++ {
+		if err := op(ctx); err != nil {
+			lastErr = err
+			if apiErr, ok := AsAPIError(err); ok && !apiErr.Temporary() {
+				return err
+			}
+			if attempt == opt.MaxAttempts {
+				break
+			}
+			delay := min(time.Duration(float64(opt.BaseDelay)*math.Pow(2, float64(attempt-1))), opt.MaxDelay)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(delay):
+			}
+			continue
+		}
+		return nil
+	}
+	return lastErr
 }
 
 func (c *HTTPClient) InitiateUpload(ctx context.Context, path string) (UploadInitiateResponse, error) {
@@ -101,7 +206,7 @@ func (c *HTTPClient) UploadChunk(ctx context.Context, uploadID string, offset in
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		raw, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(raw))
+		return parseAPIError(resp.StatusCode, raw)
 	}
 	return nil
 }
