@@ -175,3 +175,14 @@ The repository now has script-backed deployment realism controls that close the 
 - prod-like runtime dependency wiring validation script for OIDC/OTEL/audit sink/governance envelope requirements.
 
 This keeps alignment with the ledger promotion discipline by pairing each new capability with runnable commands.
+
+## Addendum — Security posture hardening (Milestone 12)
+
+Security posture is now anchored to continuous review mechanics instead of feature-only checkpoints:
+
+- threat-model refresh prompt automation for boundary-sensitive diffs,
+- dedicated negative security regression suite for traversal/IDOR/token misuse/tenant confusion/policy drift,
+- supply-chain check script covering toolchain pin verification and SBOM/signing story,
+- expanded secret-rotation drill that verifies service continuity (`healthz` + VS-001 flow + regression checks).
+
+This reduces governance drift risk by tying security evidence directly to code-change surfaces.
