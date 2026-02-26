@@ -6,19 +6,9 @@ from typing import Iterable
 
 # Keep these patterns in sync with .github/workflows/ci-pr-security-scan.yaml
 FILTERS = {
-    "backend": [
-        "backend/composer.json",
-        "backend/composer.lock",
-    ],
-    "frontend": [
-        "frontend/package.json",
-        "frontend/package-lock.json",
-        # Add yarn/pnpm lockfiles here if you ever use them
-    ],
-    "file_engine": [
-        "file-engine/go.mod",
-        "file-engine/go.sum",
-    ],
+    "backend": ["backend/**"],
+    "frontend": ["frontend/**"],
+    "file_engine": ["file-engine/**"],
     "docker": [
         "**/Dockerfile*",
         "docker-compose.yml",
@@ -39,6 +29,12 @@ def matches_pattern(path: str, pattern: str) -> bool:
     # "Dockerfile*" path, so handle this workflow glob explicitly.
     if pattern == "**/Dockerfile*":
         return p.name.startswith("Dockerfile")
+
+    # PurePosixPath.match("<scope>/**") does not include deeper descendants
+    # consistently, so handle directory-scoped workflow globs explicitly.
+    if pattern.endswith("/**"):
+        prefix = pattern[: -len("/**")]
+        return str(p) == prefix or str(p).startswith(f"{prefix}/")
 
     return p.match(pattern)
 
@@ -77,18 +73,18 @@ def main() -> None:
             dict(backend=False, frontend=False, file_engine=False, docker=False, docker_files=[]),
         ),
         (
-            "backend composer lock change",
-            ["backend/composer.lock"],
+            "backend scoped change",
+            ["backend/README.md"],
             dict(backend=True, frontend=False, file_engine=False, docker=False, docker_files=[]),
         ),
         (
-            "frontend lock only change (critical regression test)",
-            ["frontend/package-lock.json"],
+            "frontend scoped change",
+            ["frontend/README.md"],
             dict(backend=False, frontend=True, file_engine=False, docker=False, docker_files=[]),
         ),
         (
-            "go mod/sum change",
-            ["file-engine/go.mod", "file-engine/go.sum"],
+            "file-engine scoped change",
+            ["file-engine/README.md"],
             dict(backend=False, frontend=False, file_engine=True, docker=False, docker_files=[]),
         ),
         (
@@ -104,20 +100,20 @@ def main() -> None:
         (
             "nested dockerfile change",
             ["file-engine/api/Dockerfile"],
-            dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["file-engine/api/Dockerfile"]),
+            dict(backend=False, frontend=False, file_engine=True, docker=True, docker_files=["file-engine/api/Dockerfile"]),
         ),
         (
             "dockerfile wildcard (Dockerfile.gen) change",
             ["file-engine/Dockerfile.gen"],
-            dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["file-engine/Dockerfile.gen"]),
+            dict(backend=False, frontend=False, file_engine=True, docker=True, docker_files=["file-engine/Dockerfile.gen"]),
         ),
         (
             "multiple areas",
-            ["backend/composer.lock", "frontend/package.json", "file-engine/worker/Dockerfile", "docker-compose.yml"],
+            ["backend/README.md", "frontend/README.md", "file-engine/worker/Dockerfile", "docker-compose.yml"],
             dict(
                 backend=True,
                 frontend=True,
-                file_engine=False,  # no go files changed
+                file_engine=True,
                 docker=True,
                 docker_files=["docker-compose.yml", "file-engine/worker/Dockerfile"],
             ),
