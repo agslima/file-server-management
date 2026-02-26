@@ -1,94 +1,93 @@
-name: 'Setup CI Environment'
-description: 'Install all CI tools and setup build environment'
+name: "Setup CI Environment"
+description: "Install all CI tools and setup build environment"
 
 inputs:
   mode:
-    description: 'Mode of operation: full, minimal, or codeql'
+    description: "Mode of operation: full, minimal, or codeql"
     required: false
-    default: 'full'
-    
+    default: "full"
+
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Load versions from .versions.yaml
       id: versions
       shell: bash
       run: |
-        # Install yq for YAML parsing if not already available
+        set -euo pipefail
+
+        # Install yq if missing (arch-aware). For reproducibility, consider pinning yq instead of "latest".
         if ! command -v yq &> /dev/null; then
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          case "$(uname -m)" in
+            x86_64)  YQ_ARCH="amd64" ;;
+            aarch64) YQ_ARCH="arm64" ;;
+            *) echo "Unsupported architecture for yq: $(uname -m)" >&2; exit 1 ;;
+          esac
+          sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH}"
           sudo chmod +x /usr/local/bin/yq
         fi
-        
-        # Load all versions from .versions.yaml
-        echo "go_version=$(yq '.languages.go' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "python_version=$(yq '.languages.python' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "poetry_version=$(yq '.build_tools.poetry' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "golangci_lint_version=$(yq '.go_tools.golangci_lint' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "protobuf_version=$(yq '.protobuf.protobuf' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "protoc_gen_go_version=$(yq '.protobuf.protoc_gen_go' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "protoc_gen_go_grpc_version=$(yq '.protobuf.protoc_gen_go_grpc' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "grpcio_tools_version=$(yq '.protobuf.grpcio_tools' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "black_version=$(yq '.linting.black' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "shellcheck_version=$(yq '.linting.shellcheck' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "addlicense_version=$(yq '.linting.addlicense' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "ko_version=$(yq '.container_tools.ko' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "setup_envtest_version=$(yq '.go_tools.setup_envtest' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "gotestsum_version=$(yq '.go_tools.gotestsum' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "gocover_cobertura_version=$(yq '.go_tools.gocover_cobertura' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "goimports_version=$(yq '.go_tools.goimports' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "crane_version=$(yq '.go_tools.crane' .versions.yaml)" >> $GITHUB_OUTPUT
-        echo "helm_version=$(yq '.testing_tools.helm' .versions.yaml)" >> $GITHUB_OUTPUT
+
+        if [[ ! -f ".versions.yaml" ]]; then
+          echo ".versions.yaml not found in workspace root" >&2
+          ls -la >&2 || true
+          exit 1
+        fi
+
+        # Helper: read a required key as raw string (no quotes)
+        req() {
+          local key="$1"
+          local val
+          val="$(yq -r "$key" .versions.yaml)"
+          if [[ -z "${val}" || "${val}" == "null" ]]; then
+            echo "Missing required version key: ${key}" >&2
+            exit 1
+          fi
+          echo "${val}"
+        }
+
+        # Languages
+        echo "go_version=$(req '.languages.go')" >> "$GITHUB_OUTPUT"
+        echo "python_version=$(req '.languages.python')" >> "$GITHUB_OUTPUT"
+
+        # Go tools
+        echo "golangci_lint_version=$(req '.go_tools.golangci_lint')" >> "$GITHUB_OUTPUT"
+        echo "gotestsum_version=$(req '.go_tools.gotestsum')" >> "$GITHUB_OUTPUT"
+        echo "gocover_cobertura_version=$(req '.go_tools.gocover_cobertura')" >> "$GITHUB_OUTPUT"
+        echo "setup_envtest_version=$(req '.go_tools.setup_envtest')" >> "$GITHUB_OUTPUT"
+        echo "goimports_version=$(req '.go_tools.goimports')" >> "$GITHUB_OUTPUT"
+
+        # Protobuf / gRPC
+        echo "protobuf_version=$(req '.protobuf.protobuf')" >> "$GITHUB_OUTPUT"
+        echo "protoc_gen_go_version=$(req '.protobuf.protoc_gen_go')" >> "$GITHUB_OUTPUT"
+        echo "protoc_gen_go_grpc_version=$(req '.protobuf.protoc_gen_go_grpc')" >> "$GITHUB_OUTPUT"
+        echo "grpcio_tools_version=$(req '.protobuf.grpcio_tools')" >> "$GITHUB_OUTPUT"
+
+        # Linting
+        echo "shellcheck_version=$(req '.linting.shellcheck')" >> "$GITHUB_OUTPUT"
+        echo "addlicense_version=$(req '.linting.addlicense')" >> "$GITHUB_OUTPUT"
+        echo "black_version=$(req '.linting.black')" >> "$GITHUB_OUTPUT"
+
+        # Container tools
+        echo "ko_version=$(req '.container_tools.ko')" >> "$GITHUB_OUTPUT"
 
     - name: Install base dependencies
       shell: bash
       run: |
+        set -euo pipefail
         sudo apt-get update -qq
-        sudo apt-get install -y -qq python3 python3-pip curl git wget unzip build-essential
+        sudo apt-get install -y -qq \
+          python3 python3-pip \
+          curl git wget unzip build-essential ca-certificates xz-utils
 
     - name: Set up Python
       if: inputs.mode != 'codeql'
-      uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v6.0.0
+      uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
       with:
         python-version: ${{ steps.versions.outputs.python_version }}
-        cache: 'pip'
-
-    - name: Cache Poetry dependencies
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
-      with:
-        path: |
-          ~/.cache/pypoetry
-          ~/.cache/pip
-        key: ${{ runner.os }}-poetry-${{ steps.versions.outputs.poetry_version }}-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-${{ steps.versions.outputs.poetry_version }}-
-          ${{ runner.os }}-poetry-
-
-    - name: Install Poetry
-      shell: bash
-      run: |
-        pip install --break-system-packages poetry==${{ steps.versions.outputs.poetry_version }} || pip install poetry==${{ steps.versions.outputs.poetry_version }}
-
-    - name: Install Helm
-      uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4  # v4.3.1
-      with:
-        version: ${{ steps.versions.outputs.helm_version }}
-
-    - name: Cache Helm plugins
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
-      with:
-        path: ~/.local/share/helm/plugins
-        key: ${{ runner.os }}-helm-plugins-${{ hashFiles('.github/actions/setup-ci-env/action.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-helm-plugins-
-
-    - name: Install Helm Push plugin
-      shell: bash
-      run: |
-        helm plugin install https://github.com/chartmuseum/helm-push || echo "Helm push plugin may already be installed"
+        cache: "pip"
 
     - name: Set up Go
-      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+      uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
       with:
         go-version: ${{ steps.versions.outputs.go_version }}
         cache: true
@@ -99,14 +98,23 @@ runs:
     - name: Install Go tools
       shell: bash
       run: |
+        set -euo pipefail
+
         go install github.com/boumenot/gocover-cobertura@${{ steps.versions.outputs.gocover_cobertura_version }}
         go install gotest.tools/gotestsum@${{ steps.versions.outputs.gotestsum_version }}
+
         # Install golangci-lint from source to ensure it's built with the current Go version
-        # Note: v2+ requires /v2 in the module path per Go modules versioning
+        # v2+ requires /v2 in the module path per Go modules versioning.
         go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ steps.versions.outputs.golangci_lint_version }}
 
+        # Additional Go tools
+        go install github.com/google/addlicense@${{ steps.versions.outputs.addlicense_version }}
+        go install sigs.k8s.io/controller-runtime/tools/setup-envtest@${{ steps.versions.outputs.setup_envtest_version }}
+        go install golang.org/x/tools/cmd/goimports@${{ steps.versions.outputs.goimports_version }}
+        go install github.com/google/ko@${{ steps.versions.outputs.ko_version }}
+
     - name: Cache Protocol Buffers
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: |
           /usr/local/bin/protoc
@@ -115,31 +123,52 @@ runs:
         restore-keys: |
           ${{ runner.os }}-protoc-
 
-    - name: Install Protocol Buffers
+    - name: Install Protocol Buffers + generators
       if: inputs.mode == 'codeql' || inputs.mode == 'full'
       shell: bash
       run: |
-        # Check if protoc is already cached
+        set -euo pipefail
+
+        # Install/verify protoc
         if command -v protoc &> /dev/null && protoc --version | grep -q "${{ steps.versions.outputs.protobuf_version }}"; then
-          echo "Protocol Buffers already installed from cache"
+          echo "protoc already installed and matches version"
         else
-          echo "Installing Protocol Buffers ${{ steps.versions.outputs.protobuf_version }}"
+          echo "Installing protoc ${{ steps.versions.outputs.protobuf_version }}"
+
           PROTOBUF_VERSION="${{ steps.versions.outputs.protobuf_version }}"
           PROTOBUF_VERSION_NO_V="${PROTOBUF_VERSION#v}"
-          ARCH=$(case $(uname -m) in x86_64) echo x86_64;; aarch64) echo aarch_64;; *) echo $(uname -m);; esac)
-          wget -q https://github.com/protocolbuffers/protobuf/releases/download/${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}.zip
-          unzip protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}.zip -d protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}
-          sudo cp protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}/bin/protoc /usr/local/bin/
+
+          # Protobuf release zip uses aarch_64 (underscore) for arm64
+          case "$(uname -m)" in
+            x86_64)  ARCH="x86_64" ;;
+            aarch64) ARCH="aarch_64" ;;
+            *)       ARCH="$(uname -m)" ;;
+          esac
+
+          ZIP="protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}.zip"
+          DIR="protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}"
+
+          wget -q "https://github.com/protocolbuffers/protobuf/releases/download/${PROTOBUF_VERSION}/${ZIP}"
+          unzip -q "${ZIP}" -d "${DIR}"
+          sudo cp "${DIR}/bin/protoc" /usr/local/bin/
           sudo mkdir -p /usr/local/include/google
-          sudo cp -r protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}/include/google /usr/local/include/
-          rm -rf protoc-${PROTOBUF_VERSION_NO_V}-linux-${ARCH}*
+          sudo cp -r "${DIR}/include/google" /usr/local/include/
+          rm -rf "${ZIP}" "${DIR}"
         fi
+
+        # Go code generators
         go install google.golang.org/protobuf/cmd/protoc-gen-go@${{ steps.versions.outputs.protoc_gen_go_version }}
         go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${{ steps.versions.outputs.protoc_gen_go_grpc_version }}
-        pip install grpcio==${{ steps.versions.outputs.grpcio_tools_version }} grpcio-tools==${{ steps.versions.outputs.grpcio_tools_version }} black==${{ steps.versions.outputs.black_version }}
+
+        # Python tools (in codeql mode we rely on system python3/pip, in full mode setup-python provides it)
+        python3 -m pip install --upgrade pip
+        python3 -m pip install \
+          "grpcio==${{ steps.versions.outputs.grpcio_tools_version }}" \
+          "grpcio-tools==${{ steps.versions.outputs.grpcio_tools_version }}" \
+          "black==${{ steps.versions.outputs.black_version }}"
 
     - name: Cache shellcheck
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: /usr/local/bin/shellcheck
         key: ${{ runner.os }}-shellcheck-${{ steps.versions.outputs.shellcheck_version }}
@@ -149,49 +178,62 @@ runs:
     - name: Install shellcheck
       shell: bash
       run: |
-        # Check if shellcheck is already cached
+        set -euo pipefail
+
         if command -v shellcheck &> /dev/null && shellcheck --version | grep -q "${{ steps.versions.outputs.shellcheck_version }}"; then
-          echo "shellcheck already installed from cache"
+          echo "shellcheck already installed and matches version"
         else
           echo "Installing shellcheck ${{ steps.versions.outputs.shellcheck_version }}"
-          ARCH=$(case $(uname -m) in x86_64) echo x86_64;; aarch64) echo aarch64;; *) echo $(uname -m);; esac)
-          curl -fsSL --retry 3 --keepalive-time 2 "https://github.com/koalaman/shellcheck/releases/download/${{ steps.versions.outputs.shellcheck_version }}/shellcheck-${{ steps.versions.outputs.shellcheck_version }}.linux.${ARCH}.tar.xz" | \
+
+          # ShellCheck uses aarch64 (no underscore)
+          case "$(uname -m)" in
+            x86_64)  ARCH="x86_64" ;;
+            aarch64) ARCH="aarch64" ;;
+            *)       ARCH="$(uname -m)" ;;
+          esac
+
+          curl -fsSL --retry 3 --keepalive-time 2 \
+            "https://github.com/koalaman/shellcheck/releases/download/${{ steps.versions.outputs.shellcheck_version }}/shellcheck-${{ steps.versions.outputs.shellcheck_version }}.linux.${ARCH}.tar.xz" | \
             sudo tar -xJ --wildcards -C /usr/local/bin/ --strip-components=1 "*/shellcheck"
+
           sudo chmod +x /usr/local/bin/shellcheck
         fi
-
-    - name: Install additional Go tools
-      shell: bash
-      run: |
-        go install github.com/google/addlicense@${{ steps.versions.outputs.addlicense_version }}
-        # Pin setup-envtest to avoid Go version compatibility issues
-        # Using version from .versions.yaml
-        go install sigs.k8s.io/controller-runtime/tools/setup-envtest@${{ steps.versions.outputs.setup_envtest_version }}
-        go install golang.org/x/tools/cmd/goimports@${{ steps.versions.outputs.goimports_version }}
-        go install github.com/google/go-containerregistry/cmd/crane@${{ steps.versions.outputs.crane_version }}
-        go install github.com/google/ko@${{ steps.versions.outputs.ko_version }}
 
     - name: Set environment variables
       shell: bash
       run: |
-        echo "PYTHONPATH=/usr/local/dcgm/bindings/python3" >> $GITHUB_ENV
-        echo "PYTHONUNBUFFERED=1" >> $GITHUB_ENV
-        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        set -euo pipefail
+        echo "PYTHONPATH=/usr/local/dcgm/bindings/python3" >> "$GITHUB_ENV"
+        echo "PYTHONUNBUFFERED=1" >> "$GITHUB_ENV"
+        echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
     - name: Verify installations
       shell: bash
       run: |
+        set -euo pipefail
         echo "=== Verifying tool installations ==="
-        echo "Python: $(python3 --version || echo 'not installed')"
-        echo "Poetry: $(poetry --version || echo 'not installed')"
-        echo "Helm: $(helm version --short || echo 'not installed')"
+
+        echo "Python3: $(python3 --version || echo 'not installed')"
+        echo "Pip: $(python3 -m pip --version || echo 'not installed')"
+
         echo "Go: $(go version || echo 'not installed')"
         echo "ko: $(ko version || echo 'not installed')"
         echo "golangci-lint: $(golangci-lint --version || echo 'not installed')"
         echo "gotestsum: $(gotestsum --version || echo 'not installed')"
+
         echo "protoc: $(protoc --version || echo 'not installed')"
+        echo "protoc-gen-go: $(protoc-gen-go --version 2>/dev/null || echo 'not installed')"
+        echo "protoc-gen-go-grpc: $(protoc-gen-go-grpc --version 2>/dev/null || echo 'not installed')"
+
         echo "shellcheck: $(shellcheck --version | head -n 2 || echo 'not installed')"
-        echo "addlicense: $(addlicense >/dev/null 2>&1 || echo 'installed')"
-        echo "goimports: $(goimports --help >/dev/null 2>&1 || echo 'installed')"
-        echo "black: $(black --version || echo 'not installed')"
+        echo "addlicense: $(addlicense --version 2>/dev/null || echo 'not installed')"
+        echo "goimports: $(goimports -h >/dev/null 2>&1 && echo 'installed' || echo 'not installed')"
+
+        # Black may not be installed in minimal mode (or in codeql mode if protoc step is skipped)
+        if command -v black &>/dev/null; then
+          echo "black: $(black --version)"
+        else
+          echo "black: not installed"
+        fi
+
         echo "==================================="
