@@ -32,9 +32,19 @@ DOCKER_FILES_GLOBS = [
 ]
 
 
-def matches_any(path: str, patterns: Iterable[str]) -> bool:
+def matches_pattern(path: str, pattern: str) -> bool:
     p = PurePosixPath(path)
-    return any(p.match(pattern) for pattern in patterns)
+
+    # PurePosixPath.match("**/Dockerfile*") does not match a root-level
+    # "Dockerfile*" path, so handle this workflow glob explicitly.
+    if pattern == "**/Dockerfile*":
+        return p.name.startswith("Dockerfile")
+
+    return p.match(pattern)
+
+
+def matches_any(path: str, patterns: Iterable[str]) -> bool:
+    return any(matches_pattern(path, pattern) for pattern in patterns)
 
 
 def compute_outputs(changed_files: list[str]) -> dict:
@@ -85,6 +95,11 @@ def main() -> None:
             "root docker-compose change",
             ["docker-compose.yml"],
             dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["docker-compose.yml"]),
+        ),
+        (
+            "root Dockerfile change",
+            ["Dockerfile"],
+            dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["Dockerfile"]),
         ),
         (
             "nested dockerfile change",
