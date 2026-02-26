@@ -43,7 +43,21 @@ def matches_any(path: str, patterns: Iterable[str]) -> bool:
     return any(matches_pattern(path, pattern) for pattern in patterns)
 
 
-def compute_outputs(changed_files: list[str]) -> dict:
+def compute_outputs(
+    changed_files: list[str],
+    event_name: str = "pull_request",
+    repo_files: list[str] | None = None,
+) -> dict:
+    if event_name == "workflow_dispatch":
+        docker_scan_files = repo_files if repo_files is not None else changed_files
+        return {
+            "backend": True,
+            "frontend": True,
+            "file_engine": True,
+            "docker": True,
+            "docker_files": sorted([f for f in docker_scan_files if matches_any(f, DOCKER_FILES_GLOBS)]),
+        }
+
     outputs = {
         "backend": any(matches_any(f, FILTERS["backend"]) for f in changed_files),
         "frontend": any(matches_any(f, FILTERS["frontend"]) for f in changed_files),
@@ -54,8 +68,14 @@ def compute_outputs(changed_files: list[str]) -> dict:
     return outputs
 
 
-def run_case(name: str, changed: list[str], expected: dict) -> None:
-    got = compute_outputs(changed)
+def run_case(
+    name: str,
+    changed: list[str],
+    expected: dict,
+    event_name: str = "pull_request",
+    repo_files: list[str] | None = None,
+) -> None:
+    got = compute_outputs(changed, event_name=event_name, repo_files=repo_files)
     # Compare booleans
     for key in ("backend", "frontend", "file_engine", "docker"):
         assert got[key] == expected[key], f"{name}: {key} expected {expected[key]} got {got[key]}"
@@ -122,6 +142,22 @@ def main() -> None:
 
     for name, changed, expected in cases:
         run_case(name, changed, expected)
+
+    run_case(
+        "workflow_dispatch forces all areas true",
+        ["README.md"],
+        dict(backend=True, frontend=True, file_engine=True, docker=True, docker_files=["Dockerfile", "docker-compose.yml", "frontend/Dockerfile"]),
+        event_name="workflow_dispatch",
+        repo_files=["README.md", "Dockerfile", "docker-compose.yml", "frontend/Dockerfile"],
+    )
+
+    run_case(
+        "workflow_dispatch remains docker true even without docker files",
+        ["README.md"],
+        dict(backend=True, frontend=True, file_engine=True, docker=True, docker_files=[]),
+        event_name="workflow_dispatch",
+        repo_files=["README.md", "docs/guide.md"],
+    )
 
     print("OK: change detection + docker matrix inputs behave as expected.")
 
