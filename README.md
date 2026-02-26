@@ -72,7 +72,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-006`](docs/capability-ledger.md#baseline-claims-implemented) | Correlation ID propagation in async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
 | [`CL-008`](docs/capability-ledger.md#baseline-claims-implemented) | Backend scaffold validation | ✅ | `cd backend && composer validate --strict` |
-| [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
+| [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend thin-client demo console (product + operator UX flows) | ✅ | `test -f frontend/index.html && test -f frontend/app.js && test -f frontend/styles.css && ./scripts/e2e/demo_5_minute.sh --mode=mock` |
 | [`CL-010`](docs/capability-ledger.md#baseline-claims-implemented) | Structured logs + queue/task metrics baseline | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` |
 | [`CL-011`](docs/capability-ledger.md#baseline-claims-implemented) | Documentation drift checks (links + governance hygiene) | ✅ | `./scripts/doc-drift-check.sh` |
 | [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented) | Read-path behavior + final authz (list/download + path normalization + tenant enforcement) | ✅ | `cd file-engine && go test ./internal/handlers -run "TestListObjectsReturnsEntries|TestListObjectsRequiresAuthContext|TestListObjectsRejectsUnauthorizedTenant|TestDownloadObjectRejectsUnauthorizedTenant" -v && go test ./internal/adapters/storage/local -run TestLocalStorageListMetadata -v && go test ./internal/authz -run "TestGRPCAuthZInterceptorListObjects" -v && go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal" -v && go test -tags integration_authz ./tests/integration -run TestReadListBehaviorAndAuthzRejection -v` |
@@ -577,7 +577,7 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 
 ```text
 file-server-management/
-├─ frontend/                  # React / Next.js UI
+├─ frontend/                  # Static thin-client demo console (no Node build)
 ├─ backend/                   # Laravel control plane
 ├─ file-engine/               # Go File Engine (API + Worker)
 └─ docs/
