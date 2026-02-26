@@ -65,7 +65,7 @@ class FileEngineService
      * @param string $path Parent path where the folder will be created.
      * @param string $folderName Name of the folder to create.
      * @param string $requestedBy Identifier of the actor requesting the creation.
-     * @param string[] $traceHeaders Optional trace headers (e.g. X-Request-Id, traceparent, Authorization) to include on the request.
+     * @param string[] $traceHeaders Optional trace headers (e.g. X-Request-Id, traceparent). `Authorization` is forwarded only when no service-level bearer token is configured.
      * @return array The response payload as an associative array; includes `_engine_http_status` with the HTTP status code.
      */
     public function createFolder(string $path, string $folderName, string $requestedBy, array $traceHeaders = []): array
@@ -98,7 +98,7 @@ class FileEngineService
      * Completes an in-progress upload session for the given upload ID.
      *
      * @param string $uploadId The upload session identifier.
-     * @param array $traceHeaders Optional trace and authorization headers to include (allowed: `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`, `Authorization`).
+     * @param array $traceHeaders Optional trace headers to include (allowed: `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`). Caller `Authorization` is forwarded only when no service-level bearer token is configured; otherwise the configured token takes precedence.
      * @param string $idempotencyKey Optional idempotency key to make the request idempotent.
      * @return array The response payload as an associative array, augmented with an `_engine_http_status` key containing the HTTP status code.
      */
@@ -133,7 +133,7 @@ class FileEngineService
      * Deletes an object at the given path in the File Engine.
      *
      * @param string $path The filesystem-like path of the object to delete.
-     * @param array $traceHeaders Optional trace-related headers (e.g. `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`, `Authorization`) to include on the request.
+     * @param array $traceHeaders Optional trace-related headers (e.g. `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`) to include on the request. Caller `Authorization` is forwarded only when no service-level bearer token is configured.
      * @return array The parsed response payload merged into an array and augmented with `_engine_http_status` containing the HTTP status code.
      */
     public function deleteObject(string $path, array $traceHeaders = []): array
@@ -163,7 +163,7 @@ class FileEngineService
      * Retrieve a task by its identifier from the File Engine service.
      *
      * @param string $id The task identifier.
-     * @param array $traceHeaders Optional trace-related headers to include (e.g. `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`, `Authorization`).
+     * @param array $traceHeaders Optional trace-related headers to include (e.g. `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`). Caller `Authorization` is forwarded only when no service-level bearer token is configured.
      * @return array The parsed JSON response augmented with an `_engine_http_status` entry containing the HTTP status code.
      */
     public function getTask(string $id, array $traceHeaders = []): array
@@ -173,6 +173,12 @@ class FileEngineService
 
 
     /**
+     * Filters forwarded trace headers.
+     *
+     * Forwarded keys: `X-Request-Id`, `X-Correlation-Id`, `traceparent`, `tracestate`, `baggage`.
+     * `Authorization` is forwarded only when no service-level bearer token is configured,
+     * so configured service credentials always take precedence.
+     *
      * @param array<string,mixed> $traceHeaders
      * @return array<string,string>
      */
