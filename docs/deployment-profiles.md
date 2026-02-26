@@ -1,6 +1,6 @@
 # Deployment profiles and env contract
 
-This repository now defines explicit environment profiles so deployment assumptions are not compose-only:
+This documentation defines explicit environment profiles:
 
 - `dev`: local developer workflows and kind smoke
 - `stage`: prod-like wiring with non-production credentials
