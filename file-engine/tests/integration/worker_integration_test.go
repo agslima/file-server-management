@@ -135,9 +135,18 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 		t.Fatalf("expected queued task status right after enqueue, got: %+v", status)
 	}
 
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
+	const timeout = 3 * time.Second
+	const interval = 50 * time.Millisecond
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
+	lastStatus := "missing"
+	for {
 		taskStatus, ok := queue.Status(taskID)
+		if ok {
+			lastStatus = taskStatus.Status
+		}
 		if ok && taskStatus.Status == "success" {
 			if taskStatus.CorrelationID != correlationID {
 				t.Fatalf("expected correlation id %q, got %q", correlationID, taskStatus.CorrelationID)
@@ -181,8 +190,10 @@ func TestAsyncCreateFolderFlow(t *testing.T) {
 			}
 			return
 		}
-		time.Sleep(50 * time.Millisecond)
+		select {
+		case <-ticker.C:
+		case <-timeoutTimer.C:
+			t.Fatalf("timed out waiting for task completion: %s (timeout=%s interval=%s last_status=%s)", taskID, timeout, interval, lastStatus)
+		}
 	}
-
-	t.Fatalf("timed out waiting for task completion: %s", taskID)
 }
