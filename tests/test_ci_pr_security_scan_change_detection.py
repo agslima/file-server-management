@@ -6,19 +6,9 @@ from typing import Iterable
 
 # Keep these patterns in sync with .github/workflows/ci-pr-security-scan.yaml
 FILTERS = {
-    "backend": [
-        "backend/composer.json",
-        "backend/composer.lock",
-    ],
-    "frontend": [
-        "frontend/package.json",
-        "frontend/package-lock.json",
-        # Add yarn/pnpm lockfiles here if you ever use them
-    ],
-    "file_engine": [
-        "file-engine/go.mod",
-        "file-engine/go.sum",
-    ],
+    "backend": ["backend/**"],
+    "frontend": ["frontend/**"],
+    "file_engine": ["file-engine/**"],
     "docker": [
         "**/Dockerfile*",
         "docker-compose.yml",
@@ -32,12 +22,42 @@ DOCKER_FILES_GLOBS = [
 ]
 
 
-def matches_any(path: str, patterns: Iterable[str]) -> bool:
+def matches_pattern(path: str, pattern: str) -> bool:
     p = PurePosixPath(path)
-    return any(p.match(pattern) for pattern in patterns)
+
+    # PurePosixPath.match("**/Dockerfile*") does not match a root-level
+    # "Dockerfile*" path, so handle this workflow glob explicitly.
+    if pattern == "**/Dockerfile*":
+        return p.name.startswith("Dockerfile")
+
+    # PurePosixPath.match("<scope>/**") does not include deeper descendants
+    # consistently, so handle directory-scoped workflow globs explicitly.
+    if pattern.endswith("/**"):
+        prefix = pattern[: -len("/**")]
+        return str(p) == prefix or str(p).startswith(f"{prefix}/")
+
+    return p.match(pattern)
 
 
-def compute_outputs(changed_files: list[str]) -> dict:
+def matches_any(path: str, patterns: Iterable[str]) -> bool:
+    return any(matches_pattern(path, pattern) for pattern in patterns)
+
+
+def compute_outputs(
+    changed_files: list[str],
+    event_name: str = "pull_request",
+    repo_files: list[str] | None = None,
+) -> dict:
+    if event_name == "workflow_dispatch":
+        docker_scan_files = repo_files if repo_files is not None else changed_files
+        return {
+            "backend": True,
+            "frontend": True,
+            "file_engine": True,
+            "docker": True,
+            "docker_files": sorted([f for f in docker_scan_files if matches_any(f, DOCKER_FILES_GLOBS)]),
+        }
+
     outputs = {
         "backend": any(matches_any(f, FILTERS["backend"]) for f in changed_files),
         "frontend": any(matches_any(f, FILTERS["frontend"]) for f in changed_files),
@@ -48,8 +68,14 @@ def compute_outputs(changed_files: list[str]) -> dict:
     return outputs
 
 
-def run_case(name: str, changed: list[str], expected: dict) -> None:
-    got = compute_outputs(changed)
+def run_case(
+    name: str,
+    changed: list[str],
+    expected: dict,
+    event_name: str = "pull_request",
+    repo_files: list[str] | None = None,
+) -> None:
+    got = compute_outputs(changed, event_name=event_name, repo_files=repo_files)
     # Compare booleans
     for key in ("backend", "frontend", "file_engine", "docker"):
         assert got[key] == expected[key], f"{name}: {key} expected {expected[key]} got {got[key]}"
@@ -67,18 +93,18 @@ def main() -> None:
             dict(backend=False, frontend=False, file_engine=False, docker=False, docker_files=[]),
         ),
         (
-            "backend composer lock change",
-            ["backend/composer.lock"],
+            "backend scoped change",
+            ["backend/README.md"],
             dict(backend=True, frontend=False, file_engine=False, docker=False, docker_files=[]),
         ),
         (
-            "frontend lock only change (critical regression test)",
-            ["frontend/package-lock.json"],
+            "frontend scoped change",
+            ["frontend/README.md"],
             dict(backend=False, frontend=True, file_engine=False, docker=False, docker_files=[]),
         ),
         (
-            "go mod/sum change",
-            ["file-engine/go.mod", "file-engine/go.sum"],
+            "file-engine scoped change",
+            ["file-engine/README.md"],
             dict(backend=False, frontend=False, file_engine=True, docker=False, docker_files=[]),
         ),
         (
@@ -87,22 +113,27 @@ def main() -> None:
             dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["docker-compose.yml"]),
         ),
         (
+            "root Dockerfile change",
+            ["Dockerfile"],
+            dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["Dockerfile"]),
+        ),
+        (
             "nested dockerfile change",
             ["file-engine/api/Dockerfile"],
-            dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["file-engine/api/Dockerfile"]),
+            dict(backend=False, frontend=False, file_engine=True, docker=True, docker_files=["file-engine/api/Dockerfile"]),
         ),
         (
             "dockerfile wildcard (Dockerfile.gen) change",
             ["file-engine/Dockerfile.gen"],
-            dict(backend=False, frontend=False, file_engine=False, docker=True, docker_files=["file-engine/Dockerfile.gen"]),
+            dict(backend=False, frontend=False, file_engine=True, docker=True, docker_files=["file-engine/Dockerfile.gen"]),
         ),
         (
             "multiple areas",
-            ["backend/composer.lock", "frontend/package.json", "file-engine/worker/Dockerfile", "docker-compose.yml"],
+            ["backend/README.md", "frontend/README.md", "file-engine/worker/Dockerfile", "docker-compose.yml"],
             dict(
                 backend=True,
                 frontend=True,
-                file_engine=False,  # no go files changed
+                file_engine=True,
                 docker=True,
                 docker_files=["docker-compose.yml", "file-engine/worker/Dockerfile"],
             ),
@@ -111,6 +142,22 @@ def main() -> None:
 
     for name, changed, expected in cases:
         run_case(name, changed, expected)
+
+    run_case(
+        "workflow_dispatch forces all areas true",
+        ["README.md"],
+        dict(backend=True, frontend=True, file_engine=True, docker=True, docker_files=["Dockerfile", "docker-compose.yml", "frontend/Dockerfile"]),
+        event_name="workflow_dispatch",
+        repo_files=["README.md", "Dockerfile", "docker-compose.yml", "frontend/Dockerfile"],
+    )
+
+    run_case(
+        "workflow_dispatch remains docker true even without docker files",
+        ["README.md"],
+        dict(backend=True, frontend=True, file_engine=True, docker=True, docker_files=[]),
+        event_name="workflow_dispatch",
+        repo_files=["README.md", "docs/guide.md"],
+    )
 
     print("OK: change detection + docker matrix inputs behave as expected.")
 
