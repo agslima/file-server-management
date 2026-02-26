@@ -82,7 +82,6 @@ func TestQuarantineCleanupEndpoint(t *testing.T) {
 	if err := st.AtomicWrite(context.Background(), "/quarantine/acme/old.bin", bytes.NewBufferString("x")); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	time.Sleep(20 * time.Millisecond)
 	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
 	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
 
@@ -123,7 +122,6 @@ func TestLifecycleCleanupEndpoint(t *testing.T) {
 	if err := st.AtomicWrite(context.Background(), "/staging/acme/old.bin", bytes.NewBufferString("x")); err != nil {
 		t.Fatalf("seed staging: %v", err)
 	}
-	time.Sleep(20 * time.Millisecond)
 	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
 	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{}, Tenants: map[string]services.TenantGovernancePolicy{}, Lifecycle: services.LifecyclePolicy{OrphanStagingTTLSeconds: 1}}); err != nil {
 		t.Fatalf("set policy: %v", err)

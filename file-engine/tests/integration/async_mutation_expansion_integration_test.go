@@ -148,15 +148,25 @@ func waitForTaskSuccess(t *testing.T, q *inMemoryQueue, taskID string) {
 
 func waitForTaskTerminal(t *testing.T, q *inMemoryQueue, taskID string) redisq.TaskStatus {
 	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
+	const timeout = 3 * time.Second
+	const interval = 20 * time.Millisecond
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
+	last := "missing"
+	for {
 		if st, ok := q.Status(taskID); ok && (st.Status == "success" || st.Status == "failed") {
 			return st
+		} else if ok {
+			last = st.Status
 		}
-		time.Sleep(20 * time.Millisecond)
+		select {
+		case <-ticker.C:
+		case <-timeoutTimer.C:
+			t.Fatalf("timed out waiting for task %s terminal status (timeout=%s interval=%s last_status=%s)", taskID, timeout, interval, last)
+		}
 	}
-	t.Fatalf("timed out waiting for task %s terminal status", taskID)
-	return redisq.TaskStatus{}
 }
 
 func assertAuditContains(t *testing.T, events []auditEvent, expectedEvent, taskID, correlationID string) {
