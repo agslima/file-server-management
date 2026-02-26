@@ -561,6 +561,14 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 > [!Note]
 > All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
 
+
+## Deployment (dev/stage/prod + kind + rollback)
+
+- Environment profile templates are versioned in `env/.env.dev.example`, `env/.env.stage.example`, and `env/.env.prod.example`.
+- Config/secret separation and required runtime wiring checks are documented in `docs/deployment-profiles.md` and validated with `./scripts/check-runtime-wiring.sh --profile prod`.
+- Kubernetes smoke and rollback drill paths are script-backed via `./scripts/k8s/kind_smoke.sh` and `./scripts/drills/k8s_rollback_drill.sh`.
+- Release versioning + changelog + rollback discipline is documented in `docs/release/versioning-and-rollback.md`.
+
 ---
 
 ## Repository structure
@@ -594,10 +602,3 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 <br><hr>
 [🔼 Back to top](#back-to-top)
-
-## Deployment realism (dev/stage/prod + kind + rollback)
-
-- Environment profile templates are versioned in `env/.env.dev.example`, `env/.env.stage.example`, and `env/.env.prod.example`.
-- Config/secret separation and required runtime wiring checks are documented in `docs/deployment-profiles.md` and validated with `./scripts/check-runtime-wiring.sh --profile prod`.
-- Kubernetes smoke and rollback drill paths are script-backed via `./scripts/k8s/kind_smoke.sh` and `./scripts/drills/k8s_rollback_drill.sh`.
-- Release versioning + changelog + rollback discipline is documented in `docs/release/versioning-and-rollback.md`.
