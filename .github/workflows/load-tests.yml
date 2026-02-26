@@ -14,27 +14,41 @@ permissions:
 
 jobs:
   k6-smoke:
-    name: k6 smoke
+    name: k6 smoke budget gate
     if: ${{ github.event_name != 'schedule' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup k6
         uses: grafana/setup-k6-action@3f4d35f66f7fed25badef2f0ee9f2897f7273e31 # v1.1.0
-      - name: Run deterministic smoke profile
+      - name: Start load-test stack
+        run: docker compose up -d --build redis postgres file-engine file-engine-worker
+      - name: Wait for file-engine readiness
+        run: ./scripts/wait-for-http.sh http://localhost:8080/readyz 180
+      - name: Run smoke budget profile
         run: |
           cd file-engine
-          BASE_URL=http://127.0.0.1:65535 k6 run --vus 2 --duration 20s tests/load/smoke.js
+          BASE_URL=http://localhost:8080 k6 run tests/load/smoke.js
+      - name: Shutdown load-test stack
+        if: always()
+        run: docker compose down -v
 
   k6-soak:
-    name: k6 soak (nightly)
+    name: k6 soak budget gate (nightly)
     if: ${{ github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup k6
         uses: grafana/setup-k6-action@3f4d35f66f7fed25badef2f0ee9f2897f7273e31 # v1.1.0
-      - name: Run nightly soak profile
+      - name: Start soak stack
+        run: docker compose up -d --build redis postgres file-engine file-engine-worker
+      - name: Wait for file-engine readiness
+        run: ./scripts/wait-for-http.sh http://localhost:8080/readyz 180
+      - name: Run nightly soak budget profile
         run: |
           cd file-engine
-          BASE_URL=http://127.0.0.1:65535 k6 run tests/load/soak.js
+          BASE_URL=http://localhost:8080 k6 run tests/load/soak.js
+      - name: Shutdown soak stack
+        if: always()
+        run: docker compose down -v

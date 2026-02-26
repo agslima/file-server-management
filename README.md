@@ -118,6 +118,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-064`](docs/capability-ledger.md#baseline-claims-implemented) | Multi-tenant compliance productization: access review v1 export keeps stable schema with optional signed artifact, governance policy updates emit audit event with before/after policy hashes, tenant evidence endpoint exposes policy/drift/review/drill pointers, and one-command tenant compliance packet generation is deterministic | ✅ | `cd file-engine && go test ./internal/server -run "TestGovernancePolicyUpdateEndpointEmitsBeforeAfterHashAudit|TestTenantEvidenceEndpointReturnsPointers" -v && bash -n file-engine/scripts/generate_monthly_access_review_report.sh scripts/generate_tenant_compliance_packet.sh && ./scripts/doc-drift-check.sh` |
 | [`CL-065`](docs/capability-ledger.md#baseline-claims-implemented) | API/SDK hardening for external consumers: expanded golden fixtures (mutations + governance block + throttling), typed error/retry ergonomics in Go+PHP client layers, and CI compatibility policy enforcement for `/v1` surface changes with required docs updates | ✅ | `./scripts/check-api-compatibility.sh && cd file-engine && go test ./client ./internal/server -run "TestAsAPIErrorParsesEnvelope|TestDoWithRetryRetriesTemporaryAPIError|TestDoWithRetryStopsOnPermanentError|TestCompatibilityUploadThrottledGolden|TestCompatibilityGovernanceDeleteRetentionBlockGolden" -v && cd ../backend && php -l app/Clients/FileEngineClient.php && php -l app/Clients/FileEngineException.php && ./scripts/doc-drift-check.sh` |
 | [`CL-069`](docs/capability-ledger.md#baseline-claims-implemented) | Human-resilience continuity gate: explicit CODEOWNERS for critical domains + CI reviewer continuity enforcement for auth/authz, monitoring/observability, and capability-ledger changes + release checklist new-maintainer drill gate | ✅ | `./scripts/check-owners-governance.sh && bash -n scripts/check-reviewer-continuity.sh && rg -n "reviewer-continuity|file-engine/internal/auth\*|observability/\*|docs/capability-ledger.md" .github/workflows/ci.yml .github/codeowners docs/branch-protection-mapping.md docs/prod-checklist.md` |
+| [`CL-071`](docs/capability-ledger.md#baseline-claims-implemented) | Performance budgets and capacity planning closure: k6 smoke/soak enforce latency+error thresholds, error-budget policy is documented, rough component/queue/storage sizing guidance is published, and reproducible hot-path profiling is script-backed | ✅ | `cd file-engine && go test ./internal/server -run "^$" -bench "BenchmarkHandle(Download|UploadComplete)$" -benchtime=1x && ./file-engine/scripts/capture_hotpath_profile.sh && bash -n file-engine/scripts/capture_hotpath_profile.sh` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
@@ -560,6 +561,14 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 
 > [!Note]
 > All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
+
+
+## Deployment (dev/stage/prod + kind + rollback)
+
+- Environment profile templates are versioned in `env/.env.dev.example`, `env/.env.stage.example`, and `env/.env.prod.example`.
+- Config/secret separation and required runtime wiring checks are documented in `docs/deployment-profiles.md` and validated with `./scripts/check-runtime-wiring.sh --profile prod`.
+- Kubernetes smoke and rollback drill paths are script-backed via `./scripts/k8s/kind_smoke.sh` and `./scripts/drills/k8s_rollback_drill.sh`.
+- Release versioning + changelog + rollback discipline is documented in `docs/release/versioning-and-rollback.md`.
 
 ---
 
