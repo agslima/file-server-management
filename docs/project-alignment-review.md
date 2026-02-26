@@ -39,7 +39,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-069`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
+   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-071`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
@@ -52,6 +52,7 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 - API/SDK external-consumer hardening is now baseline-validated (`CL-065`): expanded mutation/governance/throttling golden fixtures, typed retryable error handling in Go+PHP client layers, and PR-gated `/v1` compatibility policy enforcement coupled to docs updates.
 - Async mutation expansion beyond create-folder is now baseline-validated for move, governed delete, and quarantine restore task flows (`CL-066` to `CL-068`), including final-gate governance denial evidence and stable task failure envelopes.
 - Human-resilience continuity controls are now baseline-validated (`CL-069`): critical-domain CODEOWNERS paths are explicit, reviewer continuity is CI-enforced for auth/authz + monitoring/observability + capability-ledger changes, and release cadence includes a new-maintainer drill gate.
+- Performance budget closure is now baseline-validated (`CL-071`): CI smoke load now hard-fails on latency/error thresholds, nightly soak keeps budget trend visibility, error-budget investigation triggers are explicit, capacity assumptions are documented, and hot-path pprof capture is reproducible via script.
 4. **Target-state boundaries remain explicit.**
    - Upload pipeline operational closure for thresholds/on-call/escalation is promoted via `CL-051`; OTEL production deployment hardening is promoted via `CL-048`, paging-provider delivery via `CL-050`, documentation contract synchronization via `CL-052`, and immutable sink delivery remains promoted via `CL-035`.
 
