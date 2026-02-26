@@ -1,21 +1,43 @@
 # ==================================
-# GOVERNANCE ENFORCEMENT ZONES
+# GLOBAL MAINTAINER OWNERSHIP
+# ==================================
+*                               @agslima
+
+# ==================================
+# CRITICAL DOMAIN OWNERSHIP (10.2.1)
 # ==================================
 
-# 1. Pipeline Integrity
-.github/              @agslima
+# Auth/AuthZ
+/file-engine/internal/auth*      @agslima
+/file-engine/internal/authz/**   @agslima
 
-# 2. Policy Definitions
-k8s/policies/         @agslima
-policies/             @agslima
+# Upload pipeline + scanner
+/file-engine/internal/services/upload_service.go         @agslima
+/file-engine/internal/services/upload_service_test.go    @agslima
+/file-engine/internal/adapters/security/**               @agslima
+/scripts/check-malware-runbook.sh                        @agslima
 
-# 3. Risk Acceptance
+# Audit sink + DLQ
+/file-engine/internal/app/tasks/audit_*                  @agslima
+/file-engine/internal/services/upload_service.go         @agslima
+/scripts/drills/audit_sink_catchup_drill.sh             @agslima
+/scripts/drills/restore-scan-dlq-drill.sh               @agslima
 
-# 4. Infrastructure State
-k8s/resources/        @agslima
+# Observability/alerts/drills
+/monitoring/**                                           @agslima
+/observability/**                                        @agslima
+/file-engine/internal/observability/**                   @agslima
+/scripts/validate-observability-assets.sh               @agslima
+/scripts/drills/observability_incident_drill.sh         @agslima
+/scripts/drills/production_deployment_hardening.sh      @agslima
 
-# 5. Snyk allowlist
-.snyk                @agslima
+# Governance controls
+/docs/governance.md                                      @agslima
+/docs/capability-ledger.md                               @agslima
+/docs/branch-protection-mapping.md                       @agslima
+/scripts/check-owners-governance.sh                      @agslima
 
-# 6. Documentation 
-docs/
+# CI/workflow governance
+/.github/workflows/**                                    @agslima
+/.github/OWNERS                                          @agslima
+/.github/codeowners                                      @agslima
