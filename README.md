@@ -500,13 +500,21 @@ This is the only **baseline-validated** quickstart today.
 ./file-engine/scripts/dev.sh
 ```
 
-### 2) Optional: run the async folder flow integration test alone
+### 2) One-command onboarding + demo evidence
+
+```bash
+make bootstrap && make demo
+```
+
+This command pair regenerates docs, enforces architecture boundaries, runs doc drift checks, executes the deterministic 5-minute demo script, and prints evidence links for generated docs.
+
+### 3) Optional: run the async folder flow integration test alone
 
 ```bash
 cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ```
 
-### 3) Optional: local File Engine run (scaffold-level, for debugging)
+### 4) Optional: local File Engine run (scaffold-level, for debugging)
 
 This brings up Redis/Postgres in Docker and runs the API/worker locally for debugging. REST endpoints include baseline create-folder/task-status and upload lifecycle paths; treat this path as local debugging rather than the canonical baseline verification flow.
 
