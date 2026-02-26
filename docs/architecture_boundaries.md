@@ -15,6 +15,8 @@ This document defines enforceable package/module boundaries for the repo.
 1. **Single logger implementation:** imports must use `internal/logger`; `internal/infra/logger` is deprecated and must not be reintroduced.
 2. **Use-case vs domain split:** new app orchestration code should go under `internal/app/usecases` (or other `internal/app/*` packages), while domain behavior remains in `internal/services`.
 3. **Transport isolation:** HTTP/gRPC handlers should orchestrate auth, decode/encode, and call services/use-cases; business policy should not be duplicated in handlers.
+4. **Adapter boundary protection:** Transport packages (`internal/server/*`, `internal/handlers/*`) avoid direct storage/security adapter imports; queue wiring in `internal/handlers/grpc_handler.go` is the current scoped exception.
+5. **Service boundary protection:** Service packages (`internal/services/*`) do not import transport packages.
 
 ## Conformance gate
 
