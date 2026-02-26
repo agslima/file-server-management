@@ -162,3 +162,15 @@ The project is **well-governed for its current maturity stage** and now has tigh
 - `cd file-engine && go test ./internal/handlers -run "TestListObjectsReturnsEntries|TestListObjectsRequiresAuthContext|TestListObjectsRejectsUnauthorizedTenant|TestDownloadObjectRejectsUnauthorizedTenant" -v && go test ./internal/adapters/storage/local -run TestLocalStorageListMetadata -v && go test ./internal/authz -run "TestGRPCAuthZInterceptorListObjects" -v && go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal" -v && go test -tags integration_authz ./tests/integration -run TestReadListBehaviorAndAuthzRejection -v`
 - `cd backend && composer validate --strict`
 - `cd backend && php -l app/Http/Controllers/FolderController.php` (fails locally with PHP 8.0; CI enforces under PHP 8.2)
+
+## Addendum — Deployment realism uplift (Milestone 10 stream)
+
+The repository now has script-backed deployment realism controls that close the previous compose-only impression:
+
+- explicit `dev/stage/prod` env profile templates with config-vs-secret contract,
+- executable `kind` deployment smoke path validating `/healthz` + `/readyz`,
+- documented and drilled Kubernetes rollback path,
+- release versioning/changelog discipline documented for tagged releases,
+- prod-like runtime dependency wiring validation script for OIDC/OTEL/audit sink/governance envelope requirements.
+
+This keeps alignment with the ledger promotion discipline by pairing each new capability with runnable commands.
