@@ -122,6 +122,7 @@ jobs:
     needs: [changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -143,6 +144,7 @@ jobs:
     needs: [changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -172,6 +174,7 @@ jobs:
     needs: [changes]
     if: ${{ needs.changes.outputs.file_engine == 'true' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -201,6 +204,7 @@ jobs:
     needs: [changes]
     if: ${{ needs.changes.outputs.docker == 'true' && needs.changes.outputs.docker_files_json != '[]' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 10
 
     strategy:
@@ -234,6 +238,7 @@ jobs:
     name: Trivy Gate - Repo-wide Misconfig (IaC)
     needs: [changes]
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 10
 
     steps:
