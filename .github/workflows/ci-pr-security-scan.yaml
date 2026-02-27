@@ -71,7 +71,6 @@ jobs:
     name: Trivy Gate - Misconfig (IaC)
     continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     timeout-minutes: 10
 
     steps:
