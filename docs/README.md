@@ -25,6 +25,8 @@ The `docs/` directory contains project-wide documentation for the File Server Ma
 
 Baseline onboarding is `./file-engine/scripts/dev.sh`; root `docker-compose.yml` is the canonical compose entry point.
 
+Fast path for new contributors: `make bootstrap && make demo`.
+
 - [Setup & Developer Onboarding](setup.md)
 
 ### Architecture & Design
@@ -36,6 +38,11 @@ Baseline onboarding is `./file-engine/scripts/dev.sh`; root `docker-compose.yml`
 ### API & Integration
 
 - [API Reference (gRPC + HTTP)](api-reference.md)
+- [Generated Endpoint Inventory](generated/endpoint-inventory.md)
+- [Generated Route Maturity Inventory](generated/route-maturity-matrix.md)
+- [Generated Dashboard References](generated/dashboard-references.md)
+- [Generated SDK Examples Inventory](generated/sdk-examples.md)
+- [Generated Governance Policy Schema](generated/policy-schema.md)
 - [API Storage + Automatic Authorization Enforcement](api_storage_authz.md)
 - [Errors & Status Codes](errors.md)
 

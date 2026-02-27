@@ -156,6 +156,14 @@ A minimal go-live gate you can treat as “definition of done”:
 
 ---
 
+
+## 10) Release cadence gates
+
+- [ ] Maintainer continuity review completed for this release (`docs/branch-protection-mapping.md`).
+- [ ] **new maintainer drill executed** (`scripts/drills/new_maintainer_operability_drill.sh`) and evidence attached to release notes.
+
+---
+
 ## Appendix: Recommended Next Enhancements (Roadmap)
 
 - Persist task status/history in Postgres for auditability and reporting

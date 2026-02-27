@@ -2,10 +2,10 @@
 
 [//]: # (owner: Project Maintainers)
 [//]: # (review_cadence: Quarterly)
-[//]: # (last_reviewed: 2026-02-19)
+[//]: # (last_reviewed: 2026-02-25)
 
 
-**Last verified:** 2026-02-18
+**Last verified:** 2026-02-25
 
 ## Scope and evidence base
 
@@ -39,14 +39,25 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 ### What is well aligned
 
 1. **README claims map clearly to ledger evidence.**
-   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-057`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
+   - The README implementation table tracks the promoted claim set in `docs/capability-ledger.md` (currently through `CL-073`, including CI-gated deterministic OIDC evidence, upload API contract promotion evidence, scanner/upload operational closure evidence, observability assets, OTEL production deployment drills with paging delivery validation, storage parity controls, documentation contract synchronization evidence, and sustainability/ownership kickoff evidence).
 2. **Governance policy and CI behavior are synchronized.**
    - `docs/governance.md` now explicitly distinguishes path-scoped checks from always-on governance checks.
    - CI now runs doc drift/governance hygiene checks for every PR merge path (not only docs-only diffs).
    - Governance next-step controls are now baseline-validated (`CL-049`): archive-tier lifecycle, external source policy loading/signature verification, runtime drift checks, and effective-policy operator visibility.
 3. **Backend maturity contract is consistent across core control docs.**
    - `CL-018` backend scaffold checks are now baseline-marked, `CL-020` adds executable backend↔file-engine VS-001 E2E validation, and `CL-031` tracks backend smoke execution (composer install + phpunit).
-4. **Target-state boundaries remain explicit.**
+- Scale/fairness closure is now baseline-validated (`CL-062`): published core-flow SLOs, deterministic k6 smoke CI + nightly soak schedule, explicit throttled error envelope semantics with audit evidence, and dependency backpressure drill/runbook coverage.
+- Data durability/integrity contract closure is now baseline-validated (`CL-063`): configurable integrity sample policy with threshold + false-positive handling, explicit dev-grade RTO/RPO objectives, script-backed restore drills, and deterministic evidence-pack generation.
+- Multi-tenant compliance productization is now baseline-validated (`CL-064`): stable/signed access-review export contract, governance policy update hash audit history, tenant evidence pointers endpoint, and one-command tenant compliance packet generation.
+- API/SDK external-consumer hardening is now baseline-validated (`CL-065`): expanded mutation/governance/throttling golden fixtures, typed retryable error handling in Go+PHP client layers, and PR-gated `/v1` compatibility policy enforcement coupled to docs updates.
+- Async mutation expansion beyond create-folder is now baseline-validated for move, governed delete, and quarantine restore task flows (`CL-066` to `CL-068`), including final-gate governance denial evidence and stable task failure envelopes.
+- Human-resilience continuity controls are now baseline-validated (`CL-069`): critical-domain CODEOWNERS paths are explicit, reviewer continuity is CI-enforced for auth/authz + monitoring/observability + capability-ledger changes, and release cadence includes a new-maintainer drill gate.
+- Performance budget closure is now baseline-validated (`CL-071`): CI smoke load now hard-fails on latency/error thresholds, nightly soak keeps budget trend visibility, error-budget investigation triggers are explicit, capacity assumptions are documented, and hot-path pprof capture is reproducible via script.
+- Cognitive-load reduction is now baseline-validated (`CL-073`): expanded architecture conformance boundaries are enforced in scripts, generated docs now include endpoint inventory + SDK examples + governance policy schema, and one-command onboarding (`make bootstrap && make demo`) produces deterministic evidence links.
+4. **Frontend UX demonstration now has executable evidence.**
+   - `CL-009` is now promoted from placeholder to a static thin-client demo console covering product and operator workflows, paired with deterministic narrative output via `scripts/e2e/demo_5_minute.sh --mode=mock`.
+
+5. **Target-state boundaries remain explicit.**
    - Upload pipeline operational closure for thresholds/on-call/escalation is promoted via `CL-051`; OTEL production deployment hardening is promoted via `CL-048`, paging-provider delivery via `CL-050`, documentation contract synchronization via `CL-052`, and immutable sink delivery remains promoted via `CL-035`.
 
 ### Alignment corrections completed in this cycle
@@ -135,9 +146,7 @@ What threatens sustainability:
 
 ### Priority 2 — Strategic (quarterly horizon)
 
-1. **Convert role-based backup reviewers into named maintainers.**
-   - Add at least one additional named human owner/reviewer per domain.
-2. **Institutionalize claim-promotion discipline.**
+1. **Institutionalize claim-promotion discipline.**
    - Keep the policy: no top-level baseline marketing before ledger claim ID + runnable evidence + CI proof.
 3. **Track sustainability metrics with release-ready artifacts.**
    - Metrics now emit markdown for direct inclusion in PR/release notes.
@@ -146,7 +155,7 @@ What threatens sustainability:
 
 ## 4) Final assessment
 
-The project is **well-governed for its current maturity stage** and now has tighter policy-to-enforcement consistency than the previous baseline. With `CL-020`, `CL-022`, and `CL-025` promoted through deterministic checks, the highest-value next step is broader multi-owner operational resilience.
+The project is **well-governed for its current maturity stage** and now has tighter policy-to-enforcement consistency than the previous baseline. With `CL-069` now enforcing reviewer continuity for critical scopes, the highest-value next step is sustained quarterly ownership rotation execution and evidence hygiene.
 
 ---
 
@@ -158,3 +167,26 @@ The project is **well-governed for its current maturity stage** and now has tigh
 - `cd file-engine && go test ./internal/handlers -run "TestListObjectsReturnsEntries|TestListObjectsRequiresAuthContext|TestListObjectsRejectsUnauthorizedTenant|TestDownloadObjectRejectsUnauthorizedTenant" -v && go test ./internal/adapters/storage/local -run TestLocalStorageListMetadata -v && go test ./internal/authz -run "TestGRPCAuthZInterceptorListObjects" -v && go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal" -v && go test -tags integration_authz ./tests/integration -run TestReadListBehaviorAndAuthzRejection -v`
 - `cd backend && composer validate --strict`
 - `cd backend && php -l app/Http/Controllers/FolderController.php` (fails locally with PHP 8.0; CI enforces under PHP 8.2)
+
+## Addendum — Deployment realism uplift (Milestone 10 stream)
+
+The repository now has script-backed deployment realism controls that close the previous compose-only impression:
+
+- explicit `dev/stage/prod` env profile templates with config-vs-secret contract,
+- executable `kind` deployment smoke path validating `/healthz` + `/readyz`,
+- documented and drilled Kubernetes rollback path,
+- release versioning/changelog discipline documented for tagged releases,
+- prod-like runtime dependency wiring validation script for OIDC/OTEL/audit sink/governance envelope requirements.
+
+This keeps alignment with the ledger promotion discipline by pairing each new capability with runnable commands.
+
+## Addendum — Security posture hardening (Milestone 12)
+
+Security posture is now anchored to continuous review mechanics instead of feature-only checkpoints:
+
+- threat-model refresh prompt automation for boundary-sensitive diffs,
+- dedicated negative security regression suite for traversal/IDOR/token misuse/tenant confusion/policy drift,
+- supply-chain check script covering toolchain pin verification and SBOM/signing story,
+- expanded secret-rotation drill that verifies service continuity (`healthz` + VS-001 flow + regression checks).
+
+This reduces governance drift risk by tying security evidence directly to code-change surfaces.

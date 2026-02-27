@@ -1,0 +1,180 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: file-platform
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: file-engine-secrets
+  namespace: file-platform
+type: Opaque
+stringData:
+  POSTGRES_DSN: postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable
+  JWT_SECRET: dev-secret
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-engine-config
+  namespace: file-platform
+data:
+  REDIS_ADDR: redis:6379
+  FILE_BASE_ROOT: /mnt/files
+  STORAGE_BACKEND: local
+  GRPC_ADDR: :50051
+  HTTP_ADDR: :8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: file-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: file-platform
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: file-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: fileengine
+            - name: POSTGRES_USER
+              value: fileengine
+            - name: POSTGRES_PASSWORD
+              value: fileengine
+          ports:
+            - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: file-platform
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-engine
+  namespace: file-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: file-engine
+  template:
+    metadata:
+      labels:
+        app: file-engine
+    spec:
+      containers:
+        - name: file-engine
+          image: file-engine:kind
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: file-engine-config
+            - secretRef:
+                name: file-engine-secrets
+          ports:
+            - containerPort: 8080
+            - containerPort: 50051
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-engine
+  namespace: file-platform
+spec:
+  selector:
+    app: file-engine
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-engine-worker
+  namespace: file-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: file-engine-worker
+  template:
+    metadata:
+      labels:
+        app: file-engine-worker
+    spec:
+      containers:
+        - name: file-engine-worker
+          image: file-engine-worker:kind
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: file-engine-config
+            - secretRef:
+                name: file-engine-secrets

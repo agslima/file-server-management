@@ -1,19 +1,19 @@
-# Roadmap — Staged Milestones
-
-[//]: # (owner: Platform Engineering)
-[//]: # (review_cadence: Monthly)
-[//]: # (last_reviewed: 2026-02-21)
-
 <!--
 Build an enterprise-credible File Server platform with a PHP control-plane and a Go File Engine, focused on multi-tenant governance (RBAC/authz), auditability, and operational safety.
 Progress is only considered “done” when it’s provable via the Capability Ledger (runnable validations + CI regression gates), so the repo functions like a real production platform—not just a demo.
 -->
 
+# Roadmap — Staged Milestones
+
+[//]: # (owner: Platform Engineering)
+[//]: # (review_cadence: Monthly)
+[//]: # (last_reviewed: 2026-02-24)
+
 A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
 
 ---
 
-## Current status snapshot (2026-02-21)
+## Current status snapshot (2026-02-24)
 
 | Milestone | Status | Ledger evidence |
 | :-- | :--: | :-- |
@@ -26,12 +26,16 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 | Milestone 6 — Target-State Hardening Promotions | ✅ done | `CL-042`, `CL-043`, `CL-044`, `CL-045`, `CL-046` |
 | Milestone 7 — Production Operations Closure | ✅ done | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
 | Milestone 8 — Sustainability & Ownership Resilience | ✅ complete | `CL-053`, `CL-054` |
+| Milestone 9 — Productization & Operations Expansion | ✅ complete | `CL-055`, `CL-056`, `CL-057`, `CL-058`, `CL-059`, `CL-060`, `CL-061` |
+| Milestone 10 — Remaining Target-State Closure | 🟡 in progress | (new claims required) |
 
 ---
 
 ## Milestone 0 — Baseline Integrity (1–2 weeks)
 
 **Goal:** Lock down the smallest stable baseline and prevent doc/runtime drift.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -46,6 +50,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Deliver a minimal, validated read/list flow.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Implement gRPC read/list endpoint with File Engine final authz enforcement.
@@ -58,6 +64,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 2 — Write Path Baseline (4–6 weeks)
 
 **Goal:** Harden the async create-folder flow as a stable reference slice.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -72,6 +80,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Introduce quarantine → scan → promote for uploads.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Integration test covers clean + quarantined paths.
@@ -84,6 +94,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 4 — Observability & Audit Sink (10–12 weeks)
 
 **Goal:** Close the loop on operational visibility and audit durability.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -98,6 +110,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Prevent regressions and reduce operational risk.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Doc ownership metadata added to key docs.
@@ -109,6 +123,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 6 — Target-State Hardening Promotions (16–24 weeks)
 
 **Goal:** Convert currently documented target-state controls into baseline-validated capabilities.
+
+**Status:** ✅ complete
 
 **Completion evidence**
 
@@ -129,6 +145,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 7 — Production Operations Closure (24–32 weeks)
 
 **Goal:** Close remaining production-grade gaps after baseline promotion work.
+
+**Status:** ✅ complete
 
 **Current progress**
 
@@ -157,6 +175,36 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 3. Sustainability metrics are tracked at release cadence and exported as markdown artifact for PR/release notes.
 4. Quarterly alignment checklist generation is automated via script-backed issue body generation.
 5. Bus-factor drill path is scripted: baseline checks, production hardening drill, secrets rotation drill, and DLQ restore drill.
+
+---
+
+## Milestone 9 — Productization & Operations Expansion (40–52 weeks)
+
+**Goal:** Expand mutation/governance/operability surface and reduce maintenance cost with claim-backed controls.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+1. Mutation-surface expansion for move/rename/governed-delete/quarantine-restore API paths (`CL-055`).
+2. Access-review compliance export/report contract (`CL-056`).
+3. Module-boundary maintenance guardrails and architecture conformance hardening (`CL-057`).
+4. Enterprise readiness v2 controls (fairness throttles, queue backpressure, tenant usage/cost reporting, load profiles) (`CL-058`).
+5. Data durability/recovery drills and integrity verification signals (`CL-059`).
+6. API productization guardrails (versioning policy + thin SDK layers + compatibility fixtures) (`CL-060`).
+7. Maintenance-cost reduction baseline with docs-as-code artifact generation and single entrypoint enforcement (`CL-061`).
+
+---
+
+## Milestone 10 — Remaining Target-State Closure (52–64 weeks)
+
+**Goal:** Close the final ledger-documented target-state gaps.
+
+**Completion criteria**
+
+1. Async task-based mutation variants beyond create-folder are baseline-validated with claim IDs, runnable validations, and CI evidence.
+2. Multi-owner human coverage risk is reduced with at least one additional named maintainer per critical domain and enforced reviewer continuity in governance artifacts.
+3. `docs/capability-ledger.md`, `docs/roadmap.md`, and `docs/roadmap-ledger-gap-analysis.md` stay synchronized in the same PR for each promotion.
 
 ---
 

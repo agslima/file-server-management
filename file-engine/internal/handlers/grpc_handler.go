@@ -10,6 +10,7 @@ import (
 	"io"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
@@ -34,13 +35,17 @@ type TaskQueue interface {
 type GRPCHandler struct {
 	pb.UnimplementedFileEngineServer
 
-	queue          TaskQueue
-	objects        *services.ObjectService
-	uploads        *services.UploadService
-	acl            auth.ACLStore
-	tenantResolver auth.TenantResolver
-	log            *logger.Logger
-	auditor        AuditEmitter
+	queue           TaskQueue
+	objects         *services.ObjectService
+	uploads         *services.UploadService
+	acl             auth.ACLStore
+	tenantResolver  auth.TenantResolver
+	log             *logger.Logger
+	auditor         AuditEmitter
+	rateMu          sync.Mutex
+	enqueueByTenant map[string]int
+	enqueueByActor  map[string]int
+	enqueueReset    time.Time
 }
 
 type AuditEmitter interface {
@@ -62,7 +67,7 @@ func NewGRPCHandler(q TaskQueue, obj *services.ObjectService, uploads *services.
 	if auditor == nil {
 		auditor = noopAuditEmitter{}
 	}
-	return &GRPCHandler{queue: q, objects: obj, uploads: uploads, acl: acl, tenantResolver: tenantResolver, log: logg, auditor: auditor}
+	return &GRPCHandler{queue: q, objects: obj, uploads: uploads, acl: acl, tenantResolver: tenantResolver, log: logg, auditor: auditor, enqueueByTenant: map[string]int{}, enqueueByActor: map[string]int{}, enqueueReset: time.Now().Add(time.Second)}
 }
 
 // CreateFolder stays async via task queue (worker executes).
@@ -109,8 +114,18 @@ func (h *GRPCHandler) CreateFolder(ctx context.Context, req *pb.CreateFolderRequ
 		return nil, status.Error(codes.InvalidArgument, "invalid folder name")
 	}
 
+	if !h.allowEnqueue(tenantID, requestedBy) {
+		observability.DefaultMetrics.IncRateLimitBlock("enqueue", "tenant_or_actor_rps")
+		h.auditor.EmitTaskEvent(ctx, "task.enqueue.throttled", "", correlationID, "enqueue rate limit exceeded")
+		return nil, status.Error(codes.ResourceExhausted, "enqueue rate limit exceeded")
+	}
 	taskID, err := h.queue.EnqueueCreateFolder(ctx, parentPath, folderName, requestedBy, correlationID)
 	if err != nil {
+		if errors.Is(err, redisq.ErrQueueUnavailable) {
+			observability.DefaultMetrics.IncRateLimitBlock("queue", "backpressure")
+			h.auditor.EmitTaskEvent(ctx, "task.enqueue.rejected", "", correlationID, "queue unavailable")
+			return nil, status.Error(codes.Unavailable, "queue unavailable")
+		}
 		return nil, err
 	}
 	h.auditor.EmitTaskEvent(ctx, "task.enqueued", taskID, correlationID, "create_folder queued")
@@ -390,4 +405,18 @@ func correlationIDFromContext(ctx context.Context) string {
 
 func fallbackCorrelationID() string {
 	return fmt.Sprintf("corr-%d", time.Now().UTC().UnixNano())
+}
+
+func (h *GRPCHandler) allowEnqueue(tenantID, actorID string) bool {
+	h.rateMu.Lock()
+	defer h.rateMu.Unlock()
+	now := time.Now()
+	if now.After(h.enqueueReset) {
+		h.enqueueByTenant = map[string]int{}
+		h.enqueueByActor = map[string]int{}
+		h.enqueueReset = now.Add(time.Second)
+	}
+	h.enqueueByTenant[tenantID]++
+	h.enqueueByActor[actorID]++
+	return h.enqueueByTenant[tenantID] <= 30 && h.enqueueByActor[actorID] <= 15
 }

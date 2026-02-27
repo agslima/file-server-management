@@ -59,7 +59,7 @@ class ObjectMutationController extends Controller
      * @param Request $request HTTP request containing:
      *                         - `path` (string): required path of the object to restore.
      *                         - `forceReprocess` (bool, optional): whether to force reprocessing; defaults to false.
-     * @return JsonResponse JsonResponse containing the engine's payload. If `path` is missing, returns a 422 response with `['message' => 'path is required']`. The response status will reflect any `_engine_http_status` provided by the engine payload.
+     * @return JsonResponse containing the engine's payload. If `path` is missing, returns a 422 response with `['message' => 'path is required']`. The response status will reflect any `_engine_http_status` provided by the engine payload.
      */
     public function restore(Request $request): JsonResponse
     {
