@@ -3,7 +3,7 @@
     "description": "Backend API for File Management (Laravel + File Engine)",
     "type": "project",
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "laravel/framework": "^12.48",
         "guzzlehttp/guzzle": "^7.8",
         "laravel/sanctum": "^4.0"
