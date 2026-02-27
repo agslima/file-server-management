@@ -379,7 +379,7 @@ jobs:
 
           require_success_or_skipped "backend" "$BACKEND_RESULT"
           require_success_or_skipped "lint-backend" "$LINT_BACKEND_RESULT"
-          # require_success_or_skipped "frontend" "$FRONTEND_RESULT"
+          require_success_or_skipped "frontend" "$FRONTEND_RESULT"
           require_success_or_skipped "file-engine" "$FILE_ENGINE_RESULT"
           require_success_or_skipped "ledger-baseline" "$LEDGER_BASELINE_RESULT"
           require_success_or_skipped "lint-go" "$LINT_GO_RESULT"

@@ -9,8 +9,11 @@ use Illuminate\Http\Request;
 
 class FolderController extends Controller
 {
-    public function __construct(private readonly FileEngineService $engine)
+    private FileEngineService $engine;
+
+    public function __construct(FileEngineService $engine)
     {
+        $this->engine = $engine;
     }
 
     public function create(Request $request): JsonResponse

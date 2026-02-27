@@ -290,7 +290,7 @@ run_claim "CL-002" bash -lc '
 log "=== Backend baseline: CL-008 + CL-018 + CL-031 ==="
 run_claim "CL-008" bash -lc 'cd backend && composer validate --strict'
 run_claim "CL-018" bash -lc 'cd backend && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php'
-run_claim "CL-031" bash -lc 'cd backend && ./scripts/smoke.sh'
+run_claim "CL-031" compose run --rm --no-deps backend ./scripts/smoke.sh
 
 log "=== Infra: Postgres up (isolated compose project) ==="
 compose up -d postgres

@@ -8,12 +8,24 @@ use Illuminate\Http\Client\Response;
 
 class FileEngineService
 {
+    private HttpFactory $http;
+
+    private ?string $baseUrl;
+
+    private ?string $adminBaseUrl;
+
+    private ?string $bearerToken;
+
     public function __construct(
-        private readonly HttpFactory $http,
-        private readonly ?string $baseUrl = null,
-        private readonly ?string $adminBaseUrl = null,
-        private readonly ?string $bearerToken = null,
+        HttpFactory $http,
+        ?string $baseUrl = null,
+        ?string $adminBaseUrl = null,
+        ?string $bearerToken = null
     ) {
+        $this->http = $http;
+        $this->baseUrl = $baseUrl;
+        $this->adminBaseUrl = $adminBaseUrl;
+        $this->bearerToken = $bearerToken;
     }
 
     private function base(): string

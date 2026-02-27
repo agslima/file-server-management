@@ -9,7 +9,7 @@
 [//]: # (last_reviewed: 2026-02-19)
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
-![Go Version](https://img.shields.io/badge/go-1.24+-1e6e6e)
+![Go Version](https://img.shields.io/badge/go-1.24+-yellowgreen)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-blue)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20-4e6e6e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-green)](https://github.com/agslima/file-server-management/tree/main/docs)
@@ -162,7 +162,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 </details>
 
 > [!Warning]
-> If guidance conflicts, use this precedence order: capability ledger → setup → scoped AGENTS → architecture deep-dives.
+> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ---
 
