@@ -28,7 +28,9 @@ echo "[restore] step 3/4 replay db dump"
 cat "$DB_DUMP" | docker compose exec -T postgres psql -U file_engine file_engine >/dev/null
 
 echo "[restore] step 4/4 replay storage snapshot"
-rm -rf "$BASE_ROOT"/*
+: "${BASE_ROOT:?BASE_ROOT must be set}"
+[[ "$BASE_ROOT" != "/" ]] || { echo "Refusing to delete root"; exit 1; }
+find "$BASE_ROOT" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 tar -xzf "$STORAGE_TAR" -C "$BASE_ROOT"
 
 echo "BACKUP_RESTORE_SIMULATION_OK dump=$DB_DUMP storage=$STORAGE_TAR"
