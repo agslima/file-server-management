@@ -458,14 +458,6 @@ ko-publish: ## Build and publish all ko-based container images
 	@echo "Building and publishing all ko-based container images..."
 	@./scripts/buildko.sh
 
-.PHONY: docker-gpu-health-monitor
-docker-gpu-health-monitor:
-	$(MAKE) -C docker build-gpu-health-monitor
-
-# Individual module Docker targets
-.PHONY: docker-syslog-health-monitor
-docker-syslog-health-monitor:
-	$(MAKE) -C docker build-syslog-health-monitor
 
 #==============================================================================
 # PostgreSQL Schema Management
