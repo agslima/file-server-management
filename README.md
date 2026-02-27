@@ -10,11 +10,11 @@
 
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
-![Go Version](https://img.shields.io/badge/go-1.24+-blue)
-![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
-![gRPC](https://img.shields.io/badge/API-gRPC%20-5e5e5e)
-[![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Go Version](https://img.shields.io/badge/go-1.24+-1e6e6e)
+![Laravel](https://img.shields.io/badge/laravel-10%2B-blue)
+![gRPC](https://img.shields.io/badge/API-gRPC%20-4e6e6e)
+[![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-green)](https://github.com/agslima/file-server-management/tree/main/docs)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 <!--
 ![Go Tests](https://github.com/<org>/<repo>/actions/workflows/go-test.yaml/badge.svg)
 ![Laravel Tests](https://github.com/<org>/<repo>/actions/workflows/phpunit.yaml/badge.svg)
