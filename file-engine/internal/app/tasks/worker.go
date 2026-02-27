@@ -2,10 +2,12 @@ package tasks
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/example/file-engine/internal/adapters/queue/redisq"
@@ -53,6 +55,18 @@ type Worker struct {
 	taskProcessTimeout    time.Duration
 }
 
+type TaskErrorEnvelope struct {
+	Code          string `json:"code"`
+	Reason        string `json:"reason"`
+	TenantID      string `json:"tenant_id,omitempty"`
+	ActorID       string `json:"actor_id,omitempty"`
+	RequestID     string `json:"request_id"`
+	CorrelationID string `json:"correlation_id"`
+}
+
+// NewWorker creates a Worker configured with the provided queue, processor, and logger.
+// The returned Worker uses a log-based auditor and initializes failure alert threshold,
+// status retry attempts and delay, and per-task processing timeout from environment variables.
 func NewWorker(q Queue, p *Processor, log *logger.Logger) *Worker {
 	return &Worker{
 		q:                     q,
@@ -133,22 +147,22 @@ func (w *Worker) Start(ctx context.Context) {
 				msg = fmt.Sprintf("task processing timed out after %s", w.taskProcessTimeout)
 			}
 			w.log.Event("warn", "worker task failed", map[string]any{"event": "task.failed", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID, "error": msg})
-			if completeErr := w.persistStatus(ctx, task.ID, "failed", correlationID, msg); completeErr != nil {
+			if completeErr := w.persistStatus(ctx, task.ID, "failed", correlationID, w.failureEnvelope(task, correlationID, msg)); completeErr != nil {
 				w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID, "error": completeErr.Error()})
 			}
 			w.auditor.EmitTaskEvent(ctx, "task.failed", task.ID, correlationID, msg)
-			if task.Type == "create_folder" {
-				w.auditor.EmitTaskEvent(ctx, "folder.mutation.failed", task.ID, correlationID, msg)
+			if ev := mutationAuditEvent(task.Type, "failed"); ev != "" {
+				w.auditor.EmitTaskEvent(ctx, ev, task.ID, correlationID, msg)
 			}
 			w.maybeAlertOnFailures(correlationID)
 		} else {
 			w.log.Event("info", "worker task succeeded", map[string]any{"event": "task.succeeded", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID})
-			if completeErr := w.persistStatus(ctx, task.ID, "success", correlationID, "folder created"); completeErr != nil {
+			if completeErr := w.persistStatus(ctx, task.ID, "success", correlationID, successMessage(task.Type)); completeErr != nil {
 				w.log.Event("warn", "task status update failed", map[string]any{"event": "task.status_update_failed", "task_id": task.ID, "correlation_id": correlationID, "request_id": correlationID, "error": completeErr.Error()})
 			}
 			w.auditor.EmitTaskEvent(ctx, "task.succeeded", task.ID, correlationID, "task completed")
-			if task.Type == "create_folder" {
-				w.auditor.EmitTaskEvent(ctx, "folder.mutation.succeeded", task.ID, correlationID, "folder created")
+			if ev := mutationAuditEvent(task.Type, "succeeded"); ev != "" {
+				w.auditor.EmitTaskEvent(ctx, ev, task.ID, correlationID, successMessage(task.Type))
 			}
 		}
 	}
@@ -232,6 +246,11 @@ func statusRetryDelayFromEnv() time.Duration {
 	return delay
 }
 
+// taskProcessTimeoutFromEnv reads WORKER_TASK_PROCESS_TIMEOUT_MS and returns the per-task processing timeout.
+//
+// If the environment variable is not set or cannot be parsed, the defaultTaskProcessTimeout is used.
+// If the parsed value is less than or equal to 0, a zero duration is returned to indicate no timeout.
+// The environment value is interpreted as milliseconds.
 func taskProcessTimeoutFromEnv() time.Duration {
 	timeout := defaultTaskProcessTimeout
 	if raw := os.Getenv("WORKER_TASK_PROCESS_TIMEOUT_MS"); raw != "" {
@@ -243,4 +262,56 @@ func taskProcessTimeoutFromEnv() time.Duration {
 		}
 	}
 	return timeout
+}
+
+// successMessage returns a human-readable success message for the given task type.
+func successMessage(taskType string) string {
+	switch taskType {
+	case "move_file":
+		return "object moved"
+	case "governed_delete":
+		return "object deleted"
+	case "quarantine_restore":
+		return "object restored"
+	default:
+		return "folder created"
+	}
+}
+
+func (w *Worker) failureEnvelope(task *redisq.TaskPayload, correlationID, reason string) string {
+	envelope := TaskErrorEnvelope{
+		Code:          "TASK_EXECUTION_FAILED",
+		Reason:        strings.TrimSpace(reason),
+		TenantID:      strings.TrimSpace(task.Params["tenant_id"]),
+		ActorID:       strings.TrimSpace(task.Params["actor_id"]),
+		RequestID:     correlationID,
+		CorrelationID: correlationID,
+	}
+	if envelope.Reason == "" {
+		envelope.Reason = "task execution failed"
+	}
+	b, err := json.Marshal(envelope)
+	if err != nil {
+		return envelope.Reason
+	}
+	return string(b)
+}
+
+// mutationAuditEvent returns the audit event name for mutation tasks based on the task type and status.
+// If status is empty or the task type is not a recognized mutation type, it returns an empty string.
+// Mappings:
+// - "create_folder" -> "folder.mutation.<status>"
+// - "move_file", "governed_delete", "quarantine_restore" -> "object.mutation.<status>"
+func mutationAuditEvent(taskType, status string) string {
+	if strings.TrimSpace(status) == "" {
+		return ""
+	}
+	switch taskType {
+	case "create_folder":
+		return "folder.mutation." + status
+	case "move_file", "governed_delete", "quarantine_restore":
+		return "object.mutation." + status
+	default:
+		return ""
+	}
 }

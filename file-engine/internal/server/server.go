@@ -65,18 +65,28 @@ type HTTPServer struct {
 
 	ReadyChecks []readinessCheck
 
-	MaxUploadBytes int64
-	UploadTimeout  time.Duration
-	sem            chan struct{}
-	rateMu         sync.Mutex
-	rateByTenant   map[string]int
-	rateReset      time.Time
+	MaxUploadBytes     int64
+	UploadTimeout      time.Duration
+	sem                chan struct{}
+	rateMu             sync.Mutex
+	rateByTenant       map[string]int
+	rateByActor        map[string]int
+	rateReset          time.Time
+	concurrentByTenant map[string]int
+	concurrentByActor  map[string]int
 }
 
+// NewGRPCServer creates a GRPCServer configured with the provided address, logger, JWT verifier, ACL store, and gRPC handler.
+// The returned GRPCServer is ready to be started (e.g., by calling its Start method).
 func NewGRPCServer(addr string, logg *logger.Logger, verifier *auth.JWTVerifier, store auth.ACLStore, handler pb.FileEngineServer) *GRPCServer {
 	return &GRPCServer{Addr: addr, Log: logg, Verifier: verifier, ACLStore: store, Handler: handler}
 }
 
+// NewHTTPServer constructs an HTTPServer configured to proxy to a gRPC backend and serve health/metrics and API endpoints.
+// 
+// If `tenants` is nil the server will use a deny-all tenant resolver. The returned server is initialized with default
+// upload limits (20 MiB, 30s), an upload concurrency semaphore (capacity 8), rate/concurrency tracking maps for tenants
+// and actors, and a rate reset time one minute from construction.
 func NewHTTPServer(addr, grpcAddr string, logg *logger.Logger, verifier *auth.JWTVerifier, st storage.Storage, store auth.ACLStore, uploads *services.UploadService, tenants auth.TenantResolver) *HTTPServer {
 	if tenants == nil {
 		tenants = auth.NewDenyAllTenantResolver()
@@ -84,7 +94,7 @@ func NewHTTPServer(addr, grpcAddr string, logg *logger.Logger, verifier *auth.JW
 	return &HTTPServer{
 		Addr: addr, GRPCAddr: grpcAddr, Log: logg, Verifier: verifier, Storage: st, ACLStore: store, Uploads: uploads, Tenants: tenants,
 		MaxUploadBytes: 20 * 1024 * 1024, UploadTimeout: 30 * time.Second,
-		sem: make(chan struct{}, 8), rateByTenant: map[string]int{}, rateReset: time.Now().Add(time.Minute),
+		sem: make(chan struct{}, 8), rateByTenant: map[string]int{}, rateByActor: map[string]int{}, concurrentByTenant: map[string]int{}, concurrentByActor: map[string]int{}, rateReset: time.Now().Add(time.Minute),
 	}
 }
 
@@ -192,6 +202,10 @@ func (h *HTTPServer) Start() error {
 	root.HandleFunc("/v1/objects:delete", h.handleObjectDelete)
 	root.HandleFunc("/admin/v1/governance:effective", h.handleGovernanceEffective)
 	root.HandleFunc("/admin/v1/governance:drift-check", h.handleGovernanceDriftCheck)
+	root.HandleFunc("/admin/v1/governance:policy", h.handleGovernancePolicyUpdate)
+	root.HandleFunc("/admin/tenants/", h.handleTenantEvidence)
+	root.HandleFunc("/admin/v1/cost:tenants", h.handleTenantCostReport)
+	root.HandleFunc("/admin/v1/integrity:verify", h.handleIntegrityVerify)
 	root.Handle("/", auth.HTTPAuthMiddleware(h.Verifier, mux))
 
 	handler := h.instrumentHTTP(root)

@@ -54,12 +54,12 @@ class ObjectMutationController extends Controller
     }
 
     /**
-     * Restores a quarantined object identified by the request's path.
+     * Restore a quarantined object specified by the request path.
      *
      * @param Request $request HTTP request containing:
-     *                         - `path` (string): required path of the object to restore.
-     *                         - `forceReprocess` (bool, optional): whether to force reprocessing; defaults to false.
-     * @return JsonResponse JsonResponse containing the engine's payload. If `path` is missing, returns a 422 response with `['message' => 'path is required']`. The response status will reflect any `_engine_http_status` provided by the engine payload.
+     *                        - `path` (string): required path of the object to restore.
+     *                        - `forceReprocess` or `force_reprocess` (bool, optional): whether to force reprocessing; defaults to false.
+     * @return JsonResponse A JSON response containing the engine payload. If the engine payload includes `_engine_http_status` that status will be used; if `path` is missing returns a 422 response with `['message' => 'path is required']`.
      */
     public function restore(Request $request): JsonResponse
     {
