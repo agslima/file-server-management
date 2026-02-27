@@ -119,8 +119,8 @@ jobs:
           
   trivy-backend:
     name: Trivy Gate - PHP (Composer deps)
-    needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    # needs: [changes]
+    # if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 10
@@ -131,7 +131,7 @@ jobs:
         uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
         with:
           scan-type: 'fs'
-          scan-ref: 'backend'
+          scan-ref: '.' #'backend'
           scanners: 'vuln'
           vuln-type: 'library'
           severity: 'HIGH,CRITICAL'
@@ -139,6 +139,20 @@ jobs:
           format: 'table'
           ignore-unfixed: true
 
+  
+  debug-changes:
+    name: Debug change outputs
+    needs: [changes]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - run: |
+          echo "backend=${{ needs.changes.outputs.backend }}"
+          echo "frontend=${{ needs.changes.outputs.frontend }}"
+          echo "file_engine=${{ needs.changes.outputs.file_engine }}"
+          echo "docker=${{ needs.changes.outputs.docker }}"
+          echo "docker_files_json=${{ needs.changes.outputs.docker_files_json }}"
+          
   trivy-frontend:
     name: Trivy Gate - Node.js (NPM deps)
     needs: [changes]
