@@ -64,21 +64,28 @@
 │   ├── branch-protection-mapping.md
 │   ├── capability-ledger.md
 │   ├── client-sdks.md
+│   ├── codebase-issue-tasks.md
 │   ├── compliance-access-review-workflow.md
 │   ├── contributors.md
 │   ├── dataflow-security-risk-assessment.md
+│   ├── deployment-profiles.md
 │   ├── errors.md
 │   ├── generated
 │   │   ├── dashboard-references.md
 │   │   ├── endpoint-inventory.md
-│   │   └── route-maturity-matrix.md
+│   │   ├── policy-schema.md
+│   │   ├── route-maturity-matrix.md
+│   │   └── sdk-examples.md
 │   ├── governance.md
 │   ├── jwt_integration.md
 │   ├── observability.md
 │   ├── ownership-backup-matrix.md
+│   ├── performance-budgets-capacity.md
 │   ├── platform-engineers.md
 │   ├── prod-checklist.md
 │   ├── project-alignment-review.md
+│   ├── release
+│   │   └── versioning-and-rollback.md
 │   ├── roadmap-ledger-gap-analysis.md
 │   ├── roadmap.md
 │   ├── route-maturity-matrix.md
@@ -87,12 +94,14 @@
 │   │   ├── governance-controls-operations.md
 │   │   ├── malware-gate-operations.md
 │   │   ├── observability-incident-drill.md
-│   │   └── scale-fairness-operations.md
+│   │   ├── scale-fairness-operations.md
+│   │   └── supply-chain-security.md
 │   ├── security-reviewers.md
 │   ├── setup.md
 │   ├── storage_backends.md
 │   ├── threat-model.md
 │   └── tree.md
+├── env
 ├── file-engine
 │   ├── AGENTS.md
 │   ├── Dockerfile
@@ -275,6 +284,7 @@
 │   │   │   ├── download_http.go
 │   │   │   ├── download_http_test.go
 │   │   │   ├── gateway_http_test.go
+│   │   │   ├── hotpath_bench_test.go
 │   │   │   ├── readiness_test.go
 │   │   │   ├── server.go
 │   │   │   ├── testdata
@@ -314,6 +324,7 @@
 │   │       └── api
 │   │           └── http.proto
 │   ├── scripts
+│   │   ├── capture_hotpath_profile.sh
 │   │   ├── dev.sh
 │   │   ├── export_access_review.sh
 │   │   ├── generate_grpc.sh
@@ -323,6 +334,7 @@
 │   │   └── seed_identity.sh
 │   ├── tests
 │   │   ├── integration
+│   │   │   ├── async_mutation_expansion_integration_test.go
 │   │   │   ├── audit_append_only_integration_test.go
 │   │   │   ├── audit_external_sink_integration_test.go
 │   │   │   ├── audit_read_path_integration_test.go
@@ -340,14 +352,20 @@
 │       └── README.md
 ├── frontend
 │   ├── Dockerfile
-│   └── README.md
+│   ├── README.md
+│   ├── app.js
+│   ├── index.html
+│   └── styles.css
 ├── hack
 │   ├── README.md
 │   └── snyk-report.sh
 ├── infra
+│   ├── README.md
 │   └── keycloak
 │       └── dev-realm.json
 ├── k8s
+│   ├── kind
+│   │   └── file-server-kind.yaml
 │   └── readme.md
 ├── monitoring
 │   ├── alerts
@@ -366,12 +384,15 @@
 │   ├── check-otel-connectivity.sh
 │   ├── check-owners-governance.sh
 │   ├── check-paging-delivery.sh
+│   ├── check-reviewer-continuity.sh
+│   ├── check-runtime-wiring.sh
 │   ├── doc-drift-check.sh
 │   ├── doc-ownership-check.sh
 │   ├── drills
 │   │   ├── audit_sink_catchup_drill.sh
 │   │   ├── db_restore_replay.sh
 │   │   ├── dependency_backpressure.sh
+│   │   ├── k8s_rollback_drill.sh
 │   │   ├── new_maintainer_operability_drill.sh
 │   │   ├── observability_incident_drill.sh
 │   │   ├── otel_exporter_down.sh
@@ -383,6 +404,7 @@
 │   │   ├── sink_down.sh
 │   │   └── storage_corruption_drill.sh
 │   ├── e2e
+│   │   ├── demo_5_minute.sh
 │   │   ├── mutation_surface.sh
 │   │   ├── oidc_login_and_call_engine.sh
 │   │   ├── run_oidc_profile.sh
@@ -390,10 +412,15 @@
 │   │   └── vs001_create_folder.sh
 │   ├── generate-doc-artifacts.sh
 │   ├── generate-quarterly-alignment-issue.sh
+│   ├── generate-threat-model-diff-prompt.sh
 │   ├── generate_durability_evidence_pack.sh
 │   ├── generate_tenant_compliance_packet.sh
 │   ├── integrity_verify_job.sh
+│   ├── k8s
+│   │   └── kind_smoke.sh
 │   ├── ledger-baseline.sh
+│   ├── security-regression-suite.sh
+│   ├── supply-chain-checks.sh
 │   ├── sustainability-metrics.sh
 │   ├── validate-alert-rules.sh
 │   ├── validate-observability-assets.sh
@@ -402,4 +429,4 @@
 └── tests
     └── test_ci_pr_security_scan_change_detection.py
 
-96 directories, 307 files
+100 directories, 330 files
