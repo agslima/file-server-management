@@ -15,91 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
-    name: Change Detection
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.flags.outputs.backend }}
-      frontend: ${{ steps.flags.outputs.frontend }}
-      file_engine: ${{ steps.flags.outputs.file_engine }}
-      docker: ${{ steps.flags.outputs.docker }}
-      docker_files_json: ${{ steps.flags.outputs.docker_files_json }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
-        id: filter
-        with:
-          files_yaml: |
-            backend:
-              - 'backend/**'
-            frontend:
-              - 'frontend/**'
-            file_engine:
-              - 'file-engine/**'
-            docker:
-              - '**/Dockerfile*'
-              - 'docker-compose.yml'
-          base_sha: ${{ github.event.pull_request.base.sha || github.sha }}
-          sha: ${{ github.event.pull_request.head.sha || github.sha }}
-       
-      - name: Collect changed Dockerfiles/Compose (newline list)
-        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
-        id: docker_files
-        with:
-          files: |
-            **/Dockerfile*
-            docker-compose.yml
-          separator: "\n"
-          base_sha: ${{ github.event.pull_request.base.sha || github.sha }}
-          sha: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Compute flags + docker matrix JSON
-        id: flags
-        env:
-          DOCKER_CHANGED_FILES: ${{ steps.docker_files.outputs.all_changed_files }}
-        run: |
-          set -euo pipefail
-
-          # Force all scans on workflow_dispatch
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-            echo "frontend=true" >> "$GITHUB_OUTPUT"
-            echo "file_engine=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "backend=${{ steps.filter.outputs.backend_any_changed == 'true' && 'true' || 'false' }}" >> "$GITHUB_OUTPUT"
-            echo "frontend=${{ steps.filter.outputs.frontend_any_changed == 'true' && 'true' || 'false' }}" >> "$GITHUB_OUTPUT"
-            echo "file_engine=${{ steps.filter.outputs.file_engine_any_changed == 'true' && 'true' || 'false' }}" >> "$GITHUB_OUTPUT"
-          fi
-
-          # Normalize docker file list -> JSON array
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            docker_json="$(find . -type f \( -name 'Dockerfile*' -o -name 'docker-compose.yml' \) \
-              | sed 's|^\./||' \
-              | jq -Rsc 'split("\n") | map(select(length > 0))')"
-          else
-            docker_json="$(printf '%s' "$DOCKER_CHANGED_FILES" \
-              | jq -Rsc 'split("\n") | map(select(length > 0))')"
-          fi
-
-          echo "docker_files_json=$docker_json" >> "$GITHUB_OUTPUT"
-
-          # docker=true iff there is at least one docker-related file changed,
-          # OR workflow_dispatch
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "docker=true" >> "$GITHUB_OUTPUT"
-          else
-            if [[ "$(echo "$docker_json" | jq 'length')" -gt 0 ]]; then
-              echo "docker=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "docker=false" >> "$GITHUB_OUTPUT"
-            fi
-          fi   
-
   gitleaks:
     name: Secret Scan (Gitleaks)
+    continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions: 
       pull-requests: write
@@ -114,33 +32,11 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-  trivy-backend:
-    name: Trivy Gate - PHP (Composer deps)
-    needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Trivy filesystem scan (libraries only)
-        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
-        with:
-          scan-type: 'fs'
-          scan-ref: 'backend'
-          scanners: 'vuln'
-          vuln-type: 'library'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '1'
-          format: 'table'
-          ignore-unfixed: true
-
-  trivy-frontend:
-    name: Trivy Gate - Node.js (NPM deps)
-    needs: [changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
+  trivy-vuln:
+    name: Trivy Gate (Dependencies)
     runs-on: ubuntu-latest
+    continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -157,80 +53,23 @@ jobs:
         uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
         with:
           scan-type: 'fs'
-          scan-ref: 'frontend'
+          scan-ref: .
           scanners: 'vuln'
           vuln-type: 'library'
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
           format: 'table'
           ignore-unfixed: true
-
-  trivy-file-engine:
-    name: Trivy Gate - Go (Go modules deps)
-    needs: [changes]
-    if: ${{ needs.changes.outputs.file_engine == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Cache Trivy DB
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ github.workflow }}
-          restore-keys: |
-            trivy-db-${{ runner.os }}-
-            
-      - name: Trivy filesystem scan (libraries only)
-        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
-        with:
-          scan-type: 'fs'
-          scan-ref: 'file-engine'
-          scanners: 'vuln'
-          vuln-type: 'library'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '1'
-          format: 'table'
-          ignore-unfixed: true
-
-  trivy-docker-config:
-    name: Trivy Gate - Dockerfiles & Compose (Config)
-    needs: [changes]
-    if: ${{ needs.changes.outputs.docker == 'true' && needs.changes.outputs.docker_files_json != '[]' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    strategy:
-      fail-fast: false
-      matrix:
-        file: ${{ fromJSON(needs.changes.outputs.docker_files_json) }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Cache Trivy DB
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ github.workflow }}
-          restore-keys: |
-            trivy-db-${{ runner.os }}-
-
-      - name: Trivy config scan (gate) - ${{ matrix.file }}
-        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
-        with:
-          scan-type: config
-          scan-ref: ${{ matrix.file }}
-          severity: HIGH,CRITICAL
-          format: table
-          exit-code: "1"
-
+          skip-dirs: |
+            .git
+            **/node_modules
+            **/vendor
+            **/dist
+            **/build
   
   trivy-misconfig:
-    name: Trivy Gate - Repo-wide Misconfig (IaC)
-    needs: [changes]
+    name: Trivy Gate - Misconfig (IaC)
+    continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -262,6 +101,3 @@ jobs:
             **/vendor
             **/dist
             **/build
-          skip-files: |
-            **/Dockerfile*
-            docker-compose.yml
