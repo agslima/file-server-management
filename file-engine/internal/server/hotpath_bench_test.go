@@ -49,7 +49,7 @@ func BenchmarkHandleUploadComplete(b *testing.B) {
 	h := &HTTPServer{Verifier: verifier, ACLStore: acl, Uploads: uploads, Tenants: auth.NewInMemoryTenantResolver(map[string][]string{"alice": {"acme"}}), MaxUploadBytes: 4096, UploadTimeout: time.Second, sem: make(chan struct{}, 4), rateByTenant: map[string]int{}, rateByActor: map[string]int{}, rateReset: time.Now().Add(time.Minute)}
 
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		uploadID, err := uploads.StartResumableUpload("/tenants/acme/docs/profile.txt", "")
 		if err != nil {
 			b.Fatalf("start upload: %v", err)

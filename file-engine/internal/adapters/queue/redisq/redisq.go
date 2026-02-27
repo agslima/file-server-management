@@ -196,11 +196,14 @@ func (q *RedisQueue) enqueueMutation(ctx context.Context, taskType string, param
 
 	if key := strings.TrimSpace(params["idempotency_key"]); key != "" {
 		claimKey := "task:idempotency:" + key
-		ok, err := q.client.SetNX(ctx, claimKey, id, 24*time.Hour).Result()
-		if err != nil {
+		result, err := q.client.SetArgs(ctx, claimKey, id, redis.SetArgs{
+			TTL:  24 * time.Hour,
+			Mode: "NX",
+		}).Result()
+		if err != nil && !errors.Is(err, redis.Nil) {
 			return "", err
 		}
-		if !ok {
+		if result != "OK" {
 			existingID, err := q.client.Get(ctx, claimKey).Result()
 			if err != nil {
 				return "", err

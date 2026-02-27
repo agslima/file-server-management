@@ -183,7 +183,7 @@ func awaitCleanupReport(t *testing.T, timeout, interval time.Duration, cleanup f
 	defer ticker.Stop()
 	timeoutTimer := time.NewTimer(timeout)
 	defer timeoutTimer.Stop()
-	last := CleanupReport{}
+	var last CleanupReport
 	attempts := 0
 	for {
 		rep, err := cleanup()

@@ -8,13 +8,13 @@
 [//]: # (review_cadence: Quarterly)
 [//]: # (last_reviewed: 2026-02-19)
 
-
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
 ![Go Version](https://img.shields.io/badge/go-1.24+-1e6e6e)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-blue)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20-4e6e6e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-green)](https://github.com/agslima/file-server-management/tree/main/docs)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+
 <!--
 ![Go Tests](https://github.com/<org>/<repo>/actions/workflows/go-test.yaml/badge.svg)
 ![Laravel Tests](https://github.com/<org>/<repo>/actions/workflows/phpunit.yaml/badge.svg)
@@ -24,7 +24,7 @@
 -->
 
 ⚡️ **A governance-focused, multi-tenant file management platform written in Go and PHP** ⚡️ \
-Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a baseline-validated **quarantine -> scan -> promote** guardrail flow (local semantics).
+Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a baseline-validated **quarantine → scan → promote** guardrail flow (local semantics).
 
 </div>
 
@@ -66,8 +66,8 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | :-- | :-- | :--: | :-- |
 | [`CL-001`](docs/capability-ledger.md#baseline-claims-implemented) | Canonical proto contract sync | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` |
 | [`CL-002`](docs/capability-ledger.md#baseline-claims-implemented) | File Engine baseline module checks | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` |
-| [`CL-003`](docs/capability-ledger.md#baseline-claims-implemented) | Async folder flow (enqueue -> worker -> folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| [`CL-004`](docs/capability-ledger.md#baseline-claims-implemented) | Task status persistence (`queued -> running -> success`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| [`CL-003`](docs/capability-ledger.md#baseline-claims-implemented) | Async folder flow (enqueue → worker → folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
+| [`CL-004`](docs/capability-ledger.md#baseline-claims-implemented) | Task status persistence (`queued → running → success`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-005`](docs/capability-ledger.md#baseline-claims-implemented) | Basic audit event emission (`task.processing`, `task.succeeded`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-006`](docs/capability-ledger.md#baseline-claims-implemented) | Correlation ID propagation in async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
@@ -107,7 +107,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-054`](docs/capability-ledger.md#baseline-claims-implemented) | Sustainability closure: path-scoped reviewer checks (`Security reviewer`/`Platform reviewer`), quarterly alignment checklist generation, and new maintainer operability drill automation | ✅ | `./scripts/check-owners-governance.sh && ./scripts/generate-quarterly-alignment-issue.sh && ./scripts/drills/new_maintainer_operability_drill.sh` |
 | [`CL-045`](docs/capability-ledger.md#baseline-claims-implemented) | Storage contract maturity/parity hardening: normalized paths + deterministic list ordering + metadata/checksum + resumable semantics tests | ✅ | `cd file-engine && go test ./internal/adapters/storage/local ./internal/services -run "TestLocalStorageContractSuite|TestLocalStorageListMetadata|TestUploadServiceResumableUploadFinalize" -v` |
 | [`CL-046`](docs/capability-ledger.md#baseline-claims-implemented) | Governance controls baseline: startup-validated tenant policy config with quota/object/rate limits, retention/legal-hold delete protection, and policy-driven lifecycle cleanup controls | ✅ | `cd file-engine && go test ./internal/services ./internal/server -run "TestUploadServiceTenantPolicyQuotaFinalGate|TestUploadServiceRetentionBlocksDelete|TestUploadServiceLegalHoldBlocksDelete|TestGovernanceDeleteEndpointBlockedByRetention|TestLifecycleCleanupEndpoint" -v` |
-| [`CL-047`](docs/capability-ledger.md#baseline-claims-implemented) | Upload API contract (`Initiate -> Upload chunk -> Complete`) is stable with idempotency/retry semantics and deterministic clean/dirty outcomes | ✅ | `docker compose up -d --build redis postgres file-engine file-engine-worker backend && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/upload_lifecycle.sh && docker compose down -v` |
+| [`CL-047`](docs/capability-ledger.md#baseline-claims-implemented) | Upload API contract (`Initiate → Upload chunk → Complete`) is stable with idempotency/retry semantics and deterministic clean/dirty outcomes | ✅ | `docker compose up -d --build redis postgres file-engine file-engine-worker backend && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/upload_lifecycle.sh && docker compose down -v` |
 | [`CL-049`](docs/capability-ledger.md#baseline-claims-implemented) | Governance control-plane next step: archive-tier lifecycle transitions, external policy source distribution, drift-detection metrics/audit signal, and effective-policy operator endpoint | ✅ | `cd file-engine && go test ./internal/services ./internal/server ./internal/observability -run "TestLoadGovernancePolicyFromSourceEnvelope|TestUploadServiceArchiveLifecycleTransition|TestUploadServiceGovernanceDriftDetection|TestGovernanceEffectiveEndpoint|TestGovernanceDriftCheckEndpoint|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v` |
 | [`CL-058`](docs/capability-ledger.md#baseline-claims-implemented) | Enterprise readiness v2 baseline: deterministic k6 smoke/soak load profiles, tenant+actor fairness throttles, queue backpressure reject signaling, and per-tenant cost usage report endpoint | ✅ | `cd file-engine && go test ./internal/observability ./internal/server ./internal/handlers -run "TestTenantUsageSnapshot|TestTenantCostReportEndpoint|TestCreateFolderQueueUnavailableReturnsUnavailable" -v` |
 | [`CL-059`](docs/capability-ledger.md#baseline-claims-implemented) | Data durability & recovery baseline: backup/restore simulation scripts, disaster drill suite (DB restore/replay, storage corruption detection, audit sink outage catch-up), and integrity verification endpoint/job with failure metrics | ✅ | `cd file-engine && go test ./internal/server ./internal/observability -run "TestIntegrityVerifyEndpointDetectsCorruption|TestTenantUsageSnapshot|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v && bash -n scripts/backup_restore_simulation.sh scripts/integrity_verify_job.sh scripts/drills/db_restore_replay.sh scripts/drills/storage_corruption_drill.sh scripts/drills/audit_sink_catchup_drill.sh` |
@@ -162,7 +162,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 </details>
 
 > [!Warning]
-> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
+> If guidance conflicts, use this precedence order: capability ledger → setup → scoped AGENTS → architecture deep-dives.
 
 ---
 
@@ -191,7 +191,7 @@ This platform provides a centralized, permissioned interface that **controls and
 ### Write path (async)
 
 - Create folders (policy-enforced naming)
-- Upload lifecycle is baseline-validated end-to-end (`Initiate -> Upload chunk -> Complete`) with scan-gated promote semantics and deterministic clean/dirty outcomes (`CL-047`, `CL-033`, `CL-040`).
+- Upload lifecycle is baseline-validated end-to-end (`Initiate → Upload chunk → Complete`) with scan-gated promote semantics and deterministic clean/dirty outcomes (`CL-047`, `CL-033`, `CL-040`).
 - Move/rename/delete/restore object operations *(API-level baseline validated; async task variants for move, governed delete, and quarantine restore are baseline-validated via `CL-066`..`CL-068`)*
 
 ### Governance & security

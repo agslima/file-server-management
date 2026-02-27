@@ -1,5 +1,4 @@
 //go:build integration_authz
-// +build integration_authz
 
 package integration
 
