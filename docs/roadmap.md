@@ -7,13 +7,13 @@ Progress is only considered “done” when it’s provable via the Capability L
 
 [//]: # (owner: Platform Engineering)
 [//]: # (review_cadence: Monthly)
-[//]: # (last_reviewed: 2026-02-24)
+[//]: # (last_reviewed: 2026-02-27)
 
 A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
 
 ---
 
-## Current status snapshot (2026-02-24)
+## Current status snapshot (2026-02-27)
 
 | Milestone | Status | Ledger evidence |
 | :-- | :--: | :-- |
@@ -27,7 +27,11 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 | Milestone 7 — Production Operations Closure | ✅ done | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
 | Milestone 8 — Sustainability & Ownership Resilience | ✅ complete | `CL-053`, `CL-054` |
 | Milestone 9 — Productization & Operations Expansion | ✅ complete | `CL-055`, `CL-056`, `CL-057`, `CL-058`, `CL-059`, `CL-060`, `CL-061` |
-| Milestone 10 — Remaining Target-State Closure | 🟡 in progress | (new claims required) |
+| Milestone 10 — Remaining Target-State Closure | ✅ complete | `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068`, `CL-069`, `CL-070` |
+| Milestone 11 — Performance Budgets & Capacity Planning | ✅ complete | `CL-071` |
+| Milestone 12 — Continuous Security Posture Hardening | ✅ complete | `CL-072` |
+| Milestone 13 — Product UX End-to-End Demo Flows | ✅ complete | `CL-009` |
+| Milestone 14 — Cognitive-Load Reduction (Boundaries + Generated Docs + Onboarding) | ✅ complete | `CL-073` |
 
 ---
 
@@ -200,11 +204,70 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Close the final ledger-documented target-state gaps.
 
-**Completion criteria**
+**Status:** ✅ complete
 
-1. Async task-based mutation variants beyond create-folder are baseline-validated with claim IDs, runnable validations, and CI evidence.
-2. Multi-owner human coverage risk is reduced with at least one additional named maintainer per critical domain and enforced reviewer continuity in governance artifacts.
-3. `docs/capability-ledger.md`, `docs/roadmap.md`, and `docs/roadmap-ledger-gap-analysis.md` stay synchronized in the same PR for each promotion.
+**Completion evidence**
+
+1. Scale/fairness operational closure is baseline-validated (`CL-062`).
+2. Data durability and recovery contract closure is baseline-validated (`CL-063`).
+3. Multi-tenant compliance productization is baseline-validated (`CL-064`).
+4. API/SDK external-consumer hardening is baseline-validated (`CL-065`).
+5. Async mutation expansion beyond create-folder is baseline-validated (`CL-066`..`CL-068`).
+6. Human-resilience reviewer continuity controls are baseline-validated (`CL-069`).
+7. Deployment realism controls are baseline-validated (`CL-070`).
+
+---
+
+## Milestone 11 — Performance Budgets & Capacity Planning (64–68 weeks)
+
+**Goal:** Enforce latency/error budgets and reproducible hot-path profiling.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+1. k6 smoke/soak budget enforcement and investigation policy are baseline-validated (`CL-071`).
+2. Hot-path pprof capture workflow is script-reproducible (`CL-071`).
+
+---
+
+## Milestone 12 — Continuous Security Posture Hardening (68–72 weeks)
+
+**Goal:** Keep security posture continuously reviewable with deterministic checks and drills.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+1. Threat-model diff prompt automation and focused negative regression suite are baseline-validated (`CL-072`).
+2. Supply-chain checks and secret-rotation continuity drill expansion are baseline-validated (`CL-072`).
+
+---
+
+## Milestone 13 — Product UX End-to-End Demo Flows (72–74 weeks)
+
+**Goal:** Demonstrate product and operator flows end-to-end in a runnable thin client.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+1. Frontend thin-client demo covers product UX (login, tenant, folder, upload, mutations) and operator UX (DLQ/retry, cleanup, effective policy, drift, evidence pointers) (`CL-009`).
+2. Deterministic `scripts/e2e/demo_5_minute.sh --mode=mock` narrative is available for repeatable demos (`CL-009`).
+
+---
+
+## Milestone 14 — Cognitive-Load Reduction (Boundaries + Generated Docs + Onboarding) (74–78 weeks)
+
+**Goal:** Keep contributor velocity high through enforceable boundaries, generated docs, and one-command onboarding/demo.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+1. Architecture conformance boundary enforcement is expanded and validated in guardrail scripts (`CL-073`).
+2. Generated docs include endpoint inventory, SDK examples inventory, and governance policy schema docs (`CL-073`).
+3. One-command onboarding + demo (`make bootstrap && make demo`) produces deterministic output and evidence links (`CL-073`).
 
 ---
 
