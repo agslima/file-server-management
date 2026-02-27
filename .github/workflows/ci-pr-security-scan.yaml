@@ -19,7 +19,6 @@ jobs:
     name: Secret Scan (Gitleaks)
     continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions: 
       pull-requests: write
     timeout-minutes: 10
