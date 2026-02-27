@@ -53,7 +53,7 @@ jobs:
               - 'scripts/wait-for-oidc-token.sh'
               - '.github/workflows/ci.yml'
             authz:
-              - 'file-engine/internal/auth*'
+              - 'file-engine/internal/auth/**'
               - 'file-engine/internal/authz/**'
               - 'file-engine/tests/integration/**authz**'
             monitoring:
