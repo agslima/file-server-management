@@ -22,13 +22,10 @@ PLATFORMS ?= linux/arm64,linux/amd64
 GO_MODULES := \
 	health-monitors/syslog-health-monitor
 
-PYTHON_MODULES := \
-	health-monitors/gpu-health-monitor
-
 CONTAINER_MODULES := \
 	log-collector
 
-ALL_MODULES := $(GO_MODULES) $(PYTHON_MODULES) $(CONTAINER_MODULES)
+ALL_MODULES := $(GO_MODULES) $(CONTAINER_MODULES)
 
 # =============================================================================
 # Build Targets (Local Development) - Delegates to individual module Makefiles
@@ -46,31 +43,12 @@ build-gpu-health-monitor:
 	@echo "Building GPU health monitor (both DCGM variants)..."
 	$(MAKE) -C ../health-monitors/gpu-health-monitor image
 
-.PHONY: build-gpu-health-monitor-dcgm3
-build-gpu-health-monitor-dcgm3:
-	@echo "Building GPU health monitor with DCGM 3.x..."
-	$(MAKE) -C ../health-monitors/gpu-health-monitor image-dcgm3
-
-.PHONY: build-gpu-health-monitor-dcgm4
-build-gpu-health-monitor-dcgm4:
-	@echo "Building GPU health monitor with DCGM 4.x..."
-	$(MAKE) -C ../health-monitors/gpu-health-monitor image-dcgm4
 
 # Standard Go modules
 .PHONY: build-syslog-health-monitor
 build-syslog-health-monitor:
 	@echo "Building syslog health monitor..."
 	$(MAKE) -C ../health-monitors/syslog-health-monitor docker-build
-
-.PHONY: build-metadata-collector
-build-metadata-collector:
-	@echo "Building metadata collector..."
-	$(MAKE) -C ../metadata-collector docker-build
-
-.PHONY: build-log-collector
-build-log-collector:
-	@echo "Building log collector..."
-	$(MAKE) -C ../log-collector docker-build
 
 # =============================================================================
 # Publish Targets (CI/Production) - Delegates to individual module Makefiles
@@ -82,16 +60,6 @@ build-log-collector:
 publish-all: publish-gpu-health-monitor publish-syslog-health-monitor publish-metadata-collector publish-log-collector
 	@echo "All Docker images published successfully to registry"
 
-# GPU health monitor publish (special case with DCGM variants)
-.PHONY: publish-gpu-health-monitor
-publish-gpu-health-monitor:
-	@echo "Publishing GPU health monitor (both DCGM variants)..."
-	$(MAKE) -C ../health-monitors/gpu-health-monitor docker-publish
-
-.PHONY: publish-gpu-health-monitor-dcgm3
-publish-gpu-health-monitor-dcgm3:
-	@echo "Publishing GPU health monitor with DCGM 3.x..."
-	$(MAKE) -C ../health-monitors/gpu-health-monitor docker-publish-dcgm3
 
 .PHONY: publish-gpu-health-monitor-dcgm4
 publish-gpu-health-monitor-dcgm4:
@@ -104,16 +72,6 @@ publish-syslog-health-monitor:
 	@echo "Publishing syslog health monitor..."
 	$(MAKE) -C ../health-monitors/syslog-health-monitor docker-publish
 
-.PHONY: publish-metadata-collector
-publish-metadata-collector:
-	@echo "Publishing metadata collector..."
-	$(MAKE) -C ../metadata-collector docker-publish
-
-.PHONY: publish-log-collector
-publish-log-collector:
-	@echo "Publishing log collector..."
-	$(MAKE) -C ../log-collector docker-publish
-
 # =============================================================================
 # Group Targets
 # =============================================================================
@@ -123,28 +81,11 @@ publish-log-collector:
 build-health-monitors: build-gpu-health-monitor build-syslog-health-monitor
 	@echo "All health monitor Docker images built successfully"
 
-.PHONY: publish-health-monitors
-publish-health-monitors: publish-gpu-health-monitor publish-syslog-health-monitor
-	@echo "All health monitor Docker images published successfully"
 
-# Main modules group (non-health-monitors)
-.PHONY: build-main-modules
-build-main-modules: build-log-collector
-	@echo "All main module Docker images built successfully"
-
-.PHONY: publish-main-modules
-publish-main-modules: publish-log-collector
-	@echo "All main module Docker images published successfully"
 
 # =============================================================================
 # Utility Targets
 # =============================================================================
-
-# Setup buildx builder (delegates to a representative module)
-.PHONY: setup-buildx
-setup-buildx:
-	@echo "Setting up Docker buildx builder..."
-	$(MAKE) -C ../health-monitors/syslog-health-monitor setup-buildx
 
 # Clean Docker images
 .PHONY: clean
