@@ -1,0 +1,7 @@
+{
+  "upload_id": "<upload_id>",
+  "upload_url": "/v1/uploads/<upload_id>:chunk",
+  "staging_token": "<upload_id>",
+  "target_path": "/tenants/acme/docs/report.txt",
+  "correlation_id": "req-compat-1"
+}

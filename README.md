@@ -42,42 +42,6 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 
 ---
 
-## Canonical doc map
-
-**Architecture & Implementation:**
-
-- **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
-- **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
-- **Architecture Boundaries:** [`docs/architecture_boundaries.md`](docs/architecture_boundaries.md)
-- **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
-- **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
-- **Observability:** [`docs/observability.md`](docs/observability.md)
-- **Roadmap (staged milestones):** [`docs/roadmap.md`](docs/roadmap.md)
-- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
-- **Decisions and rationale:** [`docs/adr`](docs/adr)
-
-**Governance & Status:**
-
-- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
-- **Route maturity matrix:** [`docs/route-maturity-matrix.md`](docs/route-maturity-matrix.md)
-- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
-- **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
-- **Branch protection mapping:** [`docs/branch-protection-mapping.md`](docs/branch-protection-mapping.md)
-- **Ownership source of truth:** [`.github/OWNERS`](.github/OWNERS)
-- **Ownership backup matrix:** [`docs/ownership-backup-matrix.md`](docs/ownership-backup-matrix.md)
-
-<details><summary><b>Operating guide</b></summary>
-
-- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
-- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
-
-</details>
-
-> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
-
----
-
 ## Project status
 
 This repository documents an evolving architecture.
@@ -108,7 +72,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-006`](docs/capability-ledger.md#baseline-claims-implemented) | Correlation ID propagation in async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
 | [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
 | [`CL-008`](docs/capability-ledger.md#baseline-claims-implemented) | Backend scaffold validation | ✅ | `cd backend && composer validate --strict` |
-| [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
+| [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend thin-client demo console (product + operator UX flows) | ✅ | `test -f frontend/index.html && test -f frontend/app.js && test -f frontend/styles.css && ./scripts/e2e/demo_5_minute.sh --mode=mock` |
 | [`CL-010`](docs/capability-ledger.md#baseline-claims-implemented) | Structured logs + queue/task metrics baseline | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` |
 | [`CL-011`](docs/capability-ledger.md#baseline-claims-implemented) | Documentation drift checks (links + governance hygiene) | ✅ | `./scripts/doc-drift-check.sh` |
 | [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented) | Read-path behavior + final authz (list/download + path normalization + tenant enforcement) | ✅ | `cd file-engine && go test ./internal/handlers -run "TestListObjectsReturnsEntries|TestListObjectsRequiresAuthContext|TestListObjectsRejectsUnauthorizedTenant|TestDownloadObjectRejectsUnauthorizedTenant" -v && go test ./internal/adapters/storage/local -run TestLocalStorageListMetadata -v && go test ./internal/authz -run "TestGRPCAuthZInterceptorListObjects" -v && go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal" -v && go test -tags integration_authz ./tests/integration -run TestReadListBehaviorAndAuthzRejection -v` |
@@ -118,9 +82,9 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-016`](docs/capability-ledger.md#baseline-claims-implemented) | Generated gateway artifacts remain in sync with proto | ✅ | `cd file-engine && ./scripts/generate_grpc_docker.sh && cd .. && git diff --exit-code && test -z "$(git status --porcelain)"` |
 | [`CL-017`](docs/capability-ledger.md#baseline-claims-implemented) | Worker performance guardrails (status retries + task timeout) for async create-folder | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` |
 | [`CL-018`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 scaffold contract (create-folder forward + task polling wiring checks) | ✅ | `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php` |
-| [`CL-020`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 docker-compose E2E (forward create-folder + poll task to success + folder existence) | 🟡 | `docker compose up -d --build && ./scripts/wait-for-http.sh http://localhost:8080/healthz 60 && ./scripts/wait-for-http.sh http://localhost:8081/healthz 60 && ./scripts/e2e/vs001_create_folder.sh && docker compose down -v` |
-| [`CL-022`](docs/capability-ledger.md#baseline-claims-implemented) | Audit coverage for read/list/download actions (`object.list`, `object.read`, `object.download`) | 🟡 | `cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v` |
-| [`CL-025`](docs/capability-ledger.md#baseline-claims-implemented) | Upload pipeline baseline: staged quarantine write + atomic promote (no partial final object visibility) | 🟡 | `cd file-engine && go test ./tests/integration -run TestStagedUploadAtomicPromote -v` |
+| [`CL-020`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 docker-compose E2E (forward create-folder + poll task to success + folder existence) | ✅ | `docker compose up -d --build && ./scripts/wait-for-http.sh http://localhost:8080/healthz 60 && ./scripts/wait-for-http.sh http://localhost:8081/healthz 60 && ./scripts/e2e/vs001_create_folder.sh && docker compose down -v` |
+| [`CL-022`](docs/capability-ledger.md#baseline-claims-implemented) | Audit coverage for read/list/download actions (`object.list`, `object.read`, `object.download`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v` |
+| [`CL-025`](docs/capability-ledger.md#baseline-claims-implemented) | Upload pipeline baseline: staged quarantine write + atomic promote (no partial final object visibility) | ✅ | `cd file-engine && go test ./tests/integration -run TestStagedUploadAtomicPromote -v` |
 | [`CL-031`](docs/capability-ledger.md#baseline-claims-implemented) | Backend baseline smoke suite (composer install + phpunit) | ✅ | `docker compose run --rm --no-deps backend sh -lc 'composer install --no-interaction && ./vendor/bin/phpunit -c phpunit.xml'` |
 | [`CL-032`](docs/capability-ledger.md#baseline-claims-implemented) | Audit table append-only enforcement (UPDATE/DELETE rejected for app DB user) | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditEventsAppendOnlyEnforced -v` |
 | [`CL-033`](docs/capability-ledger.md#baseline-claims-implemented) | Upload malware gating: dirty scan blocks promote, clean scan promotes from quarantine | ✅ | `cd file-engine && go test ./tests/integration -run TestUploadScanGateDirtyPreventsPromotion -v` |
@@ -145,10 +109,60 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-046`](docs/capability-ledger.md#baseline-claims-implemented) | Governance controls baseline: startup-validated tenant policy config with quota/object/rate limits, retention/legal-hold delete protection, and policy-driven lifecycle cleanup controls | ✅ | `cd file-engine && go test ./internal/services ./internal/server -run "TestUploadServiceTenantPolicyQuotaFinalGate|TestUploadServiceRetentionBlocksDelete|TestUploadServiceLegalHoldBlocksDelete|TestGovernanceDeleteEndpointBlockedByRetention|TestLifecycleCleanupEndpoint" -v` |
 | [`CL-047`](docs/capability-ledger.md#baseline-claims-implemented) | Upload API contract (`Initiate -> Upload chunk -> Complete`) is stable with idempotency/retry semantics and deterministic clean/dirty outcomes | ✅ | `docker compose up -d --build redis postgres file-engine file-engine-worker backend && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/upload_lifecycle.sh && docker compose down -v` |
 | [`CL-049`](docs/capability-ledger.md#baseline-claims-implemented) | Governance control-plane next step: archive-tier lifecycle transitions, external policy source distribution, drift-detection metrics/audit signal, and effective-policy operator endpoint | ✅ | `cd file-engine && go test ./internal/services ./internal/server ./internal/observability -run "TestLoadGovernancePolicyFromSourceEnvelope|TestUploadServiceArchiveLifecycleTransition|TestUploadServiceGovernanceDriftDetection|TestGovernanceEffectiveEndpoint|TestGovernanceDriftCheckEndpoint|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v` |
+| [`CL-058`](docs/capability-ledger.md#baseline-claims-implemented) | Enterprise readiness v2 baseline: deterministic k6 smoke/soak load profiles, tenant+actor fairness throttles, queue backpressure reject signaling, and per-tenant cost usage report endpoint | ✅ | `cd file-engine && go test ./internal/observability ./internal/server ./internal/handlers -run "TestTenantUsageSnapshot|TestTenantCostReportEndpoint|TestCreateFolderQueueUnavailableReturnsUnavailable" -v` |
+| [`CL-059`](docs/capability-ledger.md#baseline-claims-implemented) | Data durability & recovery baseline: backup/restore simulation scripts, disaster drill suite (DB restore/replay, storage corruption detection, audit sink outage catch-up), and integrity verification endpoint/job with failure metrics | ✅ | `cd file-engine && go test ./internal/server ./internal/observability -run "TestIntegrityVerifyEndpointDetectsCorruption|TestTenantUsageSnapshot|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v && bash -n scripts/backup_restore_simulation.sh scripts/integrity_verify_job.sh scripts/drills/db_restore_replay.sh scripts/drills/storage_corruption_drill.sh scripts/drills/audit_sink_catchup_drill.sh` |
+| [`CL-060`](docs/capability-ledger.md#baseline-claims-implemented) | API productization baseline: explicit versioning policy, thin Go+PHP SDK layers, and frozen compatibility fixtures/gates for upload lifecycle, readiness, and authz-deny envelope stability | ✅ | `./scripts/check-api-compatibility.sh && cd file-engine && go test ./client -v && cd ../backend && php -l app/Clients/FileEngineClient.php && php -l app/Services/FileEngineService.php` |
+| [`CL-061`](docs/capability-ledger.md#baseline-claims-implemented) | Maintenance-cost reduction baseline: legacy dual-path entrypoint removed, architecture conformance now enforces generated-doc freshness + no handler/server direct DB imports, and docs artifacts (endpoint inventory/route inventory/dashboard refs) are auto-generated | ✅ | `./scripts/generate-doc-artifacts.sh && ./scripts/architecture-conformance-check.sh && ./scripts/doc-drift-check.sh` |
+| [`CL-062`](docs/capability-ledger.md#baseline-claims-implemented) | Scale/fairness closure: published SLOs for list/download, upload completion, and task completion; deterministic k6 smoke in CI with nightly soak; explicit throttled error envelope + audit evidence; and dependency backpressure drills with operator runbook | ✅ | `cd file-engine && go test ./internal/server ./internal/handlers -run "TestUploadRateLimitedReturnsThrottledEnvelopeAndAudit|TestCreateFolderQueueUnavailableReturnsUnavailable" -v && ./scripts/drills/dependency_backpressure.sh && bash -n scripts/drills/dependency_backpressure.sh` |
+| [`CL-063`](docs/capability-ledger.md#baseline-claims-implemented) | Data durability/integrity contract closure: configurable integrity verification policy (`sample_size`, `failure_threshold`, `ignore_paths`), explicit dev-grade RTO/RPO restore objectives, script-backed durability drills, and one-command audit-ready evidence pack generation | ✅ | `cd file-engine && go test ./internal/server -run "TestIntegrityVerifyEndpointDetectsCorruption|TestIntegrityVerifyEndpointHonorsFailureThreshold|TestIntegrityVerifyEndpointIgnorePathsFalsePositive" -v && bash -n scripts/integrity_verify_job.sh scripts/backup_restore_simulation.sh scripts/drills/db_restore_replay.sh scripts/drills/storage_corruption_drill.sh scripts/generate_durability_evidence_pack.sh && ./scripts/generate_durability_evidence_pack.sh` |
+| [`CL-064`](docs/capability-ledger.md#baseline-claims-implemented) | Multi-tenant compliance productization: access review v1 export keeps stable schema with optional signed artifact, governance policy updates emit audit event with before/after policy hashes, tenant evidence endpoint exposes policy/drift/review/drill pointers, and one-command tenant compliance packet generation is deterministic | ✅ | `cd file-engine && go test ./internal/server -run "TestGovernancePolicyUpdateEndpointEmitsBeforeAfterHashAudit|TestTenantEvidenceEndpointReturnsPointers" -v && bash -n file-engine/scripts/generate_monthly_access_review_report.sh scripts/generate_tenant_compliance_packet.sh && ./scripts/doc-drift-check.sh` |
+| [`CL-065`](docs/capability-ledger.md#baseline-claims-implemented) | API/SDK hardening for external consumers: expanded golden fixtures (mutations + governance block + throttling), typed error/retry ergonomics in Go+PHP client layers, and CI compatibility policy enforcement for `/v1` surface changes with required docs updates | ✅ | `./scripts/check-api-compatibility.sh && cd file-engine && go test ./client ./internal/server -run "TestAsAPIErrorParsesEnvelope|TestDoWithRetryRetriesTemporaryAPIError|TestDoWithRetryStopsOnPermanentError|TestCompatibilityUploadThrottledGolden|TestCompatibilityGovernanceDeleteRetentionBlockGolden" -v && cd ../backend && php -l app/Clients/FileEngineClient.php && php -l app/Clients/FileEngineException.php && ./scripts/doc-drift-check.sh` |
+| [`CL-069`](docs/capability-ledger.md#baseline-claims-implemented) | Human-resilience continuity gate: explicit CODEOWNERS for critical domains + CI reviewer continuity enforcement for auth/authz, monitoring/observability, and capability-ledger changes + release checklist new-maintainer drill gate | ✅ | `./scripts/check-owners-governance.sh && bash -n scripts/check-reviewer-continuity.sh && rg -n "reviewer-continuity|file-engine/internal/auth\*|observability/\*|docs/capability-ledger.md" .github/workflows/ci.yml .github/codeowners docs/branch-protection-mapping.md docs/prod-checklist.md` |
+| [`CL-071`](docs/capability-ledger.md#baseline-claims-implemented) | Performance budgets and capacity planning closure: k6 smoke/soak enforce latency+error thresholds, error-budget policy is documented, rough component/queue/storage sizing guidance is published, and reproducible hot-path profiling is script-backed | ✅ | `cd file-engine && go test ./internal/server -run "^$" -bench "BenchmarkHandle(Download|UploadComplete)$" -benchtime=1x && ./file-engine/scripts/capture_hotpath_profile.sh && bash -n file-engine/scripts/capture_hotpath_profile.sh` |
+| [`CL-072`](docs/capability-ledger.md#baseline-claims-implemented) | Security posture hardening closure: threat-model diff prompt automation, focused negative security regression suite, supply-chain checks (toolchain pin verification + SBOM/signing story), and secret rotation continuity drill | ✅ | `./scripts/generate-threat-model-diff-prompt.sh && ./scripts/security-regression-suite.sh && ./scripts/supply-chain-checks.sh && ./scripts/drills/rotate-secrets-drill.sh` |
 
 > For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
 </details>
+
+---
+
+## Canonical doc map
+
+**Architecture & Implementation:**
+
+- **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
+- **API Versioning Policy:** [`docs/api-versioning-policy.md`](docs/api-versioning-policy.md)
+- **Client SDKs (thin):** [`docs/client-sdks.md`](docs/client-sdks.md)
+- **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
+- **Architecture Boundaries:** [`docs/architecture_boundaries.md`](docs/architecture_boundaries.md)
+- **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
+- **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
+- **Observability:** [`docs/observability.md`](docs/observability.md)
+- **Roadmap (staged milestones):** [`docs/roadmap.md`](docs/roadmap.md)
+- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
+- **Decisions and rationale:** [`docs/adr`](docs/adr)
+
+**Governance & Status:**
+
+- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
+- **Route maturity matrix:** [`docs/route-maturity-matrix.md`](docs/route-maturity-matrix.md)
+- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
+- **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
+- **Branch protection mapping:** [`docs/branch-protection-mapping.md`](docs/branch-protection-mapping.md)
+- **Ownership source of truth:** [`.github/OWNERS`](.github/OWNERS)
+- **Ownership backup matrix:** [`docs/ownership-backup-matrix.md`](docs/ownership-backup-matrix.md)
+
+<details><summary><b>Operating guide</b></summary>
+
+- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
+- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
+
+</details>
+
+> [!Warning]
+> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
 
 ---
 
@@ -172,13 +186,13 @@ This platform provides a centralized, permissioned interface that **controls and
 - Browse folders (tree navigation, directory listing)
 - Metadata display (size, timestamps, ownership) with backend-specific best-effort fields
 - **Baseline-validated read path:** list results + size/timestamps/ownership metadata + download path normalization validated by [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented)
-- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary; verified by unit + integration coverage in [`file-engine/internal/handlers/grpc_handler_test.go`](file-engine/internal/handlers/grpc_handler_test.go) and [`file-engine/tests/integration/read_list_authz_integration_test.go`](file-engine/tests/integration/read_list_authz_integration_test.go)
+- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary; verified by unit + integration coverage in [`[1]`](file-engine/internal/handlers/grpc_handler_test.go) and [`[2]`](file-engine/tests/integration/read_list_authz_integration_test.go)
 
 ### Write path (async)
 
 - Create folders (policy-enforced naming)
 - Upload lifecycle is baseline-validated end-to-end (`Initiate -> Upload chunk -> Complete`) with scan-gated promote semantics and deterministic clean/dirty outcomes (`CL-047`, `CL-033`, `CL-040`).
-- Move/rename/delete/restore object operations *(API-level baseline validated; async task variants remain target-state)*
+- Move/rename/delete/restore object operations *(API-level baseline validated; async task variants for move, governed delete, and quarantine restore are baseline-validated via `CL-066`..`CL-068`)*
 
 ### Governance & security
 
@@ -357,7 +371,7 @@ cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuth
 
 ## Key flows
 
-**Target-state upload API flow (storage guardrails are baseline-validated; endpoint contract is not yet baseline-promoted):**
+**Baseline-validated upload API flow (`CL-047`) with storage guardrails (`CL-033`, `CL-040`):**
 
 ```mermaid
 sequenceDiagram
@@ -486,13 +500,21 @@ This is the only **baseline-validated** quickstart today.
 ./file-engine/scripts/dev.sh
 ```
 
-### 2) Optional: run the async folder flow integration test alone
+### 2) One-command onboarding + demo evidence
+
+```bash
+make bootstrap && make demo
+```
+
+This command pair regenerates docs, enforces architecture boundaries, runs doc drift checks, executes the deterministic 5-minute demo script, and prints evidence links for generated docs.
+
+### 3) Optional: run the async folder flow integration test alone
 
 ```bash
 cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ```
 
-### 3) Optional: local File Engine run (scaffold-level, for debugging)
+### 4) Optional: local File Engine run (scaffold-level, for debugging)
 
 This brings up Redis/Postgres in Docker and runs the API/worker locally for debugging. REST endpoints include baseline create-folder/task-status and upload lifecycle paths; treat this path as local debugging rather than the canonical baseline verification flow.
 
@@ -549,13 +571,21 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 > [!Note]
 > All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
 
+
+## Deployment (dev/stage/prod + kind + rollback)
+
+- Environment profile templates are versioned in `env/.env.dev.example`, `env/.env.stage.example`, and `env/.env.prod.example`.
+- Config/secret separation and required runtime wiring checks are documented in `docs/deployment-profiles.md` and validated with `./scripts/check-runtime-wiring.sh --profile prod`.
+- Kubernetes smoke and rollback drill paths are script-backed via `./scripts/k8s/kind_smoke.sh` and `./scripts/drills/k8s_rollback_drill.sh`.
+- Release versioning + changelog + rollback discipline is documented in `docs/release/versioning-and-rollback.md`.
+
 ---
 
 ## Repository structure
 
 ```text
 file-server-management/
-├─ frontend/                  # React / Next.js UI
+├─ frontend/                  # Static thin-client demo console (no Node build)
 ├─ backend/                   # Laravel control plane
 ├─ file-engine/               # Go File Engine (API + Worker)
 └─ docs/

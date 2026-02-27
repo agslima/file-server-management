@@ -246,3 +246,16 @@ This flow assumes the recommended **two-phase publish model**:
 - Signed task payloads (HMAC) + nonce/timestamps for replay defense
 - Content fingerprinting, DLP rules, and classification labels
 - Secure download tokens or signed URLs with short TTL and IP binding
+
+---
+
+## Continuous controls linkage
+
+Security controls are expected to run continuously with change review evidence:
+
+- Threat-model diff automation: `./scripts/generate-threat-model-diff-prompt.sh`
+- Negative regression suite: `./scripts/security-regression-suite.sh`
+- Supply-chain checks + SBOM story: `./scripts/supply-chain-checks.sh`
+- Secret rotation continuity drill: `./scripts/drills/rotate-secrets-drill.sh --apply`
+
+Any PR that modifies trust boundaries, authorization behavior, or governance policy flows should attach command output for the controls above.

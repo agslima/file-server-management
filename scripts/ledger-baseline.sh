@@ -302,6 +302,11 @@ export FILEENGINE_TEST_POSTGRES_DSN="${FILEENGINE_TEST_POSTGRES_DSN:-postgres://
 log "=== CL-003: Async create-folder integration ==="
 run_claim "CL-003" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v'
 
+log "=== CL-066/CL-067/CL-068: Async mutation expansion (move/delete/restore) ==="
+run_claim "CL-066" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncMutationMoveObjectFlow -v'
+run_claim "CL-067" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncMutationGovernedDeleteFinalGateDenies -v'
+run_claim "CL-068" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncMutationQuarantineRestoreFlow -v'
+
 log "=== CL-022: Audit read/list/download coverage ==="
 run_claim "CL-022" bash -lc 'cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v'
 

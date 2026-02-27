@@ -7,6 +7,46 @@ cd "$ROOT_DIR"
 
 cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto
 
+./scripts/generate-doc-artifacts.sh >/tmp/doc_artifacts_generate.log
+if ! git diff --quiet -- \
+  docs/generated/endpoint-inventory.md \
+  docs/generated/route-maturity-matrix.md \
+  docs/generated/dashboard-references.md \
+  docs/generated/sdk-examples.md \
+  docs/generated/policy-schema.md; then
+  echo "generated docs are stale; run ./scripts/generate-doc-artifacts.sh" >&2
+  git diff -- \
+    docs/generated/endpoint-inventory.md \
+    docs/generated/route-maturity-matrix.md \
+    docs/generated/dashboard-references.md \
+    docs/generated/sdk-examples.md \
+    docs/generated/policy-schema.md >&2 || true
+  exit 1
+fi
+
+if [[ -f file-engine/cmd/main.go ]]; then
+  echo "legacy dual-path entrypoint file-engine/cmd/main.go must not exist"
+  exit 1
+fi
+
+if rg -n "database/sql|jackc/pgx|gorm.io|sqlx" file-engine/internal/handlers file-engine/internal/server --glob '*.go' >/tmp/arch_conformance_db_hits.txt; then
+  echo "direct DB-layer access import detected in handlers/server:" >&2
+  cat /tmp/arch_conformance_db_hits.txt >&2
+  exit 1
+fi
+
+if rg -n "github.com/example/file-engine/internal/adapters/(storage|security|fs|config)" file-engine/internal/handlers file-engine/internal/server --glob "*.go" --glob "!*_test.go" >/tmp/arch_conformance_transport_adapter_hits.txt; then
+  echo "transport layer must not import storage/security/fs/config adapters directly:" >&2
+  cat /tmp/arch_conformance_transport_adapter_hits.txt >&2
+  exit 1
+fi
+
+if rg -n "github.com/example/file-engine/internal/(delivery|server|handlers)/" file-engine/internal/services --glob '*.go' >/tmp/arch_conformance_service_transport_hits.txt; then
+  echo "service layer must not import transport packages:" >&2
+  cat /tmp/arch_conformance_service_transport_hits.txt >&2
+  exit 1
+fi
+
 MATRIX="docs/route-maturity-matrix.md"
 APIREF="docs/api-reference.md"
 
@@ -60,6 +100,8 @@ required_boundary_entries=(
   '`internal/logger/*`'
   '`internal/services/*`'
   '`internal/app/*`'
+  'Transport packages (`internal/server/*`, `internal/handlers/*`) avoid direct storage/security adapter imports; queue wiring in `internal/handlers/grpc_handler.go` is the current scoped exception.'
+  'Service packages (`internal/services/*`) do not import transport packages.'
 )
 
 for item in "${required_boundary_entries[@]}"; do
@@ -69,18 +111,10 @@ for item in "${required_boundary_entries[@]}"; do
   fi
 done
 
-if command -v rg >/dev/null 2>&1; then
-  if rg -n "github.com/example/file-engine/internal/infra/logger" file-engine --glob '*.go' >/tmp/arch_conformance_logger_hits.txt; then
-    echo "deprecated logger import detected:" >&2
-    cat /tmp/arch_conformance_logger_hits.txt >&2
-    exit 1
-  fi
-else
-  if grep -R -n --include='*.go' "github.com/example/file-engine/internal/infra/logger" file-engine >/tmp/arch_conformance_logger_hits.txt; then
-    echo "deprecated logger import detected:" >&2
-    cat /tmp/arch_conformance_logger_hits.txt >&2
-    exit 1
-  fi
+if rg -n "github.com/example/file-engine/internal/infra/logger" file-engine --glob '*.go' >/tmp/arch_conformance_logger_hits.txt; then
+  echo "deprecated logger import detected:" >&2
+  cat /tmp/arch_conformance_logger_hits.txt >&2
+  exit 1
 fi
 
 if [[ -d file-engine/internal/infra/logger ]]; then

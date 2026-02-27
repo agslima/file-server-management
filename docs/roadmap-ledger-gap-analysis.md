@@ -1,6 +1,6 @@
 # Roadmap vs Capability Ledger Gap Analysis
 
-**Date:** 2026-02-21  
+**Date:** 2026-02-24  
 **Source-of-truth rule applied:** `docs/capability-ledger.md` takes precedence over roadmap intent and narrative docs.
 
 ## Comparison summary
@@ -15,24 +15,16 @@
 | Milestone 5 — Governance Hardening | Doc ownership metadata + quarterly alignment cadence + architecture conformance checks in CI | Governance claim `CL-041` validates key-doc ownership metadata check script, quarterly cadence documentation, and CI architecture conformance checks (proto sync + endpoint inventory) | **Implemented** |
 | Milestone 6 — Target-State Hardening Promotions | Promote target-state hardening into baseline claims | Enterprise identity (`CL-042`) plus upload/observability/storage/governance hardening (`CL-043`-`CL-046`) are baseline-validated | **Implemented** |
 | Milestone 7 — Production Operations Closure | Close remaining production-grade operational + documentation contract gaps | Upload API contract (`CL-047`), OTEL production drills (`CL-048`), governance next-step controls (`CL-049`), paging delivery (`CL-050`), scanner/on-call closure (`CL-051`), and README/route-matrix sync (`CL-052`) are implemented | **Implemented** |
-| Milestone 8 — Sustainability & Ownership Resilience | Reduce concentration risk and harden governance sustainability | Kickoff (`CL-053`) is expanded by CI-enforced path-scoped reviewer checks, quarterly checklist generation, sustainability markdown artifact reporting, and a scripted new-maintainer operability drill (`CL-054`) | **Completed** |
+| Milestone 8 — Sustainability & Ownership Resilience | Reduce concentration risk and harden governance sustainability | Automation kickoff + closure are baseline-validated (`CL-053`, `CL-054`) | **Implemented** |
+| Milestone 9 — Productization & Operations Expansion | Expand mutation surface, enterprise readiness, durability, API productization, and maintenance-cost controls | Mutation/API/governance/operations expansion and maintenance-cost reductions are baseline-validated (`CL-055`-`CL-061`) | **Implemented** |
+| Milestone 10 — Remaining Target-State Closure | Close final target-state items left in ledger | Newly added roadmap milestone; claim IDs not yet created | **In progress** |
 
-## 7C synchronization audit (README + narrative docs)
+## What is still not implemented (or not promoted as baseline)
 
-### Resolved in this update
-
-1. **README wording drift corrected**
-   - Upload API lifecycle is no longer described as target-state where ledger already marks baseline (`CL-047`).
-2. **Route maturity matrix refreshed**
-   - Upload lifecycle routes, readiness/liveness endpoints, and OIDC profile validation are reflected with linked claim IDs + runnable commands.
-3. **Narrative alignment refreshed**
-   - Roadmap/ledger gap narrative now marks Milestone 7 as implemented instead of partially open.
-
-## Remaining non-M7 gaps
-
-| Open area | Current evidence | What is still missing |
+| Open area (ledger target-state) | Current evidence | What is still missing |
 | :-- | :-- | :-- |
-| Ownership resilience human coverage | Milestone 8 automation controls are baseline-validated (`CL-053`, `CL-054`) | Add at least one additional human maintainer per critical domain to reduce single-owner concentration |
+| Async task-based mutation variants beyond create-folder | API-level move/rename/delete/restore paths are baseline-validated (`CL-055`) | Add task-based variants as claim-backed capabilities with runnable validation and CI evidence |
+| Multi-owner human coverage across critical domains | Automation controls for resilience/governance are baseline-validated (`CL-053`, `CL-054`) | Add additional named human maintainers/reviewers per critical domain and enforce continuity in ownership/governance process artifacts |
 
 ## Promotion discipline (unchanged)
 
@@ -41,10 +33,3 @@ No baseline-language updates are allowed without:
 1. claim ID in `docs/capability-ledger.md`,
 2. runnable validation command,
 3. CI/PR verification evidence.
-
-
-## 8A sustainability kickoff audit
-
-1. Branch-protection mapping doc added and referenced from governance (`docs/branch-protection-mapping.md`).
-2. Named backup maintainers are explicit for security/platform/backend/data-plane (`docs/ownership-backup-matrix.md`).
-3. Release-cadence deterministic report script added (`scripts/sustainability-metrics.sh`).

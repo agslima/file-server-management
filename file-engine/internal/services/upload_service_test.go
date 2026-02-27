@@ -166,14 +166,40 @@ func TestUploadServiceCleanupQuarantineDeletesExpiredObjects(t *testing.T) {
 	if err := st.AtomicWrite(context.Background(), "/quarantine/acme/old.bin", bytes.NewBufferString("x")); err != nil {
 		t.Fatalf("seed quarantine: %v", err)
 	}
-	time.Sleep(20 * time.Millisecond)
 	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second})
-	rep, err := svc.CleanupQuarantine(context.Background(), 1*time.Millisecond)
-	if err != nil {
-		t.Fatalf("cleanup: %v", err)
-	}
+
+	rep, elapsed := awaitCleanupReport(t, 2*time.Second, 20*time.Millisecond, func() (CleanupReport, error) {
+		return svc.CleanupQuarantine(context.Background(), 1*time.Millisecond)
+	})
 	if rep.Deleted == 0 {
-		t.Fatalf("expected deleted > 0, got %+v", rep)
+		t.Fatalf("expected deleted > 0 after %s, got %+v", elapsed, rep)
+	}
+}
+
+func awaitCleanupReport(t *testing.T, timeout, interval time.Duration, cleanup func() (CleanupReport, error)) (CleanupReport, time.Duration) {
+	t.Helper()
+	started := time.Now()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
+	last := CleanupReport{}
+	attempts := 0
+	for {
+		rep, err := cleanup()
+		attempts++
+		if err != nil {
+			t.Fatalf("cleanup attempt %d failed: %v", attempts, err)
+		}
+		last = rep
+		if rep.Deleted > 0 {
+			return rep, time.Since(started)
+		}
+		select {
+		case <-ticker.C:
+		case <-timeoutTimer.C:
+			t.Fatalf("timed out waiting for cleanup deletion (timeout=%s interval=%s attempts=%d last_report=%+v)", timeout, interval, attempts, last)
+		}
 	}
 }
 
