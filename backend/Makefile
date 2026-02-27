@@ -39,12 +39,12 @@ all: lint
 .PHONY: lint-test
 lint-test: lint
 
-# Lint shell scripts and Python code
+# Lint shell scripts and PHP code
 .PHONY: lint
 lint: lint-shell lint-php
 
 # Lint only shell scripts
-.PHONY: lint-log-collector
+.PHONY: lint-shell-backend
 lint-backend: lint-shell
 
 # Lint shell scripts
@@ -53,28 +53,26 @@ lint-shell:
 	@echo "Linting backend shell scripts..."
 	shellcheck backend/scripts/smoke.sh
 
-# Lint Python code using Poetry and Black (file-server-cleanup package)
-.PHONY: lint-python
-lint-python:
-	@echo "Linting file-server-cleanup Python code..."
-	poetry config virtualenvs.in-project true && \
-	poetry install && \
-	poetry run black --check .
+# Lint PHO code using Pint + PHPStan
+.PHONY: lint-php
+lint-php:
+	@echo "Linting Laravel/PHP code (Pint + PHPStan)..."
+	composer install --no-interaction --prefer-dist --no-progress
+	./vendor/bin/pint --test
+	./vendor/bin/phpstan analyse
 
-# Format Python code using Poetry and Black
-.PHONY: format-python
-format-python:
-	@echo "Formatting file-server-cleanup Python code..."
-	poetry config virtualenvs.in-project true && \
-	poetry install && \
-	poetry run black .
+# Format PHP code using Pint
+.PHONY: format-php
+format-php:
+	@echo "Formatting Laravel/PHP code (Pint)..."
+	composer install --no-interaction --prefer-dist --no-progress
+	./vendor/bin/pint
 
-# Setup Python environment
-.PHONY: setup-python
-setup-python:
-	@echo "Setting up Poetry environment..."
-	poetry config virtualenvs.in-project true
-	poetry install
+# Setup PHP environment
+.PHONY: setup-php
+setup-php:
+	@echo "Setting up Composer dependencies..."
+	composer install --no-interaction --prefer-dist --no-progress
 
 # Setup buildx builder
 .PHONY: setup-buildx
@@ -90,7 +88,7 @@ setup-buildx:
 .PHONY: docker-build
 docker-build: setup-buildx docker-build-log-collector docker-build-file-server-cleanup
 
-# Build log-collector image (local development)
+# Build backend image (local development)
 .PHONY: docker-build-backend
 docker-build-backend: setup-buildx
 	@echo "Building Docker image for backend (local development)..."
@@ -102,7 +100,7 @@ docker-build-backend: setup-buildx
 		$(CACHE_TO_ARG_LOG) \
 		$(DOCKER_LOAD_ARG) \
 		-f $(MODULE_PATH)/Dockerfile \
-		-t $(CONTAINER_REGISTRY)/$(CONTAINER_ORG)/file-server-management/log-collector:$(SAFE_REF_NAME) \
+		-t $(CONTAINER_REGISTRY)/$(CONTAINER_ORG)/file-server-management/backend:$(SAFE_REF_NAME) \
 		.
 
 # Local-only Docker build (no remote cache, faster for local development)
@@ -137,7 +135,7 @@ docker-publish-backend: setup-buildx
 		$(if $(DOCKER_METADATA_FILE),--metadata-file $(DOCKER_METADATA_FILE)) \
 		--push \
 		-f $(MODULE_PATH)/Dockerfile \
-		-t $(CONTAINER_REGISTRY)/$(CONTAINER_ORG)/file-server-management/log-collector:$(SAFE_REF_NAME) \
+		-t $(CONTAINER_REGISTRY)/$(CONTAINER_ORG)/file-server-management/backend:$(SAFE_REF_NAME) \
 		.
 
 # Legacy targets for backwards compatibility
@@ -158,7 +156,7 @@ clean:
 # Help target
 .PHONY: help
 help:
-	@echo "File Server Management Log Collector Makefile - Standardized build system"
+	@echo "File Server Management Makefile - Standardized build system"
 	@echo ""
 	@echo "Configuration (environment variables):"
 	@echo "  CONTAINER_REGISTRY=$(CONTAINER_REGISTRY)"
