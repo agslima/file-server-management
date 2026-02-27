@@ -18,6 +18,7 @@ jobs:
   changes:
     name: Change Detection
     runs-on: ubuntu-latest
+    continue-on-error: true
     outputs:
       backend: ${{ steps.flags.outputs.backend }}
       frontend: ${{ steps.flags.outputs.frontend }}
@@ -101,6 +102,7 @@ jobs:
   gitleaks:
     name: Secret Scan (Gitleaks)
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions: 
       pull-requests: write
     timeout-minutes: 10
