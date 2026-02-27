@@ -1,4 +1,3 @@
-
 # Makefile
 # Generate and optionally publish a project directory tree.
 
@@ -79,3 +78,23 @@ lint-ui: test-tools-image
 .PHONY: lint-ui-local
 lint-ui-local:
 	cd ui && yarn lint
+
+.PHONY: bootstrap
+bootstrap:
+	@echo "[bootstrap] generating docs artifacts"
+	@./scripts/generate-doc-artifacts.sh
+	@echo "[bootstrap] validating architecture boundaries"
+	@./scripts/architecture-conformance-check.sh
+	@echo "[bootstrap] validating baseline docs drift"
+	@./scripts/doc-drift-check.sh
+	@echo "[bootstrap] done"
+
+.PHONY: demo
+demo:
+	@echo "[demo] running deterministic 5-minute narrative"
+	@./scripts/e2e/demo_5_minute.sh --mode=mock
+	@echo "[demo] evidence links"
+	@echo "- Frontend thin-client guide: frontend/README.md"
+	@echo "- Endpoint inventory: docs/generated/endpoint-inventory.md"
+	@echo "- SDK examples inventory: docs/generated/sdk-examples.md"
+	@echo "- Policy schema docs: docs/generated/policy-schema.md"

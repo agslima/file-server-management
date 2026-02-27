@@ -26,6 +26,7 @@ jobs:
       infra: ${{ steps.filter.outputs.infra_any_changed }}
       authz: ${{ steps.filter.outputs.authz_any_changed }}
       monitoring: ${{ steps.filter.outputs.monitoring_any_changed }}
+      ledger: ${{ steps.filter.outputs.ledger_any_changed }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -52,10 +53,15 @@ jobs:
               - 'scripts/wait-for-oidc-token.sh'
               - '.github/workflows/ci.yml'
             authz:
+              - 'file-engine/internal/auth*'
               - 'file-engine/internal/authz/**'
               - 'file-engine/tests/integration/**authz**'
             monitoring:
               - 'monitoring/**'
+              - 'observability/**'
+              - 'file-engine/internal/observability/**'
+            ledger:
+              - 'docs/capability-ledger.md'
               
   backend:
     name: Test Backend
@@ -136,7 +142,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
 
@@ -155,6 +161,9 @@ jobs:
         
       - name: Run gateway route test (explicit)
         run: cd file-engine && go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v
+
+      - name: Enforce API compatibility policy + golden fixtures
+        run: ./scripts/check-api-compatibility.sh
     
       - name: Ensure generated gateway artifacts are in sync
         run: |
@@ -179,7 +188,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Golang
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
           cache: false
@@ -240,6 +249,21 @@ jobs:
           rg -n "Platform reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
           rg -n "Platform" docs/ownership-backup-matrix.md
 
+  reviewer-continuity:
+    name: Reviewer continuity
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.authz == 'true' || needs.changes.outputs.monitoring == 'true' || needs.changes.outputs.ledger == 'true') }}
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Enforce reviewer continuity for critical paths
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/check-reviewer-continuity.sh
+
   sustainability-metrics:
     name: Sustainability metrics
     needs: changes
@@ -252,7 +276,7 @@ jobs:
       - name: Generate sustainability markdown report
         run: ./scripts/sustainability-metrics.sh artifacts/sustainability-metrics.md
       - name: Upload sustainability report artifact
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: sustainability-metrics-report
           path: artifacts/sustainability-metrics.md
@@ -271,7 +295,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
 

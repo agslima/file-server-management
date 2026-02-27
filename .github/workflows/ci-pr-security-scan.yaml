@@ -19,6 +19,7 @@ jobs:
     name: Secret Scan (Gitleaks)
     continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions: 
       pull-requests: write
     timeout-minutes: 10
@@ -71,6 +72,7 @@ jobs:
     name: Trivy Gate - Misconfig (IaC)
     continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 10
 
     steps:

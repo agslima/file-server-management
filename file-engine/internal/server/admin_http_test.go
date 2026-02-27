@@ -82,7 +82,6 @@ func TestQuarantineCleanupEndpoint(t *testing.T) {
 	if err := st.AtomicWrite(context.Background(), "/quarantine/acme/old.bin", bytes.NewBufferString("x")); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	time.Sleep(20 * time.Millisecond)
 	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
 	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
 
@@ -123,7 +122,6 @@ func TestLifecycleCleanupEndpoint(t *testing.T) {
 	if err := st.AtomicWrite(context.Background(), "/staging/acme/old.bin", bytes.NewBufferString("x")); err != nil {
 		t.Fatalf("seed staging: %v", err)
 	}
-	time.Sleep(20 * time.Millisecond)
 	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
 	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{}, Tenants: map[string]services.TenantGovernancePolicy{}, Lifecycle: services.LifecyclePolicy{OrphanStagingTTLSeconds: 1}}); err != nil {
 		t.Fatalf("set policy: %v", err)
@@ -258,5 +256,134 @@ func TestQuarantineRestoreEndpoint(t *testing.T) {
 	}
 	if _, err := st.Open(context.Background(), "/quarantine/acme/docs/eicar.txt"); err == nil {
 		t.Fatalf("expected quarantine object to be removed after restore")
+	}
+}
+
+func TestTenantCostReportEndpoint(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	h := &HTTPServer{Verifier: verifier}
+	req := httptest.NewRequest(http.MethodGet, "/admin/v1/cost:tenants", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleTenantCostReport(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "tenants") {
+		t.Fatalf("expected tenants payload got %s", rr.Body.String())
+	}
+}
+
+func TestIntegrityVerifyEndpointDetectsCorruption(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{RequestTimeout: time.Second})
+	if _, err := uploads.Upload(context.Background(), "/tenants/acme/docs/a.txt", []byte("clean")); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	if err := st.AtomicWrite(context.Background(), "/tenants/acme/docs/a.txt", bytes.NewBufferString("tampered")); err != nil {
+		t.Fatalf("tamper: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/integrity:verify?sample_size=5", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleIntegrityVerify(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected 409 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "checksum_mismatch") {
+		t.Fatalf("expected checksum_mismatch got %s", rr.Body.String())
+	}
+}
+
+func TestIntegrityVerifyEndpointHonorsFailureThreshold(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{RequestTimeout: time.Second})
+	if _, err := uploads.Upload(context.Background(), "/tenants/acme/docs/a.txt", []byte("clean")); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	if err := st.AtomicWrite(context.Background(), "/tenants/acme/docs/a.txt", bytes.NewBufferString("tampered")); err != nil {
+		t.Fatalf("tamper: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/integrity:verify?sample_size=5&failure_threshold=1", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleIntegrityVerify(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"failure_threshold":1`) {
+		t.Fatalf("expected threshold in payload got %s", rr.Body.String())
+	}
+}
+
+func TestIntegrityVerifyEndpointIgnorePathsFalsePositive(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{RequestTimeout: time.Second})
+	path := "/tenants/acme/docs/a.txt"
+	if _, err := uploads.Upload(context.Background(), path, []byte("clean")); err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	if err := st.AtomicWrite(context.Background(), path, bytes.NewBufferString("tampered")); err != nil {
+		t.Fatalf("tamper: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/integrity:verify?sample_size=5&ignore_paths=/tenants/acme/docs/a.txt", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleIntegrityVerify(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), `"ignored_failures":1`) {
+		t.Fatalf("expected ignored failure count got %s", rr.Body.String())
+	}
+}
+
+func TestGovernancePolicyUpdateEndpointEmitsBeforeAfterHashAudit(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, nil, services.UploadPolicy{RequestTimeout: time.Second})
+	if err := uploads.SetGovernancePolicy(services.GovernancePolicy{Default: services.TenantGovernancePolicy{QuotaBytes: 10}, Tenants: map[string]services.TenantGovernancePolicy{}}); err != nil {
+		t.Fatalf("set initial policy: %v", err)
+	}
+	h := &HTTPServer{Verifier: verifier, Uploads: uploads}
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/v1/governance:policy", strings.NewReader(`{"policy":{"default":{"quota_bytes":20},"tenants":{}}}`))
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleGovernancePolicyUpdate(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "before_hash") || !strings.Contains(rr.Body.String(), "after_hash") {
+		t.Fatalf("expected hash payload got %s", rr.Body.String())
+	}
+	events := uploads.GovernanceEvents()
+	if len(events) == 0 || events[len(events)-1].Action != "policy_update" {
+		t.Fatalf("expected policy_update governance event, got %+v", events)
+	}
+	if !strings.Contains(events[len(events)-1].Reason, "before_hash=") || !strings.Contains(events[len(events)-1].Reason, "after_hash=") {
+		t.Fatalf("expected before/after hash reason, got %+v", events[len(events)-1])
+	}
+}
+
+func TestTenantEvidenceEndpointReturnsPointers(t *testing.T) {
+	verifier, _ := auth.NewJWTVerifier("secret", "", "", "")
+	h := &HTTPServer{Verifier: verifier}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/tenants/acme/evidence", http.NoBody)
+	req.Header.Set("Authorization", signAdminToken(t, "secret"))
+	rr := httptest.NewRecorder()
+	h.handleTenantEvidence(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "effective_policy") || !strings.Contains(rr.Body.String(), "last_review_export") {
+		t.Fatalf("expected evidence pointers payload got %s", rr.Body.String())
 	}
 }

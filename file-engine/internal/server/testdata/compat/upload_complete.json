@@ -1,0 +1,9 @@
+{
+  "upload_id": "<upload_id>",
+  "path": "/tenants/acme/docs/report.txt",
+  "stage_path": "<stage_path>",
+  "scan_status": "clean",
+  "checksum": "bd3b8369b536755b9871ece9d1ab95b1c9e8394dec2e32caf44c37801caa67e2",
+  "correlation_id": "req-compat-1",
+  "status": "completed"
+}
