@@ -1,9 +1,10 @@
 FROM php:8.5-fpm
 
 # System deps
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git unzip libzip-dev libpng-dev \
-    && docker-php-ext-install zip pdo pdo_mysql gd
+    && docker-php-ext-install zip pdo pdo_mysql gd \
+    && rm -rf /var/lib/apt/lists/*
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -16,5 +17,7 @@ RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
 RUN mkdir -p storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
+
+USER www-data
 
 CMD ["php", "-S", "0.0.0.0:8081", "api.php"]
