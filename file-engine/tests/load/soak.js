@@ -2,8 +2,11 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const base = __ENV.BASE_URL || 'http://localhost:8080';
-const token = __ENV.TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODIvcmVhbG1zL2ZpbGUtZW5naW5lIiwiYXVkIjpbImZpbGUtZW5naW5lLWRldiJdfQ.g1qwhSzsMoJxTr7cGVQLspyUBx7fxDswGzx-nmQlNOA';
+if (!__ENV.TOKEN) {
+  throw new Error('TOKEN is required. Set TOKEN in the environment before running k6.');
+}
 
+const token = __ENV.TOKEN;
 export const options = {
   stages: [
     { duration: '2m', target: 10 },
