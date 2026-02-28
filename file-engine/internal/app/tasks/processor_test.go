@@ -124,8 +124,8 @@ func TestProcessorMissingParamErrorsAreExplicit(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expected error for %s", tt.name)
 			}
-			if got := err.Error(); got != tt.expected {
-				t.Fatalf("expected %q, got %q", tt.expected, got)
+			if got := err.Error(); !strings.Contains(got, tt.expected) {
+				t.Fatalf("expected error containing %q, got %q", tt.expected, got)
 			}
 		})
 	}
@@ -172,6 +172,22 @@ func TestProcessorSeenKeysEvictToMaxEntries(t *testing.T) {
 	}
 	if st.calls != 3 {
 		t.Fatalf("expected exactly 3 storage calls, got %d", st.calls)
+	}
+}
+
+func TestProcessorReserveIdempotencyKeyInFlightAndDuplicate(t *testing.T) {
+	p := NewProcessorWithStorage(&processorTestStorage{})
+	task := &redisq.TaskPayload{Params: map[string]string{"idempotency_key": "idem-state"}}
+
+	if got := p.reserveIdempotencyKey(task); got != reservationReserved {
+		t.Fatalf("expected first reservation to reserve key, got %v", got)
+	}
+	if got := p.reserveIdempotencyKey(task); got != reservationInFlight {
+		t.Fatalf("expected second reservation while in-flight to be in-flight, got %v", got)
+	}
+	p.markSeen(task)
+	if got := p.reserveIdempotencyKey(task); got != reservationDuplicate {
+		t.Fatalf("expected reservation after markSeen to be duplicate, got %v", got)
 	}
 }
 

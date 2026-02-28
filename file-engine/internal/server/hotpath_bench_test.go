@@ -40,6 +40,8 @@ func BenchmarkHandleDownload(b *testing.B) {
 	req.Header.Set("Authorization", signedTokenBench(secret))
 
 	b.ReportAllocs()
+	b.ResetTimer()
+	requestID := 0
 	for b.Loop() {
 		rr := httptest.NewRecorder()
 		h.handleDownload(rr, req.Clone(context.Background()))
@@ -67,6 +69,7 @@ func BenchmarkHandleUploadComplete(b *testing.B) {
 	h := &HTTPServer{Verifier: verifier, ACLStore: acl, Uploads: uploads, Tenants: auth.NewInMemoryTenantResolver(map[string][]string{"alice": {"acme"}}), MaxUploadBytes: 4096, UploadTimeout: time.Second, sem: make(chan struct{}, 4), rateByTenant: map[string]int{}, rateByActor: map[string]int{}, rateReset: time.Now().Add(time.Minute)}
 
 	b.ReportAllocs()
+	b.ResetTimer()
 	for b.Loop() {
 		uploadID, err := uploads.StartResumableUpload("/tenants/acme/docs/profile.txt", "")
 		if err != nil {
@@ -76,7 +79,8 @@ func BenchmarkHandleUploadComplete(b *testing.B) {
 			b.Fatalf("chunk upload: %v", err)
 		}
 		req := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
-		req.Header.Set("X-Idempotency-Key", "bench-complete")
+		requestID++
+		req.Header.Set("X-Idempotency-Key", fmt.Sprintf("bench-complete-%d", requestID))
 		rr := httptest.NewRecorder()
 		h.handleUploadComplete(rr, req)
 		if rr.Code != http.StatusOK {

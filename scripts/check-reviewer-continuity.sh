@@ -70,13 +70,13 @@ security_required=false
 platform_required=false
 maintainer_required=false
 
-if grep -qE '^file-engine/internal/auth' <<<"$changed_paths"; then
+if grep -E -q '^file-engine/internal/auth' <<<"$changed_paths"; then
   security_required=true
 fi
-if grep -qE '^(monitoring/|observability/)' <<<"$changed_paths"; then
+if grep -E -q '^(monitoring/|observability/)' <<<"$changed_paths"; then
   platform_required=true
 fi
-if grep -qE '^docs/capability-ledger\.md$' <<<"$changed_paths"; then
+if grep -E -q '^docs/capability-ledger\.md$' <<<"$changed_paths"; then
   maintainer_required=true
 fi
 
@@ -88,7 +88,7 @@ contains_approved() {
   local approved="$1"
   shift
   for reviewer in "$@"; do
-    if rg -qx "$reviewer" <<<"$approved"; then
+    if grep -xFq "$reviewer" <<<"$approved"; then
       return 0
     fi
   done

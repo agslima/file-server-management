@@ -112,15 +112,20 @@ jobs:
       - name: Sanity check auth before k6
         run: |
           set -euo pipefail
-          code="$(curl -sS -o /dev/null -w '%{http_code}' \
+          preflight_body="$(mktemp)"
+          code="$(curl -sS -o "$preflight_body" -w '%{http_code}' \
             -H "Authorization: Bearer ${{ steps.load-test-jwt.outputs.token }}" \
             'http://localhost:8080/v1/objects?prefix=%2Ftenants%2Facme')"
 
           if [[ "$code" != "200" && "$code" != "404" ]]; then
             echo "Unexpected auth/list status: $code"
+            echo "Preflight response body:"
+            cat "$preflight_body"
             docker compose logs --no-color --tail=200 file-engine
             exit 1
           fi
+
+          rm -f "$preflight_body"
 
           echo "Preflight auth check returned HTTP $code"
          

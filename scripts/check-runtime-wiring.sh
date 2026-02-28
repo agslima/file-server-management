@@ -37,7 +37,7 @@ require_url() {
 }
 
 fail=0
-for var in JWT_JWKS_URL JWT_ISSUER JWT_AUDIENCE OTEL_EXPORTER_OTLP_ENDPOINT GOVERNANCE_POLICY_SOURCE GOVERNANCE_POLICY_SOURCE_HMAC_KEY AUDIT_IMMUTABLE_SINK_TYPE; do
+for var in JWT_AUDIENCE GOVERNANCE_POLICY_SOURCE_HMAC_KEY AUDIT_IMMUTABLE_SINK_TYPE; do
   require_non_empty "$var" || fail=1
 done
 
@@ -65,8 +65,11 @@ case "${AUDIT_IMMUTABLE_SINK_TYPE:-}" in
     ;;
 esac
 
-if [[ ! -f "${GOVERNANCE_POLICY_SOURCE:-}" ]]; then
-  echo "governance source envelope file not found: ${GOVERNANCE_POLICY_SOURCE:-}" >&2
+if [[ -z "${GOVERNANCE_POLICY_SOURCE:-}" ]]; then
+  echo "missing required env: GOVERNANCE_POLICY_SOURCE" >&2
+  fail=1
+elif [[ ! -f "${GOVERNANCE_POLICY_SOURCE}" ]]; then
+  echo "governance source envelope file not found: ${GOVERNANCE_POLICY_SOURCE}" >&2
   fail=1
 fi
 

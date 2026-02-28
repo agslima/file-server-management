@@ -38,6 +38,7 @@ type Processor struct {
 type seenKeyEntry struct {
 	key       string
 	expiresAt time.Time
+	inFlight  bool
 	index     int
 }
 
@@ -95,7 +96,8 @@ func NewProcessor(_ any) *Processor {
 }
 
 func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
-	if p.isDuplicate(t) {
+	reservation := p.reserveIdempotencyKey(t)
+	if reservation == reservationDuplicate || reservation == reservationInFlight {
 		return nil
 	}
 	actorID := strings.TrimSpace(t.Params["actor_id"])
@@ -168,14 +170,27 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
 
 	if err == nil {
 		p.markSeen(t)
+		return nil
 	}
-	return err
+	if reservation == reservationReserved {
+		p.releaseReservation(t)
+	}
+	return fmt.Errorf("task processing failed type=%s id=%s actor_id=%s: %w", t.Type, t.ID, actorID, err)
 }
 
-func (p *Processor) isDuplicate(t *redisq.TaskPayload) bool {
+type idempotencyReservationState int
+
+const (
+	reservationNotApplicable idempotencyReservationState = iota
+	reservationReserved
+	reservationDuplicate
+	reservationInFlight
+)
+
+func (p *Processor) reserveIdempotencyKey(t *redisq.TaskPayload) idempotencyReservationState {
 	key := strings.TrimSpace(t.Params["idempotency_key"])
 	if key == "" {
-		return false
+		return reservationNotApplicable
 	}
 
 	now := p.now()
@@ -183,15 +198,36 @@ func (p *Processor) isDuplicate(t *redisq.TaskPayload) bool {
 	defer p.mu.Unlock()
 	p.evictExpiredLocked(now)
 
-	entry, ok := p.seenKeys[key]
-	if !ok {
-		return false
+	if entry, ok := p.seenKeys[key]; ok {
+		if now.After(entry.expiresAt) {
+			delete(p.seenKeys, key)
+		} else if entry.inFlight {
+			return reservationInFlight
+		} else {
+			return reservationDuplicate
+		}
 	}
-	if now.After(entry.expiresAt) {
-		delete(p.seenKeys, key)
-		return false
+
+	entry := &seenKeyEntry{
+		key:       key,
+		expiresAt: now.Add(p.seenKeyTTL),
+		inFlight:  true,
 	}
-	return true
+	p.seenKeys[key] = entry
+	heap.Push(&p.seenKeyExpiries, entry)
+	p.evictOverflowLocked()
+	return reservationReserved
+}
+
+func (p *Processor) releaseReservation(t *redisq.TaskPayload) {
+	key := strings.TrimSpace(t.Params["idempotency_key"])
+	if key == "" {
+		return
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.seenKeys, key)
 }
 
 func (p *Processor) markSeen(t *redisq.TaskPayload) {
@@ -204,13 +240,17 @@ func (p *Processor) markSeen(t *redisq.TaskPayload) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.evictExpiredLocked(now)
-	expiresAt := now.Add(p.seenKeyTTL)
-	if existing, ok := p.seenKeys[key]; ok {
-		existing.expiresAt = expiresAt
-		heap.Fix(&p.seenKeyExpiries, existing.index)
-	} else {
-		entry := &seenKeyEntry{key: key, expiresAt: expiresAt}
+
+	entry, ok := p.seenKeys[key]
+	if !ok {
+		entry = &seenKeyEntry{key: key, index: -1}
 		p.seenKeys[key] = entry
+	}
+	entry.inFlight = false
+	entry.expiresAt = now.Add(p.seenKeyTTL)
+	if entry.index >= 0 && entry.index < len(p.seenKeyExpiries) {
+		heap.Fix(&p.seenKeyExpiries, entry.index)
+	} else {
 		heap.Push(&p.seenKeyExpiries, entry)
 	}
 	p.evictOverflowLocked()

@@ -42,6 +42,9 @@ fi
 if ! ./scripts/wait-for-http.sh "${file_engine_url}/readyz" 30; then
   fail "file-engine /readyz check failed file_engine_url=${file_engine_url}"
 fi
+if ! ./scripts/wait-for-http.sh "${backend_url}/readyz" 30; then
+  fail "backend /readyz check failed backend_url=${backend_url}"
+fi
 
 echo "[drill] verifying create-folder continuity"
 if ! BACKEND_URL="$backend_url" ./scripts/e2e/vs001_create_folder.sh; then
@@ -57,10 +60,9 @@ set +e
 revoke_status="$(curl -sS -o /dev/null -w '%{http_code}' \
   --connect-timeout 5 \
   --max-time 20 \
-  -X POST "${backend_url}/folders" \
+  "${backend_url}/auth/validate" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer ${revoked_token}" \
-  -d '{"path":"tenants/acme","folderName":"revoked-drill","requestedBy":"rotate-secrets-drill"}')"
+  -H "Authorization: Bearer ${revoked_token}")"
 revoke_curl_exit=$?
 set -e
 
