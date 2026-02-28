@@ -91,5 +91,5 @@ export default function () {
   });
   check(dlRes, { 'download status is 200 or 404': (r) => r.status === 200 || r.status === 404 });
 
-  sleep(0.25);
+  sleep(1);
 }
