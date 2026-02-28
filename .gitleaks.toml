@@ -1,12 +1,12 @@
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Allow k6 environment variable name TOKEN_JWT in load-test scripts"
+[allowlist]
+description = "Allow k6 environment variable name TOKEN and dummy JWTs in load-test scripts"
 paths = [
   '''file-engine/tests/load/smoke\.js''',
-  '''file-engine/tests/load/soak\.js''',
+  '''file-engine/tests/load/soak\.js'''
 ]
 regexes = [
-  '''__ENV\.TOKEN_JWT''',
+  '''__ENV\.TOKEN'''
 ]
