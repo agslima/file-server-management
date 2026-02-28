@@ -232,8 +232,8 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate security reviewer rotation references
         run: |
-          rg -n "Security reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
-          rg -n "Security" docs/ownership-backup-matrix.md
+          grep -n "Security reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
+          grep -n "Security" docs/ownership-backup-matrix.md
 
   platform-reviewer:
     name: Platform reviewer
@@ -246,8 +246,8 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate platform reviewer rotation references
         run: |
-          rg -n "Platform reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
-          rg -n "Platform" docs/ownership-backup-matrix.md
+          grep -n "Platform reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
+          grep -n "Platform" docs/ownership-backup-matrix.md
 
   reviewer-continuity:
     name: Reviewer continuity
@@ -331,6 +331,7 @@ jobs:
       - changes
       - backend
       - lint-backend
+      - frontend
       - file-engine
       - doc-drift
       - ledger-baseline

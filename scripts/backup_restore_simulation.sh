@@ -13,6 +13,18 @@ echo "[backup] starting local/dev backup simulation"
 echo "[backup] RTO/RPO targets db_restore=${RTO_DB_RESTORE_TARGET} db_rpo=${RPO_DB_TARGET} storage_restore=${RTO_STORAGE_RESTORE_TARGET} storage_rpo=${RPO_STORAGE_TARGET}"
 docker compose up -d postgres redis file-engine file-engine-worker >/dev/null
 
+echo "[backup] waiting for postgres readiness"
+pg_ready_timeout_seconds="${PG_READY_TIMEOUT_SECONDS:-60}"
+pg_ready_deadline=$((SECONDS + pg_ready_timeout_seconds))
+until docker compose exec -T postgres pg_isready -U file_engine -d file_engine >/dev/null 2>&1; do
+  if (( SECONDS >= pg_ready_deadline )); then
+    echo "[backup] postgres readiness check failed after ${pg_ready_timeout_seconds}s" >&2
+    exit 1
+  fi
+  sleep 2
+done
+echo "[backup] postgres is ready"
+
 DB_DUMP="$ART_DIR/db-${TS}.sql"
 STORAGE_TAR="$ART_DIR/storage-${TS}.tar.gz"
 

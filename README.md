@@ -555,7 +555,7 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="***"
 ```
 
-### 4) Canonical compose entry point
+### 5) Canonical compose entry point
 
 Use **repository-root `docker-compose.yml`** as the primary developer compose entry point.
 
