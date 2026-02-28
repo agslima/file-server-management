@@ -37,10 +37,17 @@ PY
 signature_mode="none"
 if [[ -n "${ACCESS_REVIEW_SIGNING_KEY:-}" ]]; then
   signature_mode="hmac-sha256"
-  python3 - <<'PY' "$json_out" "$sig_out" "$ACCESS_REVIEW_SIGNING_KEY"
+  ACCESS_REVIEW_SIGNING_KEY="$ACCESS_REVIEW_SIGNING_KEY" \
+  python3 - <<'PY' "$json_out" "$sig_out"
 import hashlib, hmac, sys
-src, dst, key = sys.argv[1], sys.argv[2], sys.argv[3]
+import os
+src, dst = sys.argv[1], sys.argv[2]
+key = os.environ["ACCESS_REVIEW_SIGNING_KEY"]
 with open(src, 'rb') as f:
+    data = f.read()
+digest = hmac.new(key.encode('utf-8'), data, hashlib.sha256).hexdigest()
+with open(dst, 'w', encoding='utf-8') as f:
+    f.write(digest + '\n')
     data = f.read()
 digest = hmac.new(key.encode('utf-8'), data, hashlib.sha256).hexdigest()
 with open(dst, 'w', encoding='utf-8') as f:
