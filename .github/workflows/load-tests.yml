@@ -27,8 +27,8 @@ jobs:
         run: ./scripts/wait-for-http.sh http://localhost:8080/readyz 180
       - name: Run smoke budget profile
         env:
-          TOKEN_JWT: ${{ secrets.TOKEN_JWT }}
-          TOKEN: ${{ secrets.TOKEN_JWT }}
+          TOKEN_JWT: ${{ secrets.JWT_TOKEN }}
+          TOKEN: ${{ secrets.JWT_TOKEN }}
         run: |
           cd file-engine
           BASE_URL=http://localhost:8080 k6 run tests/load/smoke.js
@@ -50,8 +50,8 @@ jobs:
         run: ./scripts/wait-for-http.sh http://localhost:8080/readyz 180
       - name: Run nightly soak budget profile
         env:
-          TOKEN_JWT: ${{ secrets.TOKEN_JWT }}
-          TOKEN: ${{ secrets.TOKEN_JWT }}
+          TOKEN_JWT: ${{ secrets.JWT_TOKEN }}
+          TOKEN: ${{ secrets.JWT_TOKEN }}
         run: |
           cd file-engine
           BASE_URL=http://localhost:8080 k6 run tests/load/soak.js
