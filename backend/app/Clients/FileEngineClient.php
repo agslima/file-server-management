@@ -85,7 +85,7 @@ class FileEngineClient
 
     private function throwIfError(Response $response): Response
     {
-        if ($response->status() < 300) {
+        if ($response->successful()) {
             return $response;
         }
 

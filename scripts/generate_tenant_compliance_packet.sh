@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
 : "${TOKEN:?set TOKEN to an admin bearer token}"
 : "${TENANT_ID:?set TENANT_ID to target tenant}"
 : "${BASE_URL:=http://localhost:8080}"
 : "${REPORT_MONTH:=$(date -u +%Y-%m)}"
+
+is_localhost_http() {
+  [[ "$1" =~ ^http://(localhost|127\.0\.0\.1|\[::1\])(:[0-9]+)?(/|$) ]]
+}
+
+if [[ "$BASE_URL" != https://* ]] && ! is_localhost_http "$BASE_URL"; then
+  echo "BASE_URL must use https:// for non-local hosts to protect bearer tokens" >&2
+  exit 2
+fi
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 is required to URL-encode tenant path/query parameters" >&2
@@ -31,38 +42,39 @@ ENCODED_TENANT_ID="$(encode_uri_component "$TENANT_ID")" || {
 : "${OUT_DIR:=artifacts/compliance/tenants/${ENCODED_TENANT_ID}/${REPORT_MONTH}}"
 mkdir -p "$OUT_DIR"
 
+auth_header=(-H "Authorization: Bearer $TOKEN")
+
+curl_common_get() {
+  local url="$1"
+  curl --fail --silent --show-error \
+    --connect-timeout 5 --max-time 30 \
+    --retry 3 --retry-delay 2 --retry-connrefused --retry-max-time 30 \
+    "${auth_header[@]}" \
+    -H "Accept: application/json" \
+    "$url"
+}
+
 echo "[compliance] generating tenant packet for tenant=${TENANT_ID} month=${REPORT_MONTH}"
 
 ACCESS_DIR="$OUT_DIR/access-review"
 mkdir -p "$ACCESS_DIR"
 TOKEN="$TOKEN" BASE_URL="$BASE_URL" TENANT_ID="$TENANT_ID" REPORT_MONTH="$REPORT_MONTH" OUT_DIR="$ACCESS_DIR" \
-  ./file-engine/scripts/generate_monthly_access_review_report.sh
+  "${SCRIPT_DIR}/../file-engine/scripts/generate_monthly_access_review_report.sh"
 
 echo "[compliance] snapshotting tenant evidence endpoint"
 EVIDENCE_JSON="$OUT_DIR/tenant-evidence.json"
-curl --fail --silent --show-error \
-  --connect-timeout 5 --max-time 30 \
-  --retry 3 --retry-delay 2 --retry-connrefused --retry-max-time 30 \
-  "${BASE_URL}/admin/tenants/${ENCODED_TENANT_ID}/evidence" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: application/json" > "$EVIDENCE_JSON"
+curl_common_get "${BASE_URL}/admin/tenants/${ENCODED_TENANT_ID}/evidence" > "$EVIDENCE_JSON"
 
 echo "[compliance] snapshotting effective governance policy"
 EFFECTIVE_JSON="$OUT_DIR/effective-policy.json"
-curl --fail --silent --show-error \
-  --connect-timeout 5 --max-time 30 \
-  --retry 3 --retry-delay 2 --retry-connrefused --retry-max-time 30 \
-  "${BASE_URL}/admin/v1/governance:effective?tenant_id=${ENCODED_TENANT_ID}" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Accept: application/json" > "$EFFECTIVE_JSON"
+curl_common_get "${BASE_URL}/admin/v1/governance:effective?tenant_id=${ENCODED_TENANT_ID}" > "$EFFECTIVE_JSON"
 
 echo "[compliance] triggering and snapshotting drift check"
 DRIFT_JSON="$OUT_DIR/drift-status.json"
 curl --fail --silent --show-error \
   --connect-timeout 5 --max-time 30 \
-  --retry 3 --retry-delay 2 --retry-connrefused --retry-max-time 30 \
   -X POST "${BASE_URL}/admin/v1/governance:drift-check" \
-  -H "Authorization: Bearer $TOKEN" \
+  "${auth_header[@]}" \
   -H "Accept: application/json" > "$DRIFT_JSON"
 
 MANIFEST="$OUT_DIR/manifest.txt"

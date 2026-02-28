@@ -19,7 +19,8 @@ echo "[integrity] calling /admin/v1/integrity:verify sample_size=${SAMPLE_SIZE} 
 url="${BASE_URL}/admin/v1/integrity:verify?sample_size=${SAMPLE_SIZE}&failure_threshold=${FAILURE_THRESHOLD}"
 if [[ -n "$IGNORE_PATHS" ]]; then
   echo "[integrity] false-positive suppression enabled for ignore_paths=${IGNORE_PATHS}"
-  url="${url}&ignore_paths=${IGNORE_PATHS}"
+  encoded_ignore_paths="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$IGNORE_PATHS")"
+  url="${url}&ignore_paths=${encoded_ignore_paths}"
 fi
 
 status="$(curl -sS --connect-timeout 5 --max-time 30 -o "$tmpfile" -w '%{http_code}' -X POST "$url" -H "Authorization: Bearer ${TOKEN}")"

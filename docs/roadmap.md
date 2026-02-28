@@ -27,7 +27,7 @@ A milestone is **complete** only if tests, demo evidence, and doc updates ship i
 | Milestone 7 — Production Operations Closure | ✅ complete | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
 | Milestone 8 — Sustainability & Ownership Resilience | ✅ complete | `CL-053`, `CL-054` |
 | Milestone 9 — Productization & Operations Expansion | ✅ complete | `CL-061`, `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068` |
-| Milestone 10 — Remaining Target-State Closure | ✅ complete | `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068`, `CL-069`, `CL-070` |
+| Milestone 10 — Remaining Target-State Closure | ✅ complete | `CL-069`, `CL-070` |
 | Milestone 11 — Performance Budgets & Capacity Planning | ✅ complete | `CL-071` |
 | Milestone 12 — Continuous Security Posture Hardening | ✅ complete | `CL-072` |
 | Milestone 13 — Product UX End-to-End Demo Flows | ✅ complete | `CL-009` |
@@ -205,7 +205,7 @@ All items below map to `docs/capability-ledger.md` claims with runnable validati
 
 **Goal:** Close the final ledger-documented target-state gaps.
 
-Milestone 10 is the closure/hardening follow-up to **Milestone 9 — Productization & Operations Expansion**, where `CL-062`, `CL-063`, `CL-064`, `CL-065`, and `CL-066`..`CL-068` are now demonstrated as closed and baseline-validated.
+Milestone 10 is the closure/hardening follow-up to **Milestone 9 — Productization & Operations Expansion**, focused on the incremental closure controls beyond Milestone 9's productization evidence.
 
 **Status:** ✅ complete
 
@@ -213,13 +213,8 @@ Milestone 10 is the closure/hardening follow-up to **Milestone 9 — Productizat
 
 Each closure item below corresponds to an existing capability-ledger entry with a runnable validation command and PASS status.
 
-1. Scale/fairness operational closure is baseline-validated (`CL-062`).
-2. Data durability and recovery contract closure is baseline-validated (`CL-063`).
-3. Multi-tenant compliance productization is baseline-validated (`CL-064`).
-4. API/SDK external-consumer hardening is baseline-validated (`CL-065`).
-5. Async mutation expansion beyond create-folder is baseline-validated (`CL-066`..`CL-068`).
-6. Human-resilience reviewer continuity controls are baseline-validated (`CL-069`).
-7. Deployment realism controls are baseline-validated (`CL-070`).
+1. Human-resilience reviewer continuity controls are baseline-validated (`CL-069`).
+2. Deployment realism controls are baseline-validated (`CL-070`).
 
 ---
 

@@ -40,6 +40,12 @@ export default function () {
 
   if (initRes.status === 200) {
     const uploadId = initRes.json('upload_id');
+    if (!uploadId || typeof uploadId !== 'string' || uploadId.trim() === '') {
+      check(initRes, { 'upload id present': () => false });
+      sleep(0.5);
+      return;
+    }
+
     const chunkRes = http.put(`${base}/v1/uploads/${uploadId}:chunk?offset=0`, 'soak', {
       headers: { Authorization: `Bearer ${token}` },
       tags: { operation: 'mutation' },
@@ -56,9 +62,9 @@ export default function () {
   const dlRes = http.get(`${base}/v1/objects:download?path=${encodeURIComponent('/tenants/acme/docs/a.txt')}`, {
     headers: { Authorization: `Bearer ${token}` },
     tags: { operation: 'download' },
-    responseCallback: http.expectedStatuses(200, 404),
+    responseCallback: http.expectedStatuses(200),
   });
-  check(dlRes, { 'download status ok-ish': (r) => r.status === 200 || r.status === 404 });
+  check(dlRes, { 'download status ok': (r) => r.status === 200 });
 
   sleep(0.5);
 }
