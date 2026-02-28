@@ -26,19 +26,25 @@ class FileEngineClient
         return $this->http->withHeaders([]);
     }
 
+
+    private function buildUrl(string $path): string
+    {
+        return rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+    }
+
     public function post(string $path, array $payload = [], array $headers = []): Response
     {
-        return $this->request()->withHeaders($headers)->post(rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/'), $payload);
+        return $this->request()->withHeaders($headers)->post($this->buildUrl($path), $payload);
     }
 
     public function get(string $path, array $headers = []): Response
     {
-        return $this->request()->withHeaders($headers)->get(rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/'));
+        return $this->request()->withHeaders($headers)->get($this->buildUrl($path));
     }
 
     public function putRaw(string $path, string $content, array $headers = []): Response
     {
-        return $this->request()->withHeaders($headers)->withBody($content, 'application/octet-stream')->put(rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/'));
+        return $this->request()->withHeaders($headers)->withBody($content, 'application/octet-stream')->put($this->buildUrl($path));
     }
 
     public function postOrThrow(string $path, array $payload = [], array $headers = []): Response

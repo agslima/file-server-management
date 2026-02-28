@@ -28,9 +28,17 @@ func NewGRPCClient(addr string, opts ...grpc.DialOption) (*GRPCClient, error) {
 func (c *GRPCClient) Close() error { return c.conn.Close() }
 
 func (c *GRPCClient) CreateFolder(ctx context.Context, req *pb.CreateFolderRequest) (*pb.CreateFolderResponse, error) {
-	return c.client.CreateFolder(ctx, req)
+	resp, err := c.client.CreateFolder(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("CreateFolder: %w", err)
+	}
+	return resp, nil
 }
 
 func (c *GRPCClient) GetTaskStatus(ctx context.Context, req *pb.TaskStatusRequest) (*pb.TaskStatusResponse, error) {
-	return c.client.GetTaskStatus(ctx, req)
+	resp, err := c.client.GetTaskStatus(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("GetTaskStatus: %w", err)
+	}
+	return resp, nil
 }

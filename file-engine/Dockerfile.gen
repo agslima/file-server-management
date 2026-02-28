@@ -4,7 +4,10 @@ RUN apk add --no-cache bash curl unzip git protoc \
     && addgroup -S coder \
     && adduser -S -G coder coder
 
-ENV PATH=$PATH:/root/go/bin
+ENV GOBIN=/usr/local/libexec/protoc-plugins
+ENV PATH=${PATH}:${GOBIN}
+
+RUN mkdir -p "${GOBIN}" && chmod 755 "${GOBIN}"
 
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.29.0
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
@@ -12,5 +15,6 @@ RUN go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
 
 WORKDIR /work
 COPY --chown=coder:coder . /work
+RUN chown -R coder:coder "${GOBIN}"
 USER coder
 CMD ["make", "proto"]

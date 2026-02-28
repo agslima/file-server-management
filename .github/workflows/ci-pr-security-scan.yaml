@@ -19,7 +19,8 @@ jobs:
     name: Secret Scan (Gitleaks)
     continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    permissions: 
+    permissions:
+      contents: read
       pull-requests: write
     timeout-minutes: 10
     steps:
@@ -50,13 +51,13 @@ jobs:
           restore-keys: |
             trivy-db-${{ runner.os }}-
             
-      - name: Trivy filesystem scan (libraries only)
+      - name: Trivy filesystem scan (os + libraries)
         uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
         with:
           scan-type: 'fs'
           scan-ref: .
           scanners: 'vuln'
-          vuln-type: 'library'
+          vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
           format: 'table'

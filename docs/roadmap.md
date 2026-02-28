@@ -9,7 +9,7 @@ Progress is only considered “done” when it’s provable via the Capability L
 [//]: # (review_cadence: Monthly)
 [//]: # (last_reviewed: 2026-02-27)
 
-A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
+A milestone is **complete** only if tests, demo evidence, and doc updates ship in the same PR.
 
 ---
 
@@ -17,14 +17,14 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 | Milestone | Status | Ledger evidence |
 | :-- | :--: | :-- |
-| Milestone 0 — Baseline Integrity | ✅ done | `CL-011`, `CL-034`, `CL-041` |
-| Milestone 1 — Read Path Baseline | ✅ done | `CL-012` |
-| Milestone 2 — Write Path Baseline | ✅ done | `CL-003`, `CL-004`, `CL-005`, `CL-017`, `CL-020` |
-| Milestone 3 — Upload Pipeline | ✅ done | `CL-025`, `CL-033`, `CL-040` |
-| Milestone 4 — Observability & Audit Sink | ✅ done | `CL-035`, `CL-038`, `CL-039` |
-| Milestone 5 — Governance Hardening | ✅ done | `CL-041` |
-| Milestone 6 — Target-State Hardening Promotions | ✅ done | `CL-042`, `CL-043`, `CL-044`, `CL-045`, `CL-046` |
-| Milestone 7 — Production Operations Closure | ✅ done | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
+| Milestone 0 — Baseline Integrity | ✅ complete | `CL-011`, `CL-034`, `CL-041` |
+| Milestone 1 — Read Path Baseline | ✅ complete | `CL-012` |
+| Milestone 2 — Write Path Baseline | ✅ complete | `CL-003`, `CL-004`, `CL-005`, `CL-017`, `CL-020` |
+| Milestone 3 — Upload Pipeline | ✅ complete | `CL-025`, `CL-033`, `CL-040` |
+| Milestone 4 — Observability & Audit Sink | ✅ complete | `CL-035`, `CL-038`, `CL-039` |
+| Milestone 5 — Governance Hardening | ✅ complete | `CL-041` |
+| Milestone 6 — Target-State Hardening Promotions | ✅ complete | `CL-042`, `CL-043`, `CL-044`, `CL-045`, `CL-046` |
+| Milestone 7 — Production Operations Closure | ✅ complete | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
 | Milestone 8 — Sustainability & Ownership Resilience | ✅ complete | `CL-053`, `CL-054` |
 | Milestone 9 — Productization & Operations Expansion | ✅ complete | `CL-061`, `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068` |
 | Milestone 10 — Remaining Target-State Closure | ✅ complete | `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068`, `CL-069`, `CL-070` |
@@ -204,6 +204,8 @@ All items below map to `docs/capability-ledger.md` claims with runnable validati
 ## Milestone 10 — Remaining Target-State Closure (52–64 weeks)
 
 **Goal:** Close the final ledger-documented target-state gaps.
+
+Milestone 10 is the closure/hardening follow-up to **Milestone 9 — Productization & Operations Expansion**, where `CL-062`, `CL-063`, `CL-064`, `CL-065`, and `CL-066`..`CL-068` are now demonstrated as closed and baseline-validated.
 
 **Status:** ✅ complete
 

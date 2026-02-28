@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: file-platform
+  name: ${NAMESPACE}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: file-engine-config
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 data:
   REDIS_ADDR: redis:6379
   FILE_BASE_ROOT: /mnt/files
@@ -19,7 +19,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 spec:
   replicas: 1
   selector:
@@ -62,7 +62,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 spec:
   selector:
     app: redis
@@ -74,7 +74,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 spec:
   replicas: 1
   selector:
@@ -124,7 +124,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 spec:
   selector:
     app: postgres
@@ -136,7 +136,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: file-engine
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 spec:
   replicas: 1
   selector:
@@ -203,7 +203,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: file-engine
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 spec:
   selector:
     app: file-engine
@@ -219,7 +219,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: file-engine-worker
-  namespace: file-platform
+  namespace: ${NAMESPACE}
 spec:
   replicas: 1
   selector:

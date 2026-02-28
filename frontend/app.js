@@ -18,8 +18,8 @@ async function request(url, options = {}) {
   const res = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
       ...(options.headers || {}),
+      ...(!options.headers || !('Content-Type' in options.headers) ? { 'Content-Type': 'application/json' } : {}),
     },
   });
   const text = await res.text();
@@ -76,10 +76,12 @@ async function runUploadFlow() {
     headers: authHeaders(),
   });
   const uploadId = init.upload_id;
+  const uploadFile = $("uploadBody").files?.[0];
+  const uploadBody = uploadFile ?? $("uploadBody").value;
   await request(`${backend()}/uploads/${uploadId}/chunk`, {
     method: 'PUT',
-    body: $("uploadBody").value,
-    headers: authHeaders(),
+    body: uploadBody,
+    headers: { ...authHeaders(), 'Content-Type': 'application/octet-stream' },
   });
   const complete = await request(`${backend()}/uploads/${uploadId}/complete`, {
     method: 'POST',

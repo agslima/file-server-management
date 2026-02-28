@@ -20,4 +20,5 @@ RUN mkdir -p storage bootstrap/cache \
 
 USER www-data
 
+# Development-only entrypoint: php -S is for local/demo use and is not production-grade.
 CMD ["php", "-S", "0.0.0.0:8081", "api.php"]

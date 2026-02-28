@@ -52,11 +52,22 @@ export default function () {
 
   const createBody = asJSON(createRes);
   if (createBody.task_id) {
-    const taskRes = http.get(`${base}/v1/tasks/${createBody.task_id}`, {
-      headers,
-      tags: { operation: 'task_status' },
-    });
-    check(taskRes, { 'task status reachable': (r) => r.status === 200 });
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const taskRes = http.get(`${base}/v1/tasks/${createBody.task_id}`, {
+        headers,
+        tags: { operation: 'task_status' },
+      });
+      const reachable = check(taskRes, { 'task status reachable': (r) => r.status === 200 });
+      if (reachable) {
+        const taskBody = asJSON(taskRes);
+        if (taskBody.status === 'completed' || taskBody.status === 'failed') {
+          break;
+        }
+      }
+      if (attempt < 3) {
+        sleep(0.5);
+      }
+    }
   }
 
   const initRes = http.post(
