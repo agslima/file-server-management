@@ -48,10 +48,6 @@ with open(src, 'rb') as f:
 digest = hmac.new(key.encode('utf-8'), data, hashlib.sha256).hexdigest()
 with open(dst, 'w', encoding='utf-8') as f:
     f.write(digest + '\n')
-    data = f.read()
-digest = hmac.new(key.encode('utf-8'), data, hashlib.sha256).hexdigest()
-with open(dst, 'w', encoding='utf-8') as f:
-    f.write(digest + '\n')
 PY
 fi
 

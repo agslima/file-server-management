@@ -88,7 +88,7 @@ contains_approved() {
   local approved="$1"
   shift
   for reviewer in "$@"; do
-    if grep -xFq "$reviewer" <<<"$approved"; then
+    if grep -F -x -q "$reviewer" <<<"$approved"; then
       return 0
     fi
   done

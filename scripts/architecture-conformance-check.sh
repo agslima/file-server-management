@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd)"
+# shellcheck source=scripts/lib/utils.sh
+source "${ROOT_DIR}/scripts/lib/utils.sh"
 
 cd "$ROOT_DIR"
 
@@ -65,16 +67,6 @@ required_api_methods=(
   '`InitiateUpload`'
   '`CompleteUpload`'
 )
-
-contains_literal() {
-  local value="$1"
-  local file="$2"
-  if command -v rg >/dev/null 2>&1; then
-    rg -Fq "$value" "$file"
-  else
-    grep -Fq "$value" "$file"
-  fi
-}
 
 for item in "${required_matrix_entries[@]}"; do
   if ! contains_literal "$item" "$MATRIX"; then

@@ -15,12 +15,15 @@ const engine = () => $("engineBase").value.replace(/\/$/, '');
 const authHeaders = () => (state.token ? { Authorization: `Bearer ${state.token}` } : {});
 
 async function request(url, options = {}) {
+  const incomingHeaders = options.headers || {};
+  const hasContentType = Object.keys(incomingHeaders).some((key) => key.toLowerCase() === 'content-type');
+  const headers = hasContentType
+    ? { ...incomingHeaders }
+    : { 'Content-Type': 'application/json', ...incomingHeaders };
+
   const res = await fetch(url, {
     ...options,
-    headers: {
-      ...(options.headers || {}),
-      ...(!options.headers || !('Content-Type' in options.headers) ? { 'Content-Type': 'application/json' } : {}),
-    },
+    headers,
   });
   const text = await res.text();
   const body = text ? safeJson(text) : null;
@@ -106,11 +109,15 @@ async function listDlq() {
   out('DLQ list', data);
 }
 
-async function retryDlq() {
+async function retryDlq(id) {
   if (!state.dlq.length) throw new Error('No DLQ entries loaded. Click list first.');
+  const entry = id ? state.dlq.find((e) => e.id === id) : state.dlq[0];
+  if (!entry || !entry.id) {
+    throw new Error('Selected DLQ entry not found. Refresh the list and try again.');
+  }
   const data = await request(`${engine()}/admin/v1/scan-dlq`, {
     method: 'POST',
-    body: JSON.stringify({ id: state.dlq[0].id }),
+    body: JSON.stringify({ id: entry.id }),
     headers: authHeaders(),
   });
   out('DLQ retry', data);
@@ -175,7 +182,7 @@ wire('restoreBtn', () =>
   mutate('/objects/restore', { path: tenantPath($("restorePath").value), force_reprocess: false }, 'Restore object')
 );
 wire('dlqBtn', listDlq);
-wire('retryDlqBtn', retryDlq);
+wire('retryDlqBtn', () => retryDlq(state.dlq[0]?.id));
 wire('cleanupBtn', cleanupQuarantine);
 wire('effectivePolicyBtn', effectivePolicy);
 wire('driftBtn', driftStatus);

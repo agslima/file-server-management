@@ -8,5 +8,5 @@ paths = [
   '''file-engine/tests/load/soak\.js'''
 ]
 regexes = [
-  '''__ENV\.TOKEN'''
+  '''__ENV\.(TOKEN|TOKEN_JWT)\b'''
 ]

@@ -148,6 +148,10 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
 			err = missingParamsError("path")
 			break
 		}
+		if actorID == "" {
+			err = errors.New("governed delete requires actor identifier")
+			break
+		}
 		if p.executor == nil {
 			err = errors.New("governed delete requires mutation executor")
 			break
@@ -157,6 +161,10 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
 		path := t.Params["path"]
 		if path == "" {
 			err = missingParamsError("path")
+			break
+		}
+		if actorID == "" {
+			err = errors.New("quarantine restore requires actor identifier")
 			break
 		}
 		if p.executor == nil {

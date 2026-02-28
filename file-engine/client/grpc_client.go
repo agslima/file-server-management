@@ -6,7 +6,6 @@ import (
 
 	pb "github.com/example/file-engine/pkg/generated"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type GRPCClient struct {
@@ -16,7 +15,7 @@ type GRPCClient struct {
 
 func NewGRPCClient(addr string, opts ...grpc.DialOption) (*GRPCClient, error) {
 	if len(opts) == 0 {
-		opts = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+		return nil, fmt.Errorf("missing grpc.DialOption: explicit transport credentials required")
 	}
 	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
@@ -25,7 +24,12 @@ func NewGRPCClient(addr string, opts ...grpc.DialOption) (*GRPCClient, error) {
 	return &GRPCClient{conn: conn, client: pb.NewFileEngineClient(conn)}, nil
 }
 
-func (c *GRPCClient) Close() error { return c.conn.Close() }
+func (c *GRPCClient) Close() error {
+	if c == nil || c.conn == nil {
+		return nil
+	}
+	return c.conn.Close()
+}
 
 func (c *GRPCClient) CreateFolder(ctx context.Context, req *pb.CreateFolderRequest) (*pb.CreateFolderResponse, error) {
 	resp, err := c.client.CreateFolder(ctx, req)

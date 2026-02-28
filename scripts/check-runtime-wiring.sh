@@ -41,9 +41,15 @@ for var in JWT_AUDIENCE GOVERNANCE_POLICY_SOURCE_HMAC_KEY AUDIT_IMMUTABLE_SINK_T
   require_non_empty "$var" || fail=1
 done
 
-require_url JWT_JWKS_URL || fail=1
-require_url JWT_ISSUER || fail=1
-require_url OTEL_EXPORTER_OTLP_ENDPOINT || fail=1
+if [[ -n "${JWT_JWKS_URL:-}" ]]; then
+  require_url JWT_JWKS_URL || fail=1
+fi
+if [[ -n "${JWT_ISSUER:-}" ]]; then
+  require_url JWT_ISSUER || fail=1
+fi
+if [[ -n "${OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]]; then
+  require_url OTEL_EXPORTER_OTLP_ENDPOINT || fail=1
+fi
 
 case "${AUDIT_IMMUTABLE_SINK_TYPE:-}" in
   siem)

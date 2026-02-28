@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+# shellcheck source=scripts/lib/utils.sh
+source "${SCRIPT_DIR}/lib/utils.sh"
+
 required_refs=(
   "README.md:OWNERS"
   "docs/governance.md:OWNERS"
@@ -30,16 +34,6 @@ required_codeowners_scopes=(
 [[ -f .github/OWNERS ]] || { echo ".github/OWNERS missing" >&2; exit 1; }
 [[ -f .github/codeowners ]] || { echo ".github/codeowners missing" >&2; exit 1; }
 
-contains_literal() {
-  local value="$1"
-  local file="$2"
-  if command -v rg >/dev/null 2>&1; then
-    rg -Fq "$value" "$file"
-  else
-    grep -Fq "$value" "$file"
-  fi
-}
-
 for ref in "${required_refs[@]}"; do
   file="${ref%%:*}"
   needle="${ref##*:}"
@@ -54,6 +48,11 @@ done
 for scope in "${required_codeowners_scopes[@]}"; do
   contains_literal "$scope" .github/codeowners || { echo ".github/codeowners missing required critical scope: $scope" >&2; exit 1; }
 done
+
+[[ -f docs/prod-checklist.md ]] || {
+  echo "docs/prod-checklist.md not found" >&2
+  exit 1
+}
 
 contains_literal "new maintainer drill executed" docs/prod-checklist.md || {
   echo "docs/prod-checklist.md missing release gate: new maintainer drill executed" >&2

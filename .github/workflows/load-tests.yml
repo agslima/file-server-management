@@ -51,6 +51,11 @@ jobs:
             echo 'profiles=["smoke"]' >> "$GITHUB_OUTPUT"
             
           elif [[ "$EVENT" == "workflow_dispatch" ]]; then
+            if [[ "$INPUT" != "all" && "$INPUT" != "smoke" && "$INPUT" != "soak" ]]; then
+              echo "Invalid manual profile input: '$INPUT'. Allowed values: all, smoke, soak." >&2
+              exit 1
+            fi
+
             if [[ "$INPUT" == "all" ]]; then
               echo "Routing to BOTH tests for manual trigger."
               echo 'profiles=["smoke", "soak"]' >> "$GITHUB_OUTPUT"
@@ -66,6 +71,7 @@ jobs:
 
   # 2. The Execution: Spawns exactly the jobs we need, with zero "Skipped" clutter
   k6:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: setup-k6-matrix
     name: k6 ${{ matrix.profile }} budget gate
     runs-on: ubuntu-latest
