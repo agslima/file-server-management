@@ -31,3 +31,17 @@ Expected terminal marker: `KIND_SMOKE_OK`.
 ```
 
 Expected terminal marker: `K8S_ROLLBACK_OK`.
+
+## Secret bootstrap (required)
+
+Create runtime secrets before or during apply:
+
+```bash
+kubectl create namespace file-platform --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n file-platform create secret generic file-engine-secrets \
+  --from-literal=POSTGRES_DSN="postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable" \
+  --from-literal=JWT_SECRET="dev-secret" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+`./scripts/k8s/kind_smoke.sh` also creates/updates this Secret from `POSTGRES_DSN` and `JWT_SECRET` env vars.

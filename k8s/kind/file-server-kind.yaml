@@ -4,16 +4,6 @@ metadata:
   name: file-platform
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: file-engine-secrets
-  namespace: file-platform
-type: Opaque
-stringData:
-  POSTGRES_DSN: postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable
-  JWT_SECRET: dev-secret
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: file-engine-config
@@ -40,11 +30,33 @@ spec:
       labels:
         app: redis
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
           image: redis:7.2
           ports:
             - containerPort: 6379
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+            - name: redis-tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: redis-data
+          emptyDir: {}
+        - name: redis-tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -73,6 +85,13 @@ spec:
       labels:
         app: postgres
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
           image: postgres:16
@@ -85,6 +104,21 @@ spec:
               value: fileengine
           ports:
             - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: postgres-data
+          emptyDir: {}
+        - name: postgres-tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -120,8 +154,17 @@ spec:
           envFrom:
             - configMapRef:
                 name: file-engine-config
-            - secretRef:
-                name: file-engine-secrets
+          env:
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: file-engine-secrets
+                  key: POSTGRES_DSN
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: file-engine-secrets
+                  key: JWT_SECRET
           ports:
             - containerPort: 8080
             - containerPort: 50051
@@ -169,6 +212,13 @@ spec:
       labels:
         app: file-engine-worker
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: file-engine-worker
           image: file-engine-worker:kind
@@ -176,5 +226,29 @@ spec:
           envFrom:
             - configMapRef:
                 name: file-engine-config
-            - secretRef:
-                name: file-engine-secrets
+          env:
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: file-engine-secrets
+                  key: POSTGRES_DSN
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: file-engine-secrets
+                  key: JWT_SECRET
+          volumeMounts:
+            - name: worker-storage
+              mountPath: /mnt/files
+            - name: worker-tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: worker-storage
+          emptyDir: {}
+        - name: worker-tmp
+          emptyDir: {}

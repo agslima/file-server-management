@@ -26,7 +26,7 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 | Milestone 6 — Target-State Hardening Promotions | ✅ done | `CL-042`, `CL-043`, `CL-044`, `CL-045`, `CL-046` |
 | Milestone 7 — Production Operations Closure | ✅ done | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
 | Milestone 8 — Sustainability & Ownership Resilience | ✅ complete | `CL-053`, `CL-054` |
-| Milestone 9 — Productization & Operations Expansion | ✅ complete | `CL-055`, `CL-056`, `CL-057`, `CL-058`, `CL-059`, `CL-060`, `CL-061` |
+| Milestone 9 — Productization & Operations Expansion | ✅ complete | `CL-061`, `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068` |
 | Milestone 10 — Remaining Target-State Closure | ✅ complete | `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068`, `CL-069`, `CL-070` |
 | Milestone 11 — Performance Budgets & Capacity Planning | ✅ complete | `CL-071` |
 | Milestone 12 — Continuous Security Posture Hardening | ✅ complete | `CL-072` |

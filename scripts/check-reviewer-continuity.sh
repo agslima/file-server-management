@@ -28,11 +28,43 @@ api="https://api.github.com/repos/${repo}"
 accept='Accept: application/vnd.github+json'
 auth="Authorization: Bearer ${GITHUB_TOKEN}"
 
-files_json="$(curl -fsSL -H "$accept" -H "$auth" "${api}/pulls/${pr_number}/files?per_page=100")"
-reviews_json="$(curl -fsSL -H "$accept" -H "$auth" "${api}/pulls/${pr_number}/reviews?per_page=100")"
+fetch_paginated_array() {
+  local endpoint="$1"
+  local page=1
+  local merged='[]'
+
+  while :; do
+    local page_json
+    page_json="$(curl -fsSL -H "$accept" -H "$auth" "${endpoint}&page=${page}")"
+
+    if [[ "$(jq -r 'type' <<<"$page_json")" != "array" ]]; then
+      echo "reviewer continuity check failed: non-array response for ${endpoint}" >&2
+      exit 1
+    fi
+
+    merged="$(jq -c --argjson current "$merged" --argjson next "$page_json" '$current + $next' <<<"null")"
+    local count
+    count="$(jq 'length' <<<"$page_json")"
+    if (( count < 100 )); then
+      break
+    fi
+    page=$((page + 1))
+  done
+
+  echo "$merged"
+}
+
+files_json="$(fetch_paginated_array "${api}/pulls/${pr_number}/files?per_page=100")"
+reviews_json="$(fetch_paginated_array "${api}/pulls/${pr_number}/reviews?per_page=100")"
 
 changed_paths="$(jq -r '.[].filename' <<<"$files_json")"
-approved_reviewers="$(jq -r '[.[] | select(.state=="APPROVED") | .user.login] | unique[]' <<<"$reviews_json" || true)"
+approved_reviewers="$(jq -r '
+  sort_by(.submitted_at // "")
+  | group_by(.user.login)
+  | map(last)
+  | map(select(.state == "APPROVED"))
+  | .[].user.login
+' <<<"$reviews_json" || true)"
 
 security_required=false
 platform_required=false

@@ -12,6 +12,9 @@ if [[ -z "$TOKEN" ]]; then
   exit 2
 fi
 
+tmpfile="$(mktemp)"
+trap 'rm -f "$tmpfile"' EXIT
+
 echo "[integrity] calling /admin/v1/integrity:verify sample_size=${SAMPLE_SIZE} failure_threshold=${FAILURE_THRESHOLD}"
 url="${BASE_URL}/admin/v1/integrity:verify?sample_size=${SAMPLE_SIZE}&failure_threshold=${FAILURE_THRESHOLD}"
 if [[ -n "$IGNORE_PATHS" ]]; then
@@ -19,13 +22,13 @@ if [[ -n "$IGNORE_PATHS" ]]; then
   url="${url}&ignore_paths=${IGNORE_PATHS}"
 fi
 
-status="$(curl -sS -o /tmp/integrity_verify.json -w '%{http_code}' -X POST "$url" -H "Authorization: Bearer ${TOKEN}")"
+status="$(curl -sS --connect-timeout 5 --max-time 30 -o "$tmpfile" -w '%{http_code}' -X POST "$url" -H "Authorization: Bearer ${TOKEN}")"
 if [[ "$status" == "200" ]]; then
   echo "INTEGRITY_VERIFY_OK sample_size=${SAMPLE_SIZE} failure_threshold=${FAILURE_THRESHOLD}"
   exit 0
 fi
 
-cat /tmp/integrity_verify.json
+cat "$tmpfile"
 if [[ "$status" == "409" ]]; then
   echo "INTEGRITY_VERIFY_FAIL detected mismatch over_threshold=${FAILURE_THRESHOLD}" >&2
   exit 1

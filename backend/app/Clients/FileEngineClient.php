@@ -6,6 +6,7 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
+use Throwable;
 
 class FileEngineClient
 {
@@ -42,17 +43,38 @@ class FileEngineClient
 
     public function postOrThrow(string $path, array $payload = [], array $headers = []): Response
     {
-        return $this->throwIfError($this->post($path, $payload, $headers));
+        return $this->invokeOrThrow('POST', fn () => $this->post($path, $payload, $headers));
     }
 
     public function getOrThrow(string $path, array $headers = []): Response
     {
-        return $this->throwIfError($this->get($path, $headers));
+        return $this->invokeOrThrow('GET', fn () => $this->get($path, $headers));
     }
 
     public function putRawOrThrow(string $path, string $content, array $headers = []): Response
     {
-        return $this->throwIfError($this->putRaw($path, $content, $headers));
+        return $this->invokeOrThrow('PUT', fn () => $this->putRaw($path, $content, $headers));
+    }
+
+    /**
+     * @param callable(): Response $call
+     */
+    private function invokeOrThrow(string $method, callable $call): Response
+    {
+        try {
+            return $this->throwIfError($call());
+        } catch (FileEngineException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            throw new FileEngineException(
+                0,
+                'TRANSPORT_ERROR',
+                'transport_error',
+                true,
+                "file-engine {$method} request failed: {$exception->getMessage()}",
+                $exception,
+            );
+        }
     }
 
     private function throwIfError(Response $response): Response

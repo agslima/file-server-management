@@ -21,6 +21,7 @@ if [[ "$mode" == "dry-run" ]]; then
 fi
 
 backend_url="${BACKEND_URL:-http://localhost:8081}"
+file_engine_url="${FILE_ENGINE_URL:-http://localhost:8080}"
 revoked_token="${REVOKED_TOKEN:-}"
 revoked_status_expected="${REVOKED_STATUS_EXPECTED:-401}"
 
@@ -32,14 +33,14 @@ fail() {
 
 echo "[drill] apply mode: continuity validation checks"
 
-if ! ./scripts/wait-for-http.sh "http://localhost:8080/healthz" 30; then
-  fail "file-engine /healthz check failed"
+if ! ./scripts/wait-for-http.sh "${file_engine_url}/healthz" 30; then
+  fail "file-engine /healthz check failed file_engine_url=${file_engine_url}"
 fi
 if ! ./scripts/wait-for-http.sh "${backend_url}/healthz" 30; then
   fail "backend /healthz check failed"
 fi
-if ! ./scripts/wait-for-http.sh "http://localhost:8080/readyz" 30; then
-  fail "file-engine /readyz check failed"
+if ! ./scripts/wait-for-http.sh "${file_engine_url}/readyz" 30; then
+  fail "file-engine /readyz check failed file_engine_url=${file_engine_url}"
 fi
 
 echo "[drill] verifying create-folder continuity"
@@ -52,14 +53,23 @@ if [[ -z "$revoked_token" ]]; then
   fail "REVOKED_TOKEN is required in --apply mode to validate authn failure for revoked credentials"
 fi
 
+set +e
 revoke_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+  --connect-timeout 5 \
+  --max-time 20 \
   -X POST "${backend_url}/folders" \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer ${revoked_token}" \
-  -d '{"path":"tenants/acme","folderName":"revoked-drill","requestedBy":"rotate-secrets-drill"}' || true)"
+  -d '{"path":"tenants/acme","folderName":"revoked-drill","requestedBy":"rotate-secrets-drill"}')"
+revoke_curl_exit=$?
+set -e
+
+if [[ $revoke_curl_exit -ne 0 || "$revoke_status" == "000" ]]; then
+  fail "revoked credential check connection failure backend_url=${backend_url} curl_exit=${revoke_curl_exit} http_status=${revoke_status}"
+fi
 
 if [[ "$revoke_status" != "$revoked_status_expected" ]]; then
-  fail "revoked credential check failed expected_status=${revoked_status_expected} got_status=${revoke_status}"
+  fail "revoked credential check failed expected_status=${revoked_status_expected} got_status=${revoke_status} backend_url=${backend_url}"
 fi
 
 echo "ROTATE_SECRETS_DRILL_OK continuity=verified"

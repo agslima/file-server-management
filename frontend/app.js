@@ -39,7 +39,7 @@ function safeJson(value) {
 }
 
 async function login() {
-  const payload = { username: $("username").value, password: $("password").value };
+  const payload = { email: $("username").value, password: $("password").value };
   const data = await request(`${backend()}/login`, { method: 'POST', body: JSON.stringify(payload) });
   state.token = data.access_token || data.token || '';
   $("loginStatus").textContent = state.token ? 'Authenticated.' : 'Login response has no token.';
