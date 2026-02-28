@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	pb "github.com/example/file-engine/pkg/generated"
 	"google.golang.org/grpc"
@@ -13,10 +14,13 @@ type GRPCClient struct {
 	client pb.FileEngineClient
 }
 
-func NewGRPCClient(addr string) (*GRPCClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewGRPCClient(addr string, opts ...grpc.DialOption) (*GRPCClient, error) {
+	if len(opts) == 0 {
+		opts = []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	}
+	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create grpc client: %w", err)
 	}
 	return &GRPCClient{conn: conn, client: pb.NewFileEngineClient(conn)}, nil
 }

@@ -36,6 +36,10 @@ def matches_pattern(path: str, pattern: str) -> bool:
         prefix = pattern[: -len("/**")]
         return str(p) == prefix or str(p).startswith(f"{prefix}/")
 
+    has_glob_meta = any(ch in pattern for ch in ("*", "?", "[", "]"))
+    if "/" not in pattern and not has_glob_meta:
+        return p.name == pattern and len(p.parts) == 1
+
     return p.match(pattern)
 
 

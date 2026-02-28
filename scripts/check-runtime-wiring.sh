@@ -5,6 +5,10 @@ PROFILE="dev"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --profile)
+      if [[ $# -lt 2 || -z "${2:-}" || "${2:-}" == -* ]]; then
+        echo "missing value for --profile (usage: --profile <name>)" >&2
+        exit 2
+      fi
       PROFILE="$2"
       shift 2
       ;;
@@ -53,7 +57,7 @@ case "${AUDIT_IMMUTABLE_SINK_TYPE:-}" in
     require_non_empty AUDIT_S3_BUCKET || fail=1
     ;;
   file|bucket)
-    :
+    require_non_empty AUDIT_IMMUTABLE_SINK_PATH || fail=1
     ;;
   *)
     echo "unsupported AUDIT_IMMUTABLE_SINK_TYPE=${AUDIT_IMMUTABLE_SINK_TYPE:-}" >&2

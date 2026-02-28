@@ -8,11 +8,17 @@ cd ..
 
 # Compatibility policy enforcement for /v1 changes in PR context.
 if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
-  git fetch --depth=1 origin "${GITHUB_BASE_REF}" >/dev/null 2>&1 || true
+  if ! git fetch --depth=1 origin "${GITHUB_BASE_REF}" >/dev/null 2>&1; then
+    echo "api compatibility gate failed: unable to fetch origin/${GITHUB_BASE_REF}" >&2
+    exit 1
+  fi
   base_ref="origin/${GITHUB_BASE_REF}"
-  if git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
-    changed="$(git diff --name-only "${base_ref}...HEAD")"
-    if echo "$changed" | rg -q "^(file-engine/internal/server/(server.go|upload_http.go|admin_http.go)|file-engine/api/proto/fileengine.proto|file-engine/proto/fileengine.proto)$"; then
+  if ! git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
+    echo "api compatibility gate failed: invalid base ref ${base_ref}" >&2
+    exit 1
+  fi
+  changed="$(git diff --name-only "${base_ref}...HEAD")"
+  if echo "$changed" | rg -q "^(file-engine/internal/server/(server.go|upload_http.go|admin_http.go)|file-engine/api/proto/fileengine.proto|file-engine/proto/fileengine.proto)$"; then
       has_version_update=0
       if echo "$changed" | rg -q "^docs/api-versioning-policy.md$"; then
         has_version_update=1
@@ -25,7 +31,6 @@ if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
         echo "breaking-change policy gate: /v1 surface changed without required docs updates (api-versioning-policy + consumer docs)" >&2
         exit 1
       fi
-    fi
   fi
 fi
 

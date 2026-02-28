@@ -33,7 +33,11 @@ required_codeowners_scopes=(
 contains_literal() {
   local value="$1"
   local file="$2"
-  grep -Fq "$value" "$file"
+  if command -v rg >/dev/null 2>&1; then
+    rg -Fq "$value" "$file"
+  else
+    grep -Fq "$value" "$file"
+  fi
 }
 
 for ref in "${required_refs[@]}"; do

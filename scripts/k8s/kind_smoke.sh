@@ -12,12 +12,20 @@ require_cmd kind
 require_cmd kubectl
 require_cmd docker
 
-kind get clusters | rg -q "^${CLUSTER_NAME}$" || kind create cluster --name "${CLUSTER_NAME}"
+kind get clusters | grep -qx "${CLUSTER_NAME}" || kind create cluster --name "${CLUSTER_NAME}"
 
 docker build -t file-engine:kind -f file-engine/build/docker/server.Dockerfile file-engine
 docker build -t file-engine-worker:kind -f file-engine/build/docker/worker.Dockerfile file-engine
 kind load docker-image file-engine:kind --name "${CLUSTER_NAME}"
 kind load docker-image file-engine-worker:kind --name "${CLUSTER_NAME}"
+POSTGRES_DSN="${POSTGRES_DSN:-postgres://fileengine:fileengine@postgres:5432/fileengine?sslmode=disable}"
+JWT_SECRET="${JWT_SECRET:-dev-secret}"
+
+kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "${NAMESPACE}" create secret generic file-engine-secrets \
+  --from-literal=POSTGRES_DSN="${POSTGRES_DSN}" \
+  --from-literal=JWT_SECRET="${JWT_SECRET}" \
+  --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f k8s/kind/file-server-kind.yaml
 kubectl -n "${NAMESPACE}" rollout status deploy/postgres --timeout=120s

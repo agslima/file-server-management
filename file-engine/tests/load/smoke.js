@@ -39,7 +39,7 @@ export default function () {
     tags: { operation: 'list' },
     responseCallback: http.expectedStatuses(200, 404),
   });
-  check(listRes, { 'list status is 200': (r) => r.status === 200 });
+  check(listRes, { 'list status is 200 or 404': (r) => r.status === 200 || r.status === 404 });
 
   const createRes = http.post(
     `${base}/v1/folders`,

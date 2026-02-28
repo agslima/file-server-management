@@ -16,7 +16,7 @@ docker compose up -d postgres redis file-engine file-engine-worker >/dev/null
 echo "[backup] waiting for postgres readiness"
 pg_ready_timeout_seconds="${PG_READY_TIMEOUT_SECONDS:-60}"
 pg_ready_deadline=$((SECONDS + pg_ready_timeout_seconds))
-until docker compose exec -T postgres pg_isready -U file_engine -d file_engine >/dev/null 2>&1; do
+until docker compose exec -T postgres pg_isready -U fileengine -d fileengine >/dev/null 2>&1; do
   if (( SECONDS >= pg_ready_deadline )); then
     echo "[backup] postgres readiness check failed after ${pg_ready_timeout_seconds}s" >&2
     exit 1
@@ -29,7 +29,7 @@ DB_DUMP="$ART_DIR/db-${TS}.sql"
 STORAGE_TAR="$ART_DIR/storage-${TS}.tar.gz"
 
 echo "[backup] step 1/4 postgres dump -> $DB_DUMP"
-docker compose exec -T postgres pg_dump -U file_engine file_engine > "$DB_DUMP"
+docker compose exec -T postgres pg_dump -U fileengine fileengine > "$DB_DUMP"
 
 echo "[backup] step 2/4 storage snapshot -> $STORAGE_TAR"
 BASE_ROOT="${FILE_BASE_ROOT:-.data/file-engine}"
@@ -37,7 +37,7 @@ mkdir -p "$BASE_ROOT"
 tar -czf "$STORAGE_TAR" -C "$BASE_ROOT" .
 
 echo "[restore] step 3/4 replay db dump"
-cat "$DB_DUMP" | docker compose exec -T postgres psql -U file_engine file_engine >/dev/null
+cat "$DB_DUMP" | docker compose exec -T postgres psql -U fileengine fileengine >/dev/null
 
 echo "[restore] step 4/4 replay storage snapshot"
 : "${BASE_ROOT:?BASE_ROOT must be set}"

@@ -3,6 +3,7 @@
 namespace App\Clients;
 
 use RuntimeException;
+use Throwable;
 
 class FileEngineException extends RuntimeException
 {
@@ -12,8 +13,9 @@ class FileEngineException extends RuntimeException
         public readonly string $reason,
         public readonly bool $retryable,
         string $message,
+        ?Throwable $previous = null,
     ) {
-        parent::__construct($message, $status);
+        parent::__construct($message, $status, $previous);
     }
 
     public function isRetryable(): bool

@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"container/heap"
 	"context"
 	"errors"
 	"fmt"
@@ -27,16 +28,53 @@ type Processor struct {
 	st                storage.Storage
 	executor          MutationExecutor
 	mu                sync.Mutex
-	seenKeys          map[string]time.Time
+	seenKeys          map[string]*seenKeyEntry
+	seenKeyExpiries   seenKeyExpiryHeap
 	seenKeyTTL        time.Duration
 	seenKeyMaxEntries int
 	now               func() time.Time
 }
 
+type seenKeyEntry struct {
+	key       string
+	expiresAt time.Time
+	index     int
+}
+
+type seenKeyExpiryHeap []*seenKeyEntry
+
+func (h seenKeyExpiryHeap) Len() int { return len(h) }
+
+func (h seenKeyExpiryHeap) Less(i, j int) bool {
+	return h[i].expiresAt.Before(h[j].expiresAt)
+}
+
+func (h seenKeyExpiryHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+	h[i].index = i
+	h[j].index = j
+}
+
+func (h *seenKeyExpiryHeap) Push(x any) {
+	entry := x.(*seenKeyEntry)
+	entry.index = len(*h)
+	*h = append(*h, entry)
+}
+
+func (h *seenKeyExpiryHeap) Pop() any {
+	old := *h
+	n := len(old)
+	entry := old[n-1]
+	entry.index = -1
+	*h = old[:n-1]
+	return entry
+}
+
 func NewProcessorWithStorage(st storage.Storage) *Processor {
 	return &Processor{
 		st:                st,
-		seenKeys:          map[string]time.Time{},
+		seenKeys:          map[string]*seenKeyEntry{},
+		seenKeyExpiries:   seenKeyExpiryHeap{},
 		seenKeyTTL:        defaultSeenKeyTTL,
 		seenKeyMaxEntries: defaultSeenKeyMaxEntries,
 		now:               time.Now,
@@ -70,8 +108,15 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
 	case "create_folder":
 		parent := t.Params["parent"]
 		name := t.Params["name"]
-		if parent == "" || name == "" {
-			err = errors.New("missing params")
+		missing := make([]string, 0, 2)
+		if parent == "" {
+			missing = append(missing, "parent")
+		}
+		if name == "" {
+			missing = append(missing, "name")
+		}
+		if len(missing) > 0 {
+			err = missingParamsError(missing...)
 			break
 		}
 		parent = strings.TrimSuffix(parent, "/")
@@ -79,8 +124,15 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
 	case "move_file":
 		src := t.Params["src"]
 		dst := t.Params["dst"]
-		if src == "" || dst == "" {
-			err = errors.New("missing params")
+		missing := make([]string, 0, 2)
+		if src == "" {
+			missing = append(missing, "src")
+		}
+		if dst == "" {
+			missing = append(missing, "dst")
+		}
+		if len(missing) > 0 {
+			err = missingParamsError(missing...)
 			break
 		}
 		if p.executor != nil {
@@ -91,7 +143,7 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
 	case "governed_delete":
 		path := t.Params["path"]
 		if path == "" {
-			err = errors.New("missing params")
+			err = missingParamsError("path")
 			break
 		}
 		if p.executor == nil {
@@ -102,7 +154,7 @@ func (p *Processor) Process(ctx context.Context, t *redisq.TaskPayload) error {
 	case "quarantine_restore":
 		path := t.Params["path"]
 		if path == "" {
-			err = errors.New("missing params")
+			err = missingParamsError("path")
 			break
 		}
 		if p.executor == nil {
@@ -131,11 +183,11 @@ func (p *Processor) isDuplicate(t *redisq.TaskPayload) bool {
 	defer p.mu.Unlock()
 	p.evictExpiredLocked(now)
 
-	expiresAt, ok := p.seenKeys[key]
+	entry, ok := p.seenKeys[key]
 	if !ok {
 		return false
 	}
-	if now.After(expiresAt) {
+	if now.After(entry.expiresAt) {
 		delete(p.seenKeys, key)
 		return false
 	}
@@ -152,14 +204,34 @@ func (p *Processor) markSeen(t *redisq.TaskPayload) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.evictExpiredLocked(now)
-	p.seenKeys[key] = now.Add(p.seenKeyTTL)
+	expiresAt := now.Add(p.seenKeyTTL)
+	if existing, ok := p.seenKeys[key]; ok {
+		existing.expiresAt = expiresAt
+		heap.Fix(&p.seenKeyExpiries, existing.index)
+	} else {
+		entry := &seenKeyEntry{key: key, expiresAt: expiresAt}
+		p.seenKeys[key] = entry
+		heap.Push(&p.seenKeyExpiries, entry)
+	}
 	p.evictOverflowLocked()
 }
 
+func missingParamsError(params ...string) error {
+	if len(params) == 1 {
+		return fmt.Errorf("missing param: %s", params[0])
+	}
+	return fmt.Errorf("missing params: %s", strings.Join(params, ","))
+}
+
 func (p *Processor) evictExpiredLocked(now time.Time) {
-	for key, expiresAt := range p.seenKeys {
-		if now.After(expiresAt) {
-			delete(p.seenKeys, key)
+	for len(p.seenKeyExpiries) > 0 {
+		oldest := p.seenKeyExpiries[0]
+		if !now.After(oldest.expiresAt) {
+			return
+		}
+		heap.Pop(&p.seenKeyExpiries)
+		if current, ok := p.seenKeys[oldest.key]; ok && current == oldest {
+			delete(p.seenKeys, oldest.key)
 		}
 	}
 }
@@ -169,17 +241,19 @@ func (p *Processor) evictOverflowLocked() {
 		return
 	}
 	for len(p.seenKeys) > p.seenKeyMaxEntries {
-		oldestKey := ""
-		var oldestExpiry time.Time
-		for key, expiresAt := range p.seenKeys {
-			if oldestKey == "" || expiresAt.Before(oldestExpiry) {
-				oldestKey = key
-				oldestExpiry = expiresAt
-			}
-		}
-		if oldestKey == "" {
+		if !p.evictOldestActiveKeyLocked() {
 			return
 		}
-		delete(p.seenKeys, oldestKey)
 	}
+}
+
+func (p *Processor) evictOldestActiveKeyLocked() bool {
+	for len(p.seenKeyExpiries) > 0 {
+		entry := heap.Pop(&p.seenKeyExpiries).(*seenKeyEntry)
+		if current, ok := p.seenKeys[entry.key]; ok && current == entry {
+			delete(p.seenKeys, entry.key)
+			return true
+		}
+	}
+	return false
 }
