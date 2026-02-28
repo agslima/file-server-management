@@ -1,60 +1,131 @@
 name: Load Tests
 
 on:
-  pull_request:
-    branches: [ main ]
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 2 * * *' # Example schedule
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Which k6 profile to run? (smoke, soak, or all)'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - soak
+          - all
 
 permissions:
   contents: read
 
+concurrency:
+  group: load-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  k6-smoke:
-    name: k6 smoke budget gate
-    if: ${{ github.event_name != 'schedule' }}
+  setup-k6-matrix:
+    name: Determine Load Test Profiles
     runs-on: ubuntu-latest
+    outputs:
+      # Export the JSON array for the next job to consume
+      profiles: ${{ steps.set-profiles.outputs.profiles }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Calculate Matrix
+        id: set-profiles
+        run: |
+          EVENT="${{ github.event_name }}"
+          INPUT="${{ inputs.profile }}"
+          
+          echo "Trigger event: $EVENT"
+          
+          if [[ "$EVENT" == "schedule" ]]; then
+            echo "Routing to SOAK test for scheduled run."
+            echo 'profiles=["soak"]' >> "$GITHUB_OUTPUT"
+            
+          elif [[ "$EVENT" == "push" || "$EVENT" == "pull_request" ]]; then
+            echo "Routing to SMOKE test for PR/Push."
+            echo 'profiles=["smoke"]' >> "$GITHUB_OUTPUT"
+            
+          elif [[ "$EVENT" == "workflow_dispatch" ]]; then
+            if [[ "$INPUT" == "all" ]]; then
+              echo "Routing to BOTH tests for manual trigger."
+              echo 'profiles=["smoke", "soak"]' >> "$GITHUB_OUTPUT"
+            else
+              echo "Routing to $INPUT test for manual trigger."
+              echo "profiles=[\"$INPUT\"]" >> "$GITHUB_OUTPUT"
+            fi
+            
+          else
+            # Failsafe fallback
+            echo 'profiles=["smoke"]' >> "$GITHUB_OUTPUT"
+          fi
+
+  # 2. The Execution: Spawns exactly the jobs we need, with zero "Skipped" clutter
+  k6:
+    needs: setup-k6-matrix
+    name: k6 ${{ matrix.profile }} budget gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Parse the JSON string output from the setup job into an actual array
+        profile: ${{ fromJson(needs.setup-k6-matrix.outputs.profiles) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
       - name: Setup k6
-        uses: grafana/setup-k6-action@ffe7d7290dfa715e48c2ccc924d068444c94bde2 # v1.1.0
+        uses: grafana/setup-k6-action@ffe7d7290dfa715e48c2ccc924d068444c94bde2
+
       - name: Start load-test stack
         run: docker compose up -d --build redis postgres file-engine file-engine-worker
-      - name: Wait for file-engine readiness
-        run: ./scripts/wait-for-http.sh http://localhost:8080/readyz 180
-      - name: Run smoke budget profile
-        env:
-          TOKEN_JWT: ${{ secrets.JWT_TOKEN }}
-          TOKEN: ${{ secrets.JWT_TOKEN }}
-        run: |
-          cd file-engine
-          BASE_URL=http://localhost:8080 k6 run tests/load/smoke.js
-      - name: Shutdown load-test stack
-        if: always()
-        run: docker compose down -v
 
-  k6-soak:
-    name: k6 soak budget gate (nightly)
-    if: ${{ github.event_name == 'schedule' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Setup k6
-        uses: grafana/setup-k6-action@ffe7d7290dfa715e48c2ccc924d068444c94bde2 # v1.1.0
-      - name: Start soak stack
-        run: docker compose up -d --build redis postgres file-engine file-engine-worker
       - name: Wait for file-engine readiness
         run: ./scripts/wait-for-http.sh http://localhost:8080/readyz 180
-      - name: Run nightly soak budget profile
+         
+      - name: Run k6 (${{ matrix.profile }})
         env:
-          TOKEN_JWT: ${{ secrets.JWT_TOKEN }}
           TOKEN: ${{ secrets.JWT_TOKEN }}
+          BASE_URL: http://localhost:8080
+          K6_OUT_JSON: k6-${{ matrix.profile }}-results.json
+          K6_SUMMARY_JSON: k6-${{ matrix.profile }}-summary.json
+        working-directory: file-engine
         run: |
-          cd file-engine
-          BASE_URL=http://localhost:8080 k6 run tests/load/soak.js
-      - name: Shutdown soak stack
+          set -euo pipefail
+
+          # JSON output for post-processing / debugging
+          # NOTE: `--out json=...` produces an event stream; useful for deeper analysis.
+          k6 run \
+            --out "json=${K6_OUT_JSON}" \
+            --summary-export "${K6_SUMMARY_JSON}" \
+            "tests/load/${{ matrix.profile }}.js"
+
+      - name: Upload k6 artifacts (${{ matrix.profile }})
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: k6-${{ matrix.profile }}-${{ github.run_id }}
+          path: |
+            file-engine/k6-${{ matrix.profile }}-results.json
+            file-engine/k6-${{ matrix.profile }}-summary.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: |
+          echo "=== docker compose ps ==="
+          docker compose ps
+          echo "=== docker compose logs (tail) ==="
+          docker compose logs --no-color --tail=500 || true
+
+      - name: Shutdown load-test stack
         if: always()
         run: docker compose down -v
