@@ -293,6 +293,7 @@ jobs:
     timeout-minutes: 45
     env:
       RUN_CL020: "0"
+      CL031_CONTAINER_USER: root
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

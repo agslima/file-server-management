@@ -17,6 +17,7 @@ set -Eeuo pipefail
 LEDGER_MODE="${LEDGER_MODE:-fast}"
 LEDGER_TIMEOUT_SECONDS="${LEDGER_TIMEOUT_SECONDS:-900}"
 RUN_CL020="${RUN_CL020:-1}"
+CL031_CONTAINER_USER="${CL031_CONTAINER_USER:-root}"
 
 # Compose isolation: avoid cross-job collisions.
 if [[ -n "${GITHUB_RUN_ID:-}" ]]; then
@@ -290,7 +291,7 @@ run_claim "CL-002" bash -lc '
 log "=== Backend baseline: CL-008 + CL-018 + CL-031 ==="
 run_claim "CL-008" bash -lc 'cd backend && composer validate --strict'
 run_claim "CL-018" bash -lc 'cd backend && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php'
-run_claim "CL-031" compose run --rm --no-deps backend ./scripts/smoke.sh
+run_claim "CL-031" compose run --rm --no-deps --user "${CL031_CONTAINER_USER}" backend ./scripts/smoke.sh
 
 log "=== Infra: Postgres up (isolated compose project) ==="
 compose up -d postgres
