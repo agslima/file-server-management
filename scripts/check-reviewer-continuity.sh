@@ -70,13 +70,13 @@ security_required=false
 platform_required=false
 maintainer_required=false
 
-if rg -q '^file-engine/internal/auth' <<<"$changed_paths"; then
+if grep -qE '^file-engine/internal/auth' <<<"$changed_paths"; then
   security_required=true
 fi
-if rg -q '^(monitoring/|observability/)' <<<"$changed_paths"; then
+if grep -qE '^(monitoring/|observability/)' <<<"$changed_paths"; then
   platform_required=true
 fi
-if rg -q '^docs/capability-ledger\.md$' <<<"$changed_paths"; then
+if grep -qE '^docs/capability-ledger\.md$' <<<"$changed_paths"; then
   maintainer_required=true
 fi
 
