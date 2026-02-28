@@ -1,6 +1,8 @@
 FROM golang:1.26-alpine
 
-RUN apk add --no-cache bash curl unzip git protoc
+RUN apk add --no-cache bash curl unzip git protoc \
+    && addgroup -S coder \
+    && adduser -S -G coder coder
 
 ENV PATH=$PATH:/root/go/bin
 
@@ -9,5 +11,6 @@ RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 RUN go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v2.16.0
 
 WORKDIR /work
-COPY . /work
+COPY --chown=coder:coder . /work
+USER coder
 CMD ["make", "proto"]

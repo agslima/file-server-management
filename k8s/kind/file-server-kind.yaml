@@ -147,6 +147,13 @@ spec:
       labels:
         app: file-engine
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: file-engine
           image: file-engine:kind
@@ -180,6 +187,17 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
+          volumeMounts:
+            - name: file-engine-tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: file-engine-tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

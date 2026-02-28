@@ -2,11 +2,10 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const base = __ENV.BASE_URL || 'http://localhost:8080';
-if (!__ENV.TOKEN) {
-  throw new Error('TOKEN is required. Set TOKEN in the environment before running k6.');
+const token = __ENV.TOKEN || __ENV.TOKEN_JWT;
+if (!token) {
+  throw new Error('TOKEN/TOKEN_JWT is required. Set TOKEN_JWT (or TOKEN) in the environment before running k6.');
 }
-
-const token = __ENV.TOKEN;
 const headers = { Authorization: `Bearer ${token}` };
 
 export const options = {
