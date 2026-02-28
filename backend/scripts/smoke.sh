@@ -8,7 +8,7 @@ RUN_BACKEND_INTEGRATION="${RUN_BACKEND_INTEGRATION:-0}"
 # Avoid noisy xdebug connect warnings during smoke runs.
 export XDEBUG_MODE="${XDEBUG_MODE:-off}"
 
-composer install --no-interaction
+# composer install --no-interaction
 
 echo "[smoke] running backend unit tests"
 ./vendor/bin/phpunit -c phpunit.xml tests/Unit
