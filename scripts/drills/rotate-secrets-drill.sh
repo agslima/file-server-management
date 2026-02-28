@@ -20,11 +20,46 @@ if [[ "$mode" == "dry-run" ]]; then
   exit 0
 fi
 
-echo "[drill] apply mode: continuity validation checks"
-./scripts/wait-for-http.sh http://localhost:8080/healthz 30
-./scripts/wait-for-http.sh http://localhost:8081/healthz 30
+backend_url="${BACKEND_URL:-http://localhost:8081}"
+revoked_token="${REVOKED_TOKEN:-}"
+revoked_status_expected="${REVOKED_STATUS_EXPECTED:-401}"
 
-./scripts/e2e/vs001_create_folder.sh
-./scripts/security-regression-suite.sh
+fail() {
+  local message="$1"
+  echo "ROTATE_SECRETS_DRILL_FAIL ${message}" >&2
+  exit 1
+}
+
+echo "[drill] apply mode: continuity validation checks"
+
+if ! ./scripts/wait-for-http.sh "http://localhost:8080/healthz" 30; then
+  fail "file-engine /healthz check failed"
+fi
+if ! ./scripts/wait-for-http.sh "${backend_url}/healthz" 30; then
+  fail "backend /healthz check failed"
+fi
+if ! ./scripts/wait-for-http.sh "http://localhost:8080/readyz" 30; then
+  fail "file-engine /readyz check failed"
+fi
+
+echo "[drill] verifying create-folder continuity"
+if ! BACKEND_URL="$backend_url" ./scripts/e2e/vs001_create_folder.sh; then
+  fail "create-folder continuity flow failed"
+fi
+
+echo "[drill] verifying revoked credential authentication failure"
+if [[ -z "$revoked_token" ]]; then
+  fail "REVOKED_TOKEN is required in --apply mode to validate authn failure for revoked credentials"
+fi
+
+revoke_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+  -X POST "${backend_url}/folders" \
+  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer ${revoked_token}" \
+  -d '{"path":"tenants/acme","folderName":"revoked-drill","requestedBy":"rotate-secrets-drill"}' || true)"
+
+if [[ "$revoke_status" != "$revoked_status_expected" ]]; then
+  fail "revoked credential check failed expected_status=${revoked_status_expected} got_status=${revoke_status}"
+fi
 
 echo "ROTATE_SECRETS_DRILL_OK continuity=verified"

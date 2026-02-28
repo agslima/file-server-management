@@ -190,13 +190,14 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Completion evidence**
 
-1. Mutation-surface expansion for move/rename/governed-delete/quarantine-restore API paths (`CL-055`).
-2. Access-review compliance export/report contract (`CL-056`).
-3. Module-boundary maintenance guardrails and architecture conformance hardening (`CL-057`).
-4. Enterprise readiness v2 controls (fairness throttles, queue backpressure, tenant usage/cost reporting, load profiles) (`CL-058`).
-5. Data durability/recovery drills and integrity verification signals (`CL-059`).
-6. API productization guardrails (versioning policy + thin SDK layers + compatibility fixtures) (`CL-060`).
-7. Maintenance-cost reduction baseline with docs-as-code artifact generation and single entrypoint enforcement (`CL-061`).
+All items below map to `docs/capability-ledger.md` claims with runnable validation commands and PASS status.
+
+1. Maintenance-cost reduction baseline with docs-as-code artifact generation and single entrypoint enforcement (`CL-061`).
+2. Scale/fairness enterprise controls (fairness throttles, queue backpressure, tenant usage/cost reporting, load profiles) (`CL-062`).
+3. Multi-tenant compliance and access-review export/report contract (`CL-064`).
+4. API/SDK productization guardrails (versioning policy + thin SDK layers + compatibility fixtures) (`CL-065`).
+5. Enterprise readiness v2 durability/integrity controls with recovery drills (`CL-063`).
+6. Async mutation expansion beyond create-folder across move/delete/restore and related contracts (`CL-066`..`CL-068`).
 
 ---
 
@@ -207,6 +208,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 **Status:** ✅ complete
 
 **Completion evidence**
+
+Each closure item below corresponds to an existing capability-ledger entry with a runnable validation command and PASS status.
 
 1. Scale/fairness operational closure is baseline-validated (`CL-062`).
 2. Data durability and recovery contract closure is baseline-validated (`CL-063`).
@@ -226,6 +229,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Completion evidence**
 
+Both checks align to capability-ledger `CL-071` evidence with runnable validation commands and PASS status.
+
 1. k6 smoke/soak budget enforcement and investigation policy are baseline-validated (`CL-071`).
 2. Hot-path pprof capture workflow is script-reproducible (`CL-071`).
 
@@ -238,6 +243,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 **Status:** ✅ complete
 
 **Completion evidence**
+
+Both controls map to capability-ledger `CL-072` with runnable validation commands and PASS status.
 
 1. Threat-model diff prompt automation and focused negative regression suite are baseline-validated (`CL-072`).
 2. Supply-chain checks and secret-rotation continuity drill expansion are baseline-validated (`CL-072`).
