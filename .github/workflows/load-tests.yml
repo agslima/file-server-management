@@ -96,10 +96,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Changed "sub" from "load-test-bot" to "dev-admin"
           token="$(python3 -c 'import base64, hashlib, hmac, json; \
             secret=b"dev-secret"; \
             header={"alg":"HS256","typ":"JWT"}; \
-            payload={"sub":"load-test-bot","roles":["admin"],"iss":"http://localhost:8082/realms/file-engine","aud":["file-engine-dev"]}; \
+            payload={"sub":"dev-admin","roles":["admin"],"iss":"http://localhost:8082/realms/file-engine","aud":["file-engine-dev"]}; \
             b64=lambda b: base64.urlsafe_b64encode(b).decode().rstrip("="); \
             segments=[b64(json.dumps(header,separators=(",",":")).encode()), b64(json.dumps(payload,separators=(",",":")).encode())]; \
             signing=".".join(segments).encode(); \
