@@ -23,13 +23,19 @@ if [[ -n "$IGNORE_PATHS" ]]; then
   url="${url}&ignore_paths=${encoded_ignore_paths}"
 fi
 
-status="$(curl -sS --connect-timeout 5 --max-time 30 -o "$tmpfile" -w '%{http_code}' -X POST "$url" -H "Authorization: Bearer ${TOKEN}")"
+curl_exit=0
+status="$(curl -sS --connect-timeout 5 --max-time 30 -o "$tmpfile" -w '%{http_code}' -X POST "$url" -H "Authorization: Bearer ${TOKEN}")" || curl_exit=$?
+if (( curl_exit != 0 )); then
+  echo "INTEGRITY_VERIFY_ERROR transport_failure curl_exit=${curl_exit}" >&2
+  [[ -s "$tmpfile" ]] && cat "$tmpfile" >&2
+  exit 3
+fi
 if [[ "$status" == "200" ]]; then
   echo "INTEGRITY_VERIFY_OK sample_size=${SAMPLE_SIZE} failure_threshold=${FAILURE_THRESHOLD}"
   exit 0
 fi
 
-cat "$tmpfile"
+cat "$tmpfile" >&2
 if [[ "$status" == "409" ]]; then
   echo "INTEGRITY_VERIFY_FAIL detected mismatch over_threshold=${FAILURE_THRESHOLD}" >&2
   exit 1
