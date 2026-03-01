@@ -2,11 +2,13 @@ name: Load Tests
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - "pull-request/[0-9]+"
+    tags:
+      - 'v*'
   schedule:
-    - cron: '0 2 * * *' # Example schedule
+    - cron: '0 2 * * *' #  Runs at 02:00
   workflow_dispatch:
     inputs:
       profile:
