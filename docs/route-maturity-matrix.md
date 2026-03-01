@@ -7,6 +7,8 @@
 
 This matrix summarizes API/operability route maturity by transport, links each route to claim IDs, and points to runnable validations.
 
+> Generated inventory source-of-truth is `docs/generated/route-maturity-matrix.md` (via `./scripts/generate-doc-artifacts.sh`). Keep this curated matrix aligned with generated inventory.
+
 ## Baseline routes (implemented)
 
 | Route | Transport | Maturity | Claim IDs | Runnable validation |

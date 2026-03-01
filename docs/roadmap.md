@@ -1,37 +1,45 @@
-# Roadmap — Staged Milestones
-
-[//]: # (owner: Platform Engineering)
-[//]: # (review_cadence: Monthly)
-[//]: # (last_reviewed: 2026-02-21)
-
 <!--
 Build an enterprise-credible File Server platform with a PHP control-plane and a Go File Engine, focused on multi-tenant governance (RBAC/authz), auditability, and operational safety.
 Progress is only considered “done” when it’s provable via the Capability Ledger (runnable validations + CI regression gates), so the repo functions like a real production platform—not just a demo.
 -->
 
-A milestone is **done** only if tests, demo evidence, and doc updates ship in the same PR.
+# Roadmap — Staged Milestones
+
+[//]: # (owner: Platform Engineering)
+[//]: # (review_cadence: Monthly)
+[//]: # (last_reviewed: 2026-02-27)
+
+A milestone is **complete** only if tests, demo evidence, and doc updates ship in the same PR.
 
 ---
 
-## Current status snapshot (2026-02-21)
+## Current status snapshot (2026-02-27)
 
 | Milestone | Status | Ledger evidence |
 | :-- | :--: | :-- |
-| Milestone 0 — Baseline Integrity | ✅ done | `CL-011`, `CL-034`, `CL-041` |
-| Milestone 1 — Read Path Baseline | ✅ done | `CL-012` |
-| Milestone 2 — Write Path Baseline | ✅ done | `CL-003`, `CL-004`, `CL-005`, `CL-017`, `CL-020` |
-| Milestone 3 — Upload Pipeline | ✅ done | `CL-025`, `CL-033`, `CL-040` |
-| Milestone 4 — Observability & Audit Sink | ✅ done | `CL-035`, `CL-038`, `CL-039` |
-| Milestone 5 — Governance Hardening | ✅ done | `CL-041` |
-| Milestone 6 — Target-State Hardening Promotions | ✅ done | `CL-042`, `CL-043`, `CL-044`, `CL-045`, `CL-046` |
-| Milestone 7 — Production Operations Closure | ✅ done | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
+| Milestone 0 — Baseline Integrity | ✅ complete | `CL-011`, `CL-034`, `CL-041` |
+| Milestone 1 — Read Path Baseline | ✅ complete | `CL-012` |
+| Milestone 2 — Write Path Baseline | ✅ complete | `CL-003`, `CL-004`, `CL-005`, `CL-017`, `CL-020` |
+| Milestone 3 — Upload Pipeline | ✅ complete | `CL-025`, `CL-033`, `CL-040` |
+| Milestone 4 — Observability & Audit Sink | ✅ complete | `CL-035`, `CL-038`, `CL-039` |
+| Milestone 5 — Governance Hardening | ✅ complete | `CL-041` |
+| Milestone 6 — Target-State Hardening Promotions | ✅ complete | `CL-042`, `CL-043`, `CL-044`, `CL-045`, `CL-046` |
+| Milestone 7 — Production Operations Closure | ✅ complete | `CL-047`, `CL-048`, `CL-049`, `CL-050`, `CL-051`, `CL-052` |
 | Milestone 8 — Sustainability & Ownership Resilience | ✅ complete | `CL-053`, `CL-054` |
+| Milestone 9 — Productization & Operations Expansion | ✅ complete | `CL-061`, `CL-062`, `CL-063`, `CL-064`, `CL-065`, `CL-066`, `CL-067`, `CL-068` |
+| Milestone 10 — Remaining Target-State Closure | ✅ complete | `CL-069`, `CL-070` |
+| Milestone 11 — Performance Budgets & Capacity Planning | ✅ complete | `CL-071` |
+| Milestone 12 — Continuous Security Posture Hardening | ✅ complete | `CL-072` |
+| Milestone 13 — Product UX End-to-End Demo Flows | ✅ complete | `CL-009` |
+| Milestone 14 — Cognitive-Load Reduction (Boundaries + Generated Docs + Onboarding) | ✅ complete | `CL-073` |
 
 ---
 
 ## Milestone 0 — Baseline Integrity (1–2 weeks)
 
 **Goal:** Lock down the smallest stable baseline and prevent doc/runtime drift.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -46,6 +54,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Deliver a minimal, validated read/list flow.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Implement gRPC read/list endpoint with File Engine final authz enforcement.
@@ -58,6 +68,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 2 — Write Path Baseline (4–6 weeks)
 
 **Goal:** Harden the async create-folder flow as a stable reference slice.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -72,6 +84,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Introduce quarantine → scan → promote for uploads.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Integration test covers clean + quarantined paths.
@@ -84,6 +98,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 4 — Observability & Audit Sink (10–12 weeks)
 
 **Goal:** Close the loop on operational visibility and audit durability.
+
+**Status:** ✅ complete
 
 **Completion criteria**
 
@@ -98,6 +114,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 
 **Goal:** Prevent regressions and reduce operational risk.
 
+**Status:** ✅ complete
+
 **Completion criteria**
 
 1. Doc ownership metadata added to key docs.
@@ -109,6 +127,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 6 — Target-State Hardening Promotions (16–24 weeks)
 
 **Goal:** Convert currently documented target-state controls into baseline-validated capabilities.
+
+**Status:** ✅ complete
 
 **Completion evidence**
 
@@ -129,6 +149,8 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 ## Milestone 7 — Production Operations Closure (24–32 weeks)
 
 **Goal:** Close remaining production-grade gaps after baseline promotion work.
+
+**Status:** ✅ complete
 
 **Current progress**
 
@@ -157,6 +179,99 @@ A milestone is **done** only if tests, demo evidence, and doc updates ship in th
 3. Sustainability metrics are tracked at release cadence and exported as markdown artifact for PR/release notes.
 4. Quarterly alignment checklist generation is automated via script-backed issue body generation.
 5. Bus-factor drill path is scripted: baseline checks, production hardening drill, secrets rotation drill, and DLQ restore drill.
+
+---
+
+## Milestone 9 — Productization & Operations Expansion (40–52 weeks)
+
+**Goal:** Expand mutation/governance/operability surface and reduce maintenance cost with claim-backed controls.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+All items below map to `docs/capability-ledger.md` claims with runnable validation commands and PASS status.
+
+1. Maintenance-cost reduction baseline with docs-as-code artifact generation and single entrypoint enforcement (`CL-061`).
+2. Scale/fairness enterprise controls (fairness throttles, queue backpressure, tenant usage/cost reporting, load profiles) (`CL-062`).
+3. Multi-tenant compliance and access-review export/report contract (`CL-064`).
+4. API/SDK productization guardrails (versioning policy + thin SDK layers + compatibility fixtures) (`CL-065`).
+5. Enterprise readiness v2 durability/integrity controls with recovery drills (`CL-063`).
+6. Async mutation expansion beyond create-folder across move/delete/restore and related contracts (`CL-066`..`CL-068`).
+
+---
+
+## Milestone 10 — Remaining Target-State Closure (52–64 weeks)
+
+**Goal:** Close the final ledger-documented target-state gaps.
+
+Milestone 10 is the closure/hardening follow-up to **Milestone 9 — Productization & Operations Expansion**, focused on the incremental closure controls beyond Milestone 9's productization evidence.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+Each closure item below corresponds to an existing capability-ledger entry with a runnable validation command and PASS status.
+
+1. Human-resilience reviewer continuity controls are baseline-validated (`CL-069`).
+2. Deployment realism controls are baseline-validated (`CL-070`).
+
+---
+
+## Milestone 11 — Performance Budgets & Capacity Planning (64–68 weeks)
+
+**Goal:** Enforce latency/error budgets and reproducible hot-path profiling.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+Both checks align to capability-ledger `CL-071` evidence with runnable validation commands and PASS status.
+
+1. k6 smoke/soak budget enforcement and investigation policy are baseline-validated (`CL-071`).
+2. Hot-path pprof capture workflow is script-reproducible (`CL-071`).
+
+---
+
+## Milestone 12 — Continuous Security Posture Hardening (68–72 weeks)
+
+**Goal:** Keep security posture continuously reviewable with deterministic checks and drills.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+Both controls map to capability-ledger `CL-072` with runnable validation commands and PASS status.
+
+1. Threat-model diff prompt automation and focused negative regression suite are baseline-validated (`CL-072`).
+2. Supply-chain checks and secret-rotation continuity drill expansion are baseline-validated (`CL-072`).
+
+---
+
+## Milestone 13 — Product UX End-to-End Demo Flows (72–74 weeks)
+
+**Goal:** Demonstrate product and operator flows end-to-end in a runnable thin client.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+1. Frontend thin-client demo covers product UX (login, tenant, folder, upload, mutations) and operator UX (DLQ/retry, cleanup, effective policy, drift, evidence pointers) (`CL-009`).
+2. Deterministic `scripts/e2e/demo_5_minute.sh --mode=mock` narrative is available for repeatable demos (`CL-009`).
+
+---
+
+## Milestone 14 — Cognitive-Load Reduction (Boundaries + Generated Docs + Onboarding) (74–78 weeks)
+
+**Goal:** Keep contributor velocity high through enforceable boundaries, generated docs, and one-command onboarding/demo.
+
+**Status:** ✅ complete
+
+**Completion evidence**
+
+1. Architecture conformance boundary enforcement is expanded and validated in guardrail scripts (`CL-073`).
+2. Generated docs include endpoint inventory, SDK examples inventory, and governance policy schema docs (`CL-073`).
+3. One-command onboarding + demo (`make bootstrap && make demo`) produces deterministic output and evidence links (`CL-073`).
 
 ---
 

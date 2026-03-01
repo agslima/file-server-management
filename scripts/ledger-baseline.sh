@@ -290,7 +290,7 @@ run_claim "CL-002" bash -lc '
 log "=== Backend baseline: CL-008 + CL-018 + CL-031 ==="
 run_claim "CL-008" bash -lc 'cd backend && composer validate --strict'
 run_claim "CL-018" bash -lc 'cd backend && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php'
-run_claim "CL-031" bash -lc 'cd backend && ./scripts/smoke.sh'
+run_claim "CL-031" compose run --rm --no-deps backend ./scripts/smoke.sh
 
 log "=== Infra: Postgres up (isolated compose project) ==="
 compose up -d postgres
@@ -301,6 +301,11 @@ export FILEENGINE_TEST_POSTGRES_DSN="${FILEENGINE_TEST_POSTGRES_DSN:-postgres://
 
 log "=== CL-003: Async create-folder integration ==="
 run_claim "CL-003" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v'
+
+log "=== CL-066/CL-067/CL-068: Async mutation expansion (move/delete/restore) ==="
+run_claim "CL-066" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncMutationMoveObjectFlow -v'
+run_claim "CL-067" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncMutationGovernedDeleteFinalGateDenies -v'
+run_claim "CL-068" bash -lc 'cd file-engine && go test ./tests/integration -run TestAsyncMutationQuarantineRestoreFlow -v'
 
 log "=== CL-022: Audit read/list/download coverage ==="
 run_claim "CL-022" bash -lc 'cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v'

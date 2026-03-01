@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/example/file-engine/internal/logger"
@@ -15,7 +17,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var ErrTaskNotFound = errors.New("task not found")
+var (
+	ErrTaskNotFound     = errors.New("task not found")
+	ErrQueueUnavailable = errors.New("queue unavailable")
+)
 
 type TaskPayload struct {
 	ID     string            `json:"id"`
@@ -101,7 +106,6 @@ func (q *RedisQueue) GetStatus(ctx context.Context, id string) (*TaskStatus, err
 	}
 	var payload TaskStatus
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		// backward compatibility for pre-week3 plain string values
 		return &TaskStatus{TaskID: id, Status: raw}, nil
 	}
 	if payload.TaskID == "" {
@@ -116,7 +120,9 @@ func (q *RedisQueue) Enqueue(ctx context.Context, payload *TaskPayload) error {
 		return err
 	}
 	if err := q.client.RPush(ctx, "tasks", string(b)).Err(); err != nil {
-		return err
+		observability.DefaultMetrics.IncQueueBackpressureReject()
+		q.log.Event("error", "queue.enqueue.rejected", map[string]any{"event": "queue.backpressure.reject", "reason": err.Error(), "task_id": payload.ID, "correlation_id": payload.Params["correlation_id"]})
+		return fmt.Errorf("%w: %w", ErrQueueUnavailable, err)
 	}
 	observability.DefaultMetrics.IncEnqueued()
 	q.observeQueueDepth(ctx, payload.ID, payload.Params["correlation_id"])
@@ -141,20 +147,72 @@ func (q *RedisQueue) observeQueueDepth(ctx context.Context, taskID, correlationI
 	}
 }
 
-// EnqueueCreateFolder enqueues a create-folder task for async processing.
 func (q *RedisQueue) EnqueueCreateFolder(ctx context.Context, parentPath, folderName, requestedBy, correlationID string) (string, error) {
-	id := "task-" + newID()
-	p := &TaskPayload{
-		ID:   id,
-		Type: "create_folder",
-		Params: map[string]string{
-			"parent":         parentPath,
-			"name":           folderName,
-			"by":             requestedBy,
-			"correlation_id": correlationID,
-			"request_id":     correlationID,
-		},
+	return q.enqueueMutation(ctx, "create_folder", map[string]string{
+		"parent": parentPath,
+		"name":   folderName,
+		"by":     requestedBy,
+	}, correlationID, nil)
+}
+
+func (q *RedisQueue) EnqueueObjectMove(ctx context.Context, sourcePath, destinationPath, actorID, tenantID, correlationID, idempotencyKey string) (string, error) {
+	return q.enqueueMutation(ctx, "move_file", map[string]string{
+		"src": sourcePath,
+		"dst": destinationPath,
+	}, correlationID, withActorTenantKey(actorID, tenantID, idempotencyKey))
+}
+
+func (q *RedisQueue) EnqueueGovernedDelete(ctx context.Context, objectPath, actorID, tenantID, correlationID, idempotencyKey string) (string, error) {
+	return q.enqueueMutation(ctx, "governed_delete", map[string]string{
+		"path": objectPath,
+	}, correlationID, withActorTenantKey(actorID, tenantID, idempotencyKey))
+}
+
+func (q *RedisQueue) EnqueueQuarantineRestore(ctx context.Context, objectPath string, forceReprocess bool, actorID, tenantID, correlationID, idempotencyKey string) (string, error) {
+	return q.enqueueMutation(ctx, "quarantine_restore", map[string]string{
+		"path":            objectPath,
+		"force_reprocess": strconv.FormatBool(forceReprocess),
+	}, correlationID, withActorTenantKey(actorID, tenantID, idempotencyKey))
+}
+
+func withActorTenantKey(actorID, tenantID, key string) map[string]string {
+	return map[string]string{
+		"actor_id":        strings.TrimSpace(actorID),
+		"tenant_id":       strings.TrimSpace(tenantID),
+		"idempotency_key": strings.TrimSpace(key),
 	}
+}
+
+func (q *RedisQueue) enqueueMutation(ctx context.Context, taskType string, params map[string]string, correlationID string, idempotency map[string]string) (string, error) {
+	id := "task-" + newID()
+	for k, v := range idempotency {
+		if strings.TrimSpace(v) != "" {
+			params[k] = strings.TrimSpace(v)
+		}
+	}
+	params["correlation_id"] = correlationID
+	params["request_id"] = correlationID
+	params["enqueued_at_unix_nano"] = strconv.FormatInt(time.Now().UTC().UnixNano(), 10)
+
+	if key := strings.TrimSpace(params["idempotency_key"]); key != "" {
+		claimKey := "task:idempotency:" + key
+		result, err := q.client.SetArgs(ctx, claimKey, id, redis.SetArgs{
+			TTL:  24 * time.Hour,
+			Mode: "NX",
+		}).Result()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			return "", err
+		}
+		if result != "OK" {
+			existingID, err := q.client.Get(ctx, claimKey).Result()
+			if err != nil {
+				return "", err
+			}
+			return existingID, nil
+		}
+	}
+
+	p := &TaskPayload{ID: id, Type: taskType, Params: params}
 	if err := q.Enqueue(ctx, p); err != nil {
 		return "", err
 	}

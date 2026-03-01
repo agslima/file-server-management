@@ -5,7 +5,7 @@ This backend now includes a minimal runnable API surface that proxies to File En
 - `POST /login`
 - `POST /folders`
 - `POST /uploads/initiate`
-- `POST /uploads/complete`
+- `POST /uploads/{id}/complete`
 - `GET /tasks/{id}`
 
 ## Local checks

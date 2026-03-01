@@ -11,6 +11,9 @@
 │   ├── README.md
 │   ├── api.php
 │   ├── app
+│   │   ├── Clients
+│   │   │   ├── FileEngineClient.php
+│   │   │   └── FileEngineException.php
 │   │   ├── Http
 │   │   │   └── Controllers
 │   │   │       ├── AuthController.php
@@ -23,18 +26,16 @@
 │   │   │   └── FileEngineService.php
 │   │   └── Support
 │   │       └── TraceHeaders.php
-│   ├── bootstrap
-│   │   └── cache
 │   ├── composer.json
 │   ├── composer.lock
 │   ├── config
 │   │   └── services.php
+│   ├── phpstan.neon
 │   ├── phpunit.xml
 │   ├── routes
 │   │   └── api.php
 │   ├── scripts
 │   │   └── smoke.sh
-│   ├── storage
 │   └── tests
 │       ├── Integration
 │       │   └── VS001CreateFolderE2ETest.php
@@ -54,6 +55,7 @@
 │   │   ├── 0007-upload-staging-and-malware-gating.md
 │   │   └── 0008-observability-requirements.md
 │   ├── api-reference.md
+│   ├── api-versioning-policy.md
 │   ├── api_storage_authz.md
 │   ├── architecture.md
 │   ├── architecture_boundaries.md
@@ -61,29 +63,45 @@
 │   ├── auth.md
 │   ├── branch-protection-mapping.md
 │   ├── capability-ledger.md
+│   ├── client-sdks.md
+│   ├── codebase-issue-tasks.md
 │   ├── compliance-access-review-workflow.md
 │   ├── contributors.md
 │   ├── dataflow-security-risk-assessment.md
+│   ├── deployment-profiles.md
 │   ├── errors.md
+│   ├── generated
+│   │   ├── dashboard-references.md
+│   │   ├── endpoint-inventory.md
+│   │   ├── policy-schema.md
+│   │   ├── route-maturity-matrix.md
+│   │   └── sdk-examples.md
 │   ├── governance.md
 │   ├── jwt_integration.md
 │   ├── observability.md
 │   ├── ownership-backup-matrix.md
+│   ├── performance-budgets-capacity.md
 │   ├── platform-engineers.md
 │   ├── prod-checklist.md
 │   ├── project-alignment-review.md
+│   ├── release
+│   │   └── versioning-and-rollback.md
 │   ├── roadmap-ledger-gap-analysis.md
 │   ├── roadmap.md
 │   ├── route-maturity-matrix.md
 │   ├── runbooks
+│   │   ├── data-durability-recovery.md
 │   │   ├── governance-controls-operations.md
 │   │   ├── malware-gate-operations.md
-│   │   └── observability-incident-drill.md
+│   │   ├── observability-incident-drill.md
+│   │   ├── scale-fairness-operations.md
+│   │   └── supply-chain-security.md
 │   ├── security-reviewers.md
 │   ├── setup.md
 │   ├── storage_backends.md
 │   ├── threat-model.md
 │   └── tree.md
+├── env
 ├── file-engine
 │   ├── AGENTS.md
 │   ├── Dockerfile
@@ -104,12 +122,16 @@
 │   │       └── google
 │   │           └── api
 │   │               └── http.proto
+│   ├── client
+│   │   ├── doc.go
+│   │   ├── grpc_client.go
+│   │   ├── http_client.go
+│   │   └── http_client_test.go
 │   ├── cmd
 │   │   ├── file-engine
 │   │   │   └── main.go
 │   │   ├── gateway
 │   │   │   └── main.go
-│   │   ├── main.go
 │   │   ├── migrate
 │   │   │   └── main.go
 │   │   ├── server
@@ -128,6 +150,9 @@
 │   │   └── queries
 │   │       └── acl.sql
 │   ├── docker-compose.yml
+│   ├── examples
+│   │   └── client
+│   │       └── go_http_example.go
 │   ├── go.mod
 │   ├── go.sum
 │   ├── internal
@@ -254,12 +279,22 @@
 │   │   ├── server
 │   │   │   ├── admin_http.go
 │   │   │   ├── admin_http_test.go
+│   │   │   ├── compatibility_golden_test.go
 │   │   │   ├── doc.go
 │   │   │   ├── download_http.go
 │   │   │   ├── download_http_test.go
 │   │   │   ├── gateway_http_test.go
+│   │   │   ├── hotpath_bench_test.go
 │   │   │   ├── readiness_test.go
 │   │   │   ├── server.go
+│   │   │   ├── testdata
+│   │   │   │   └── compat
+│   │   │   │       ├── authz_deny.json
+│   │   │   │       ├── governance_delete_retention_block.txt
+│   │   │   │       ├── readyz_ok.json
+│   │   │   │       ├── upload_complete.json
+│   │   │   │       ├── upload_initiate.json
+│   │   │   │       └── upload_throttled.json
 │   │   │   ├── upload_http.go
 │   │   │   └── upload_http_test.go
 │   │   ├── services
@@ -289,6 +324,7 @@
 │   │       └── api
 │   │           └── http.proto
 │   ├── scripts
+│   │   ├── capture_hotpath_profile.sh
 │   │   ├── dev.sh
 │   │   ├── export_access_review.sh
 │   │   ├── generate_grpc.sh
@@ -297,29 +333,39 @@
 │   │   ├── scan_dlq.sh
 │   │   └── seed_identity.sh
 │   ├── tests
-│   │   └── integration
-│   │       ├── audit_append_only_integration_test.go
-│   │       ├── audit_external_sink_integration_test.go
-│   │       ├── audit_read_path_integration_test.go
-│   │       ├── postgres_test_helpers.go
-│   │       ├── read_list_authz_integration_test.go
-│   │       ├── upload_real_scanner_integration_test.go
-│   │       ├── upload_scan_gate_integration_test.go
-│   │       ├── upload_staging_integration_test.go
-│   │       └── worker_integration_test.go
+│   │   ├── integration
+│   │   │   ├── async_mutation_expansion_integration_test.go
+│   │   │   ├── audit_append_only_integration_test.go
+│   │   │   ├── audit_external_sink_integration_test.go
+│   │   │   ├── audit_read_path_integration_test.go
+│   │   │   ├── postgres_test_helpers.go
+│   │   │   ├── read_list_authz_integration_test.go
+│   │   │   ├── upload_real_scanner_integration_test.go
+│   │   │   ├── upload_scan_gate_integration_test.go
+│   │   │   ├── upload_staging_integration_test.go
+│   │   │   └── worker_integration_test.go
+│   │   └── load
+│   │       ├── smoke.js
+│   │       └── soak.js
 │   └── worker
 │       ├── Dockerfile
 │       └── README.md
 ├── frontend
 │   ├── Dockerfile
-│   └── README.md
+│   ├── README.md
+│   ├── app.js
+│   ├── index.html
+│   └── styles.css
 ├── hack
 │   ├── README.md
 │   └── snyk-report.sh
 ├── infra
+│   ├── README.md
 │   └── keycloak
 │       └── dev-realm.json
 ├── k8s
+│   ├── kind
+│   │   └── file-server-kind.yaml
 │   └── readme.md
 ├── monitoring
 │   ├── alerts
@@ -332,29 +378,49 @@
 │   └── otel-collector-config.yaml
 ├── scripts
 │   ├── architecture-conformance-check.sh
+│   ├── backup_restore_simulation.sh
+│   ├── check-api-compatibility.sh
 │   ├── check-malware-runbook.sh
 │   ├── check-otel-connectivity.sh
 │   ├── check-owners-governance.sh
 │   ├── check-paging-delivery.sh
+│   ├── check-reviewer-continuity.sh
+│   ├── check-runtime-wiring.sh
 │   ├── doc-drift-check.sh
 │   ├── doc-ownership-check.sh
 │   ├── drills
+│   │   ├── audit_sink_catchup_drill.sh
+│   │   ├── db_restore_replay.sh
+│   │   ├── dependency_backpressure.sh
+│   │   ├── k8s_rollback_drill.sh
 │   │   ├── new_maintainer_operability_drill.sh
 │   │   ├── observability_incident_drill.sh
 │   │   ├── otel_exporter_down.sh
 │   │   ├── production_deployment_hardening.sh
+│   │   ├── redis_backpressure.sh
 │   │   ├── restore-scan-dlq-drill.sh
 │   │   ├── rotate-secrets-drill.sh
 │   │   ├── scanner_down.sh
-│   │   └── sink_down.sh
+│   │   ├── sink_down.sh
+│   │   └── storage_corruption_drill.sh
 │   ├── e2e
+│   │   ├── demo_5_minute.sh
 │   │   ├── mutation_surface.sh
 │   │   ├── oidc_login_and_call_engine.sh
 │   │   ├── run_oidc_profile.sh
 │   │   ├── upload_lifecycle.sh
 │   │   └── vs001_create_folder.sh
+│   ├── generate-doc-artifacts.sh
 │   ├── generate-quarterly-alignment-issue.sh
+│   ├── generate-threat-model-diff-prompt.sh
+│   ├── generate_durability_evidence_pack.sh
+│   ├── generate_tenant_compliance_packet.sh
+│   ├── integrity_verify_job.sh
+│   ├── k8s
+│   │   └── kind_smoke.sh
 │   ├── ledger-baseline.sh
+│   ├── security-regression-suite.sh
+│   ├── supply-chain-checks.sh
 │   ├── sustainability-metrics.sh
 │   ├── validate-alert-rules.sh
 │   ├── validate-observability-assets.sh
@@ -363,4 +429,4 @@
 └── tests
     └── test_ci_pr_security_scan_change_detection.py
 
-91 directories, 273 files
+100 directories, 330 files

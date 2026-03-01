@@ -1,0 +1,76 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+body {
+  margin: 0;
+  background: #f5f7fb;
+  color: #162033;
+}
+header {
+  background: #162033;
+  color: #fff;
+  padding: 16px 24px;
+}
+main {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.grid {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+.grid.two {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.grid.three {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  border: 1px solid #b8c2d6;
+  border-radius: 6px;
+  padding: 8px;
+}
+button {
+  background: #244fbe;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+.status {
+  margin: 8px 0;
+  font-weight: 600;
+}
+pre {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  background: #0d1323;
+  color: #d7e6ff;
+  padding: 12px;
+  border-radius: 6px;
+}

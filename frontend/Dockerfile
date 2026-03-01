@@ -7,5 +7,6 @@ RUN npm run build
 
 FROM node:25-alpine
 WORKDIR /app
-COPY --from=builder /app .
+COPY --from=builder --chown=node:node /app .
+USER node
 CMD ["npm", "start"]

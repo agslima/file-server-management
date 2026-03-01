@@ -2,13 +2,16 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/example/file-engine/internal/auth"
+	"github.com/example/file-engine/internal/observability"
 	"github.com/example/file-engine/internal/security"
+	"github.com/example/file-engine/internal/services"
 )
 
 func (h *HTTPServer) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.AuthContext, bool) {
@@ -213,6 +216,73 @@ func (h *HTTPServer) handleAdminRoles(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *HTTPServer) handleGovernancePolicyUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var req struct {
+		Policy services.GovernancePolicy `json:"policy"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	beforeHash, afterHash, err := h.Uploads.UpdateGovernancePolicy(authCtx.EffectiveActorID(), req.Policy)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "updated", "before_hash": beforeHash, "after_hash": afterHash})
+}
+
+func (h *HTTPServer) handleTenantEvidence(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, ok := h.requireAdmin(w, r); !ok {
+		return
+	}
+	prefix := "/admin/tenants/"
+	if !strings.HasPrefix(r.URL.Path, prefix) || !strings.HasSuffix(r.URL.Path, "/evidence") {
+		http.NotFound(w, r)
+		return
+	}
+	tenantID := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, prefix), "/evidence")
+	tenantID = strings.Trim(tenantID, "/")
+	if tenantID == "" {
+		http.Error(w, "tenant id is required", http.StatusBadRequest)
+		return
+	}
+	month := time.Now().UTC().Format("2006-01")
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"schema_version": "tenant_evidence.v1",
+		"tenant_id":      tenantID,
+		"generated_at":   time.Now().UTC().Format(time.RFC3339),
+		"pointers": map[string]any{
+			"effective_policy":   "/admin/v1/governance:effective?tenant_id=" + tenantID,
+			"drift_status":       "/admin/v1/governance:drift-check",
+			"last_review_export": fmt.Sprintf("artifacts/compliance/access-review/%s/access-review.json", month),
+			"last_drills": []string{
+				"scripts/drills/db_restore_replay.sh",
+				"scripts/drills/storage_corruption_drill.sh",
+				"scripts/drills/audit_sink_catchup_drill.sh",
+			},
+		},
+	})
 }
 
 func (h *HTTPServer) handleGovernanceDelete(w http.ResponseWriter, r *http.Request) {
@@ -420,4 +490,88 @@ func (h *HTTPServer) handleQuarantineRestore(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"status": "restored", "path": meta.Path, "scan_status": meta.ScanStatus})
+}
+
+func (h *HTTPServer) handleTenantCostReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, ok := h.requireAdmin(w, r); !ok {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"generated_at": time.Now().UTC().Format(time.RFC3339),
+		"tenants":      observability.DefaultMetrics.TenantUsageSnapshot(),
+	})
+}
+
+func (h *HTTPServer) handleIntegrityVerify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	authCtx, ok := h.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	if h.Uploads == nil {
+		http.Error(w, "upload pipeline unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	sampleSize := 10
+	if raw := strings.TrimSpace(r.URL.Query().Get("sample_size")); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v <= 0 {
+			http.Error(w, "invalid sample_size", http.StatusBadRequest)
+			return
+		}
+		sampleSize = v
+	}
+	failureThreshold := 0
+	if raw := strings.TrimSpace(r.URL.Query().Get("failure_threshold")); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 0 {
+			http.Error(w, "invalid failure_threshold", http.StatusBadRequest)
+			return
+		}
+		failureThreshold = v
+	}
+	ignorePaths := map[string]struct{}{}
+	if raw := strings.TrimSpace(r.URL.Query().Get("ignore_paths")); raw != "" {
+		for part := range strings.SplitSeq(raw, ",") {
+			path := strings.TrimSpace(part)
+			if path != "" {
+				ignorePaths[path] = struct{}{}
+			}
+		}
+	}
+
+	report := h.Uploads.VerifyIntegritySample(r.Context(), authCtx.EffectiveActorID(), sampleSize)
+	ignored := 0
+	filtered := make([]any, 0, len(report.Failures))
+	for _, failure := range report.Failures {
+		if _, ok := ignorePaths[failure.Path]; ok {
+			ignored++
+			continue
+		}
+		filtered = append(filtered, failure)
+	}
+	report.Failed = len(filtered)
+	statusCode := http.StatusOK
+	if report.Failed > failureThreshold {
+		statusCode = http.StatusConflict
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"checked":             report.Checked,
+		"failed":              report.Failed,
+		"failures":            filtered,
+		"ignored_failures":    ignored,
+		"sample_size":         sampleSize,
+		"failure_threshold":   failureThreshold,
+		"false_positive_mode": len(ignorePaths) > 0,
+	})
 }

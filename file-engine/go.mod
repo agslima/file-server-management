@@ -1,6 +1,6 @@
 module github.com/example/file-engine
 
-go 1.24.0
+go 1.26
 
 require (
 	cloud.google.com/go/storage v1.60.0
@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.9
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/pkg/sftp v1.13.10
