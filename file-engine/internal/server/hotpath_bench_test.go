@@ -78,10 +78,9 @@ func BenchmarkHandleUploadComplete(b *testing.B) {
 		if err := uploads.UploadChunk(uploadID, 0, []byte("hot-path")); err != nil {
 			b.Fatalf("chunk upload: %v", err)
 		}
+		requestID++
 		req := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
-		req.Header.Set("Authorization", signedTokenBench(secret))
-		req := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
-		req.Header.Set("X-Idempotency-Key", "bench-complete-"+uploadID)
+		req.Header.Set("X-Idempotency-Key", fmt.Sprintf("bench-complete-%d", requestID))
 		req.Header.Set("Authorization", signedTokenBench(secret))
 		rr := httptest.NewRecorder()
 		h.handleUploadComplete(rr, req)

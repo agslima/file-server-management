@@ -3,10 +3,10 @@
 namespace App\Clients;
 
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
-use Throwable;
 
 class FileEngineClient
 {
@@ -85,7 +85,6 @@ class FileEngineClient
             );
         }
     }
-    }
 
     private function throwIfError(Response $response): Response
     {
@@ -102,7 +101,6 @@ class FileEngineClient
             ? $rawMessage
             : "file-engine returned HTTP {$response->status()}";
 
-        throw new FileEngineException($response->status(), $codeValue, $reason, $retryable, $message);
         throw new FileEngineException($response->status(), $codeValue, $reason, $retryable, $message);
     }
 }
