@@ -15,6 +15,9 @@ class FileEngineClient
         private readonly string $baseUrl,
         private readonly string $bearerToken = '',
     ) {
+        if (trim($this->baseUrl) === '' || filter_var($this->baseUrl, FILTER_VALIDATE_URL) === false) {
+            throw new \InvalidArgumentException('FileEngine base URL must be a valid absolute URL.');
+        }
     }
 
     private function request(): PendingRequest
