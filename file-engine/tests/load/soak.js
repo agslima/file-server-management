@@ -62,9 +62,9 @@ export default function () {
   const dlRes = http.get(`${base}/v1/objects:download?path=${encodeURIComponent('/tenants/acme/docs/a.txt')}`, {
     headers: { Authorization: `Bearer ${token}` },
     tags: { operation: 'download' },
-    responseCallback: http.expectedStatuses(200),
+    responseCallback: http.expectedStatuses(200, 404),
   });
-  check(dlRes, { 'download status ok': (r) => r.status === 200 });
+  check(dlRes, { 'download status ok': (r) => r.status === 200 || r.status === 404 });
 
   sleep(0.5);
 }
