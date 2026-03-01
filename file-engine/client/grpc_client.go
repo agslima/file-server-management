@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	pb "github.com/example/file-engine/pkg/generated"
