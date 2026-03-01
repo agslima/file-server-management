@@ -97,8 +97,12 @@ class FileEngineClient
         $codeValue = (string) Arr::get($payload, 'error.code', 'HTTP_ERROR');
         $reason = (string) Arr::get($payload, 'error.reason', 'http_error');
         $retryable = (bool) Arr::get($payload, 'error.retryable', false);
-        $message = (string) Arr::get($payload, 'error.message', $response->body());
+        $rawMessage = Arr::get($payload, 'error.message');
+        $message = is_string($rawMessage) && $rawMessage !== ''
+            ? $rawMessage
+            : "file-engine returned HTTP {$response->status()}";
 
+        throw new FileEngineException($response->status(), $codeValue, $reason, $retryable, $message);
         throw new FileEngineException($response->status(), $codeValue, $reason, $retryable, $message);
     }
 }
