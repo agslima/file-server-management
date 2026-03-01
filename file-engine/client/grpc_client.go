@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	pb "github.com/example/file-engine/pkg/generated"
@@ -15,7 +16,7 @@ type GRPCClient struct {
 
 func NewGRPCClient(addr string, opts ...grpc.DialOption) (*GRPCClient, error) {
 	if len(opts) == 0 {
-		return nil, fmt.Errorf("missing grpc.DialOption: explicit transport credentials required")
+		return nil, errors.New("missing grpc.DialOption: explicit transport credentials required")
 	}
 	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {

@@ -207,11 +207,12 @@ func (p *Processor) reserveIdempotencyKey(t *redisq.TaskPayload) idempotencyRese
 	p.evictExpiredLocked(now)
 
 	if entry, ok := p.seenKeys[key]; ok {
-		if now.After(entry.expiresAt) {
+		switch {
+		case now.After(entry.expiresAt):
 			delete(p.seenKeys, key)
-		} else if entry.inFlight {
+		case entry.inFlight:
 			return reservationInFlight
-		} else {
+		default:
 			return reservationDuplicate
 		}
 	}

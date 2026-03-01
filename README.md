@@ -9,7 +9,7 @@
 [//]: # (last_reviewed: 2026-02-19)
 
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
-![Go Version](https://img.shields.io/badge/go-1.24+-yellowgreen)
+![Go Version](https://img.shields.io/badge/go-1.26+-yellowgreen)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-blue)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20-4e6e6e)
 [![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-green)](https://github.com/agslima/file-server-management/tree/main/docs)
@@ -488,7 +488,7 @@ Operational signals to monitor:
 
 Requirements:
 
-- Go 1.24+
+- Go 1.26+
 - Docker Engine / Docker Desktop + Compose v2 (optional; only needed for containerized dependencies)
 - curl (optional; only needed for manual API calls)
 
