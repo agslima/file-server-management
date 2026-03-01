@@ -1,6 +1,8 @@
 package client
+
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	pb "github.com/example/file-engine/pkg/generated"
@@ -14,12 +16,14 @@ type GRPCClient struct {
 
 func NewGRPCClient(addr string, opts ...grpc.DialOption) (*GRPCClient, error) {
 	if len(opts) == 0 {
-		return nil, fmt.Errorf("create grpc client: missing dial options; set grpc.WithTransportCredentials(...) explicitly")
+		return nil, errors.New("create grpc client: missing dial options; set grpc.WithTransportCredentials(...) explicitly")
 	}
+
 	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create grpc client: %w", err)
 	}
+
 	return &GRPCClient{conn: conn, client: pb.NewFileEngineClient(conn)}, nil
 }
 
@@ -27,6 +31,7 @@ func (c *GRPCClient) Close() error {
 	if c == nil || c.conn == nil {
 		return nil
 	}
+
 	return c.conn.Close()
 }
 
@@ -35,6 +40,7 @@ func (c *GRPCClient) CreateFolder(ctx context.Context, req *pb.CreateFolderReque
 	if err != nil {
 		return nil, fmt.Errorf("CreateFolder: %w", err)
 	}
+
 	return resp, nil
 }
 
@@ -43,5 +49,6 @@ func (c *GRPCClient) GetTaskStatus(ctx context.Context, req *pb.TaskStatusReques
 	if err != nil {
 		return nil, fmt.Errorf("GetTaskStatus: %w", err)
 	}
+
 	return resp, nil
 }
