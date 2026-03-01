@@ -66,5 +66,5 @@ export default function () {
   });
   check(dlRes, { 'download status ok': (r) => r.status === 200 || r.status === 404 });
 
-  sleep(0.5);
+  sleep(1);
 }
