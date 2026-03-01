@@ -80,8 +80,9 @@ func BenchmarkHandleUploadComplete(b *testing.B) {
 		}
 		req := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
 		req.Header.Set("Authorization", signedTokenBench(secret))
-		requestID++
-		req.Header.Set("X-Idempotency-Key", fmt.Sprintf("bench-complete-%d", requestID))
+		req := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
+		req.Header.Set("X-Idempotency-Key", "bench-complete-"+uploadID)
+		req.Header.Set("Authorization", signedTokenBench(secret))
 		rr := httptest.NewRecorder()
 		h.handleUploadComplete(rr, req)
 		if rr.Code != http.StatusOK {

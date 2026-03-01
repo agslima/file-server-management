@@ -16,7 +16,7 @@ type GRPCClient struct {
 
 func NewGRPCClient(addr string, opts ...grpc.DialOption) (*GRPCClient, error) {
 	if len(opts) == 0 {
-		return nil, errors.New("missing grpc.DialOption: explicit transport credentials required")
+		return nil, fmt.Errorf("create grpc client: missing dial options; set grpc.WithTransportCredentials(...) explicitly")
 	}
 	conn, err := grpc.NewClient(addr, opts...)
 	if err != nil {

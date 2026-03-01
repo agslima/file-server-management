@@ -46,11 +46,19 @@ async function login() {
   const data = await request(`${backend()}/login`, { method: 'POST', body: JSON.stringify(payload) });
   state.token = data.access_token || data.token || '';
   $("loginStatus").textContent = state.token ? 'Authenticated.' : 'Login response has no token.';
-  out('Login result', data);
+  const redacted = { ...data };
+  if (redacted && typeof redacted === 'object') {
+    if ('access_token' in redacted) redacted.access_token = '***redacted***';
+    if ('token' in redacted) redacted.token = '***redacted***';
+  }
+  out('Login result', redacted);
 }
 
 function tenantPath(raw) {
-  const tenant = $("tenant").value;
+  const tenant = $("tenant").value.trim();
+  if (!/^[A-Za-z0-9_-]+$/.test(tenant)) {
+    throw new Error('Invalid tenant id format.');
+  }
   return raw.replace('/tenants/acme', `/tenants/${tenant}`);
 }
 
@@ -79,6 +87,9 @@ async function runUploadFlow() {
     headers: authHeaders(),
   });
   const uploadId = init.upload_id;
+  if (!uploadId) {
+    throw new Error('Upload initiation failed: missing upload_id in response.');
+  }
   const uploadFile = $("uploadBody").files?.[0];
   const uploadBody = uploadFile ?? $("uploadBody").value;
   await request(`${backend()}/uploads/${uploadId}/chunk`, {

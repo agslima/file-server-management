@@ -81,7 +81,10 @@ export default function () {
   check(initRes, { 'upload initiate accepted': (r) => r.status === 200 });
 
   const initBody = asJSON(initRes);
-  if (initBody.upload_id) {
+  const hasUploadId = check(initBody, {
+    'upload_id is present': (b) => typeof b.upload_id === 'string' && b.upload_id.length > 0,
+  });
+  if (hasUploadId) {
     const chunkRes = http.put(`${base}/v1/uploads/${initBody.upload_id}:chunk?offset=0`, 'budget-smoke', {
       headers: { ...headers, 'Content-Type': 'application/octet-stream' },
       tags: { operation: 'mutation' },
