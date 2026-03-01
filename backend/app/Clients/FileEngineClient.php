@@ -71,7 +71,7 @@ class FileEngineClient
             return $this->throwIfError($call());
         } catch (FileEngineException $exception) {
             throw $exception;
-        } catch (Throwable $exception) {
+        } catch (ConnectionException $exception) {
             throw new FileEngineException(
                 0,
                 'TRANSPORT_ERROR',
@@ -81,6 +81,7 @@ class FileEngineClient
                 $exception,
             );
         }
+    }
     }
 
     private function throwIfError(Response $response): Response
