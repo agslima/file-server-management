@@ -69,6 +69,7 @@ func BenchmarkHandleUploadComplete(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+	requestID := 0
 	
 	for b.Loop() {
 		uploadID, err := uploads.StartResumableUpload("/tenants/acme/docs/profile.txt", "")
