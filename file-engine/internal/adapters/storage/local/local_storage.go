@@ -27,6 +27,8 @@ func New(base string) *LocalStorage {
 
 func (l *LocalStorage) full(p string) string {
 	clean := normalizePath(p)
+
+	// Join the (relative) cleaned path with the base directory.
 	joined := filepath.Join(l.base, clean)
 
 	// Ensure that the resolved path stays within the configured base directory.
@@ -50,10 +52,26 @@ func (l *LocalStorage) full(p string) string {
 }
 
 func normalizePath(p string) string {
-	p = path.Clean("/" + path.Clean(strings.ReplaceAll(strings.TrimSpace(p), "\\", "/")))
+	// Normalize slashes and trim whitespace.
+	p = strings.TrimSpace(strings.ReplaceAll(p, "\\", "/"))
+
+	// Clean the path to remove redundant components.
+	p = path.Clean(p)
+
+	// Treat "." as the base directory itself.
 	if p == "." {
-		return "/"
+		return ""
 	}
+
+	// Remove any leading slash so that the path is always relative to the base.
+	p = strings.TrimPrefix(p, "/")
+
+	// Reject any remaining traversal attempts defensively.
+	if p == ".." || strings.HasPrefix(p, "../") || strings.Contains(p, "/../") || strings.HasSuffix(p, "/..") {
+		// Returning empty here will cause full() to resolve to the base directory only.
+		return ""
+	}
+
 	return p
 }
 
