@@ -26,6 +26,7 @@ func New(base string) *LocalStorage {
 }
 
 func (l *LocalStorage) full(p string) string {
+	// Normalize the user-supplied path into a safe, relative form.
 	clean := normalizePath(p)
 
 	// Join the (relative) cleaned path with the base directory.
@@ -35,14 +36,17 @@ func (l *LocalStorage) full(p string) string {
 	baseAbs, errBase := filepath.Abs(l.base)
 	fullAbs, errFull := filepath.Abs(joined)
 	if errBase != nil || errFull != nil {
+		// On error resolving absolute paths, fall back to the base directory.
 		return l.base
 	}
 
+	// Ensure baseAbs has a trailing path separator when used as a prefix.
 	baseWithSep := baseAbs
 	if !strings.HasSuffix(baseWithSep, string(filepath.Separator)) {
 		baseWithSep += string(filepath.Separator)
 	}
 
+	// Only allow access within the base directory (or the base directory itself).
 	if fullAbs == baseAbs || strings.HasPrefix(fullAbs, baseWithSep) {
 		return fullAbs
 	}
