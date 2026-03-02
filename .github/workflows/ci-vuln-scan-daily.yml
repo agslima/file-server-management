@@ -1,0 +1,194 @@
+name: Daily Security Scan
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/ci-security-deep.yml"
+
+concurrency:
+  group: ci-security-deep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ==================================================================
+  # JOB 1: Scan + Upload SARIF + Produce Governance JSON
+  # ==================================================================
+  security-governance:
+    name: Security Governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    permissions:
+      contents: read
+      security-events: write
+
+    outputs:
+      gate_failed: ${{ steps.gate.outcome == 'failure' }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pinned
+        with:
+          fetch-depth: 0
+
+      - name: Secret Scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # --------------------------------------------------------------
+      # Trivy DB caching
+      # --------------------------------------------------------------
+      - name: Cache Trivy DB
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/.cache/trivy
+          key: ${{ runner.os }}-trivy-${{ github.workflow }}-${{ github.ref_name }}
+          restore-keys: |
+            ${{ runner.os }}-trivy-${{ github.workflow }}-
+            ${{ runner.os }}-trivy-
+
+      # Common skip dirs
+      - name: Set scan skip dirs
+        id: vars
+        run: |
+          echo "SKIP_DIRS=node_modules,dist,build,vendor,coverage,.git,.cache,.venv,tmp" >> "$GITHUB_OUTPUT"
+
+      # --------------------------------------------------------------
+      # 1) INFRA / CONFIG SCAN (SARIF)
+      # --------------------------------------------------------------
+      - name: Trivy Scan - Infrastructure (SARIF)
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # v0.34.0
+        with:
+          scan-type: "config"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-infra.sarif"
+          severity: "HIGH,CRITICAL"
+          hide-progress: true
+          exit-code: "0"
+
+      # --------------------------------------------------------------
+      # 2) CODE SCAN (SARIF - vulns & secrets)
+      # - Fail only if the scanner itself errors
+      # - Do NOT fail on findings (exit-code 0)
+      # --------------------------------------------------------------
+      - name: Trivy Scan - Code (SARIF)
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # v0.34.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          scanners: "vuln,secret"
+          format: "sarif"
+          output: "trivy-code.sarif"
+          severity: "MEDIUM,HIGH,CRITICAL"
+          skip-dirs: ${{ steps.vars.outputs.SKIP_DIRS }}
+          hide-progress: true
+          exit-code: "0"
+
+      # --------------------------------------------------------------
+      # 3) GOVERNANCE JSON
+      # --------------------------------------------------------------
+      - name: Generate Governance JSON
+        uses: aquasecurity/trivy-action@c1824fd6edce30d7ab345a9989de00bbd46ef284 # v0.34.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          scanners: "vuln,secret,config"
+          format: "json"
+          output: "trivy-governance.json"
+          severity: "MEDIUM,HIGH,CRITICAL"
+          skip-dirs: ${{ steps.vars.outputs.SKIP_DIRS }}
+          hide-progress: true
+          exit-code: "0"
+
+      # Gatekeeper: validate files exist and are non-empty
+      - name: Validate Scanner Outputs
+        run: |
+          set -euo pipefail
+          test -s trivy-governance.json || (echo "::error::Missing/empty trivy-governance.json"; exit 1)
+          test -s trivy-code.sarif || (echo "::error::Missing/empty trivy-code.sarif"; exit 1)
+          test -s trivy-infra.sarif || (echo "::error::Missing/empty trivy-infra.sarif"; exit 1)
+          echo "✅ Trivy outputs verified."
+
+      # Publish SARIF (Security tab)
+      - name: Upload Trivy SARIF (Code)
+        uses: github/codeql-action/upload-sarif@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.0.0
+        with:
+          sarif_file: trivy-code.sarif
+          category: code
+
+      - name: Upload Trivy SARIF (Infra)
+        uses: github/codeql-action/upload-sarif@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.0.0
+        with:
+          sarif_file: trivy-infra.sarif
+          category: infrastructure
+
+      # Upload artifacts (always)
+      - name: Upload Trivy Artifacts
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: trivy-deep-scan
+          path: |
+            trivy-governance.json
+            trivy-code.sarif
+            trivy-infra.sarif
+          retention-days: 2
+
+      # - continue-on-error so we can still open an issue
+      - name: Enforce Risk Acceptance Policy
+        id: gate
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          chmod +x hack/check-security-debt.sh
+          ./hack/check-security-debt.sh trivy-governance.json
+
+      - name: Fail job if gate failed
+        if: steps.gate.outcome == 'failure'
+        run: exit 1
+
+  # ==================================================================
+  # JOB 2: Create issue + Slack Alert
+  # ==================================================================
+  create-issue:
+    name: Create Issue on Failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [security-governance]
+    if: needs.security-governance.result == 'failure'
+
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Create Issue (idempotent per day)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TODAY="$(date -u +%Y-%m-%d)"
+          TITLE="🚨 Security Deep Scan Failed (${TODAY})"
+          BODY=$(cat <<EOF
+          **Workflow:** CI – Security Deep Scan
+          **Date (UTC):** ${TODAY}
+          **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          **What to check**
+          - Download artifact: \`trivy-deep-scan\`
+          - Review Security tab SARIF alerts
+          - Validate Trivy DB/network health if outputs are missing
+          EOF
+          )
+
+          if gh issue list --limit 50 --search "$TITLE" --json title | grep -q "$TITLE"; then
+            echo "Issue already exists for today."
+            exit 0
+          fi
+
+          gh issue create --title "$TITLE" --body "$BODY" --label "security" --label "governance"
