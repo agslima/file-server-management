@@ -112,7 +112,7 @@ Inefficiencies:
 
 ### C) Sustainability
 
-**Current state: moderate-to-strong with disciplined governance; human redundancy remains the key gap.**
+**Current state: strong with disciplined governance; reviewer continuity now has explicit distinct-backup enforcement.**
 
 What supports sustainability:
 
@@ -120,10 +120,11 @@ What supports sustainability:
 - Ledger-first claim promotion discipline with runnable validation commands.
 - Runnable validation culture.
 - CI + governance hygiene checks protecting documentation consistency.
+- Critical domains now map to named primary/backup maintainers with distinct identities in `.github/OWNERS` and `docs/ownership-backup-matrix.md`.
+- Reviewer continuity checks now enforce distinct approver identities when multiple critical approval groups apply.
 
 What threatens sustainability:
 
-- Single-primary-owner concentration for critical domains.
 - Risk of future drift if promotion policy is not enforced continuously.
 
 ---

@@ -1,0 +1,134 @@
+name: Promoted Claim Cadence
+
+on:
+  schedule:
+    - cron: '20 3 * * 1' # Weekly on Monday at 03:20 UTC
+  workflow_dispatch:
+    inputs:
+      run_cl071:
+        description: "Run CL-071 benchmark/profile validation (heavier)"
+        required: false
+        default: false
+        type: boolean
+      run_cl073:
+        description: "Run CL-073 bootstrap/demo validation (heavier)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promoted-claim-cadence-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOLANG_VERSION: '1.26.x'
+
+jobs:
+  cl009-demo:
+    name: CL-009 Demo Console Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Validate CL-009 command
+        run: |
+          test -f frontend/index.html
+          test -f frontend/app.js
+          test -f frontend/styles.css
+          ./scripts/e2e/demo_5_minute.sh --mode=mock
+
+  cl070-deployment-realism:
+    name: CL-070 Deployment Realism Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      JWT_AUDIENCE: file-engine-dev
+      GOVERNANCE_POLICY_SOURCE_HMAC_KEY: ci-periodic-hmac
+      AUDIT_IMMUTABLE_SINK_TYPE: file
+      AUDIT_IMMUTABLE_SINK_PATH: artifacts/ci-immutable-audit.log
+      GOVERNANCE_POLICY_SOURCE: file-engine/config/governance-policy-source.example.json
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Validate CL-070 command
+        run: |
+          bash -n scripts/check-runtime-wiring.sh scripts/k8s/kind_smoke.sh scripts/drills/k8s_rollback_drill.sh
+          ./scripts/check-runtime-wiring.sh --profile prod
+
+  cl072-security-posture:
+    name: CL-072 Security Posture Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+
+      - name: Cache Go module download + build cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-periodic-${{ env.GOLANG_VERSION }}-${{ hashFiles('file-engine/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-periodic-${{ env.GOLANG_VERSION }}-
+
+      - name: Validate CL-072 command
+        run: |
+          ./scripts/generate-threat-model-diff-prompt.sh
+          ./scripts/security-regression-suite.sh
+          ./scripts/supply-chain-checks.sh
+          ./scripts/drills/rotate-secrets-drill.sh
+
+  cl071-performance:
+    name: CL-071 Performance Validation (Manual)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_cl071 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+
+      - name: Cache Go module download + build cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-periodic-cl071-${{ env.GOLANG_VERSION }}-${{ hashFiles('file-engine/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-periodic-cl071-${{ env.GOLANG_VERSION }}-
+
+      - name: Validate CL-071 command
+        run: |
+          cd file-engine
+          go test ./internal/server -run "^$" -bench "BenchmarkHandle(Download|UploadComplete)$" -benchtime=1x
+          ./scripts/capture_hotpath_profile.sh
+          bash -n scripts/capture_hotpath_profile.sh
+
+  cl073-onboarding:
+    name: CL-073 Onboarding Validation (Manual)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_cl073 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Validate CL-073 command
+        run: |
+          ./scripts/architecture-conformance-check.sh
+          ./scripts/generate-doc-artifacts.sh
+          make bootstrap
+          make demo

@@ -2,7 +2,7 @@
 
 [//]: # (owner: Project Maintainers)
 [//]: # (review_cadence: Quarterly)
-[//]: # (last_reviewed: 2026-02-19)
+[//]: # (last_reviewed: 2026-03-03)
 
 
 This document defines the **required checks for merge** and how advanced security workflows are handled. The goal is a compact, reliable core gate that scales with the project, while keeping advanced security checks running in CI with clear promotion criteria into branch-protection requirements.
@@ -26,21 +26,38 @@ These checks are required for merges to `main`, with explicit scope where applic
 2. **Lint (required category)**
    - **Status:** Implemented in CI for Go (`lint-go` job in `.github/workflows/ci.yml`, scoped to `file-engine/**` changes).
    - **Policy:** `lint-go` is required for merge when triggered by file-engine changes.
-3. **Dependency scan (required category)**
-   - **Status:** Snyk PR scan is active in `.github/workflows/snyk-scan.yaml`.
-   - **Policy:** Snyk is branch-protection gated for PR merges when backend/frontend/file-engine scopes are touched.
+3. **Security scan (required category)**
+   - **Status:** PR security scan gates run in `.github/workflows/ci-pr-security-scan.yaml`:
+     - `Secret Scan (Gitleaks)`
+     - `Trivy Gate (Dependencies)` (filesystem OS/library vulnerabilities, `HIGH/CRITICAL`)
+     - `Trivy Gate - Misconfig (IaC)` (`HIGH/CRITICAL`)
+   - **Policy:** These PR security scan checks are branch-protection gated for merges to `main`.
 
 ---
 
-## Advanced security workflows (non-blocking for now)
+## Advanced security workflows and policy
 
-These workflows continue to run but do not gate merges until they are stable and have low false positives:
+These workflows run continuously for security visibility, with explicit merge-gate policy:
 
-- CodeQL
-- Snyk snapshot / monitoring (for post-merge visibility beyond PR gate)
+- CodeQL (`.github/workflows/codeql.yml`) runs on `pull_request`, `push` to `main`, and scheduled cadence.
+  - **Current policy:** advisory/non-blocking in branch protection by default.
+  - **Promotion rule:** if elevated to required, gate both matrix checks (`Analyze (actions)` and `Analyze (go)`) and update this document plus `docs/branch-protection-mapping.md` in the same change set.
 - Dependabot auto-merge workflows (scoped to patch/minor)
 
-When any of these are promoted to required, update this doc and the branch protection rules together.
+---
+
+## Scheduled promoted-claim validation policy
+
+To reduce drift between promoted claims and real CI evidence, periodic validation runs in `.github/workflows/promoted-claim-cadence.yml`.
+
+- Weekly schedule-gated claims:
+  - `CL-009` (demo console contract)
+  - `CL-070` (deployment realism runtime-wiring/syntax checks)
+  - `CL-072` (security posture scripts + focused regression suite)
+- Explicit periodic/manual claims:
+  - `CL-071` and `CL-073` run via `workflow_dispatch` inputs (`run_cl071`, `run_cl073`) due heavier runtime/cost profile.
+- Policy requirement:
+  - Any promoted claim not covered by per-PR required checks must be either schedule-gated or marked explicit periodic/manual validation in `docs/capability-ledger.md`.
 
 ---
 
@@ -50,7 +67,7 @@ When any of these are promoted to required, update this doc and the branch prote
 - Canonical mapping: `docs/branch-protection-mapping.md`.
 - Ownership source of truth: `.github/OWNERS`.
 - Named domain backup maintainers: `docs/ownership-backup-matrix.md`.
-- Path-scoped required reviewer checks are enforced in CI (`Security reviewer` for `file-engine/internal/authz/**`, `Platform reviewer` for `monitoring/**`).
+- Path-scoped required reviewer checks are enforced in CI (`Security reviewer` for `file-engine/internal/authz/**`, `Platform reviewer` for `monitoring/**`), and reviewer continuity enforces distinct reviewer identities when multiple critical approval groups are required.
 - Keep this document and branch-protection settings synchronized at each quarterly review.
 
 ## Quarterly alignment review cadence

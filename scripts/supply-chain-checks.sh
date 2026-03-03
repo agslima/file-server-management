@@ -10,7 +10,8 @@ cd "$ROOT"
 mkdir -p "$SBOM_OUT"
 
 echo "[supply-chain] checking pinned toolchain declarations"
-rg -n '^go [0-9]+\.[0-9]+\.[0-9]+' file-engine/go.mod >/dev/null
+# Accept Go toolchain declarations in either `major.minor` or `major.minor.patch` form.
+rg -n '^go [0-9]+\.[0-9]+(\.[0-9]+)?$' file-engine/go.mod >/dev/null
 rg -n '"php": "\^[0-9]+\.[0-9]+"' backend/composer.json >/dev/null
 
 echo "[supply-chain] generating SBOM when syft is available"
