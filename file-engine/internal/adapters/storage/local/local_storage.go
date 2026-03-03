@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -32,7 +31,7 @@ func (l *LocalStorage) full(p string) string {
 	// Join the (relative) cleaned path with the base directory.
 	joined := filepath.Join(l.base, clean)
 
-	// Ensure that the resolved path stays within the configured base directory.
+	// Resolve both base and joined paths to absolute form.
 	baseAbs, errBase := filepath.Abs(l.base)
 	fullAbs, errFull := filepath.Abs(joined)
 	if errBase != nil || errFull != nil {
@@ -60,7 +59,7 @@ func normalizePath(p string) string {
 	p = strings.TrimSpace(strings.ReplaceAll(p, "\\", "/"))
 
 	// Clean the path to remove redundant components.
-	p = path.Clean(p)
+	p = filepath.Clean(p)
 
 	// Treat "." as the base directory itself.
 	if p == "." {
@@ -68,10 +67,10 @@ func normalizePath(p string) string {
 	}
 
 	// Remove any leading slash so that the path is always relative to the base.
-	p = strings.TrimPrefix(p, "/")
+	p = strings.TrimPrefix(p, string(filepath.Separator))
 
-	// Reject any remaining traversal attempts defensively.
-	if p == ".." || strings.HasPrefix(p, "../") || strings.Contains(p, "/../") || strings.HasSuffix(p, "/..") {
+	// Reject simple traversal-only values defensively; full() still enforces base containment.
+	if p == ".." || strings.HasPrefix(p, ".."+string(filepath.Separator)) {
 		// Returning empty here will cause full() to resolve to the base directory only.
 		return ""
 	}
