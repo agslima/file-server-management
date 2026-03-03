@@ -1,8 +1,7 @@
-<div align="center">
-
-<a name="back-to-top"></a>
-
 # Server File Manager Platform (PHP + Go File Engine)
+
+<div align="center">
+  <a name="back-to-top"></a>
 
 [//]: # (owner: Project Maintainers)
 [//]: # (review_cadence: Quarterly)
@@ -29,13 +28,13 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 </div>
 
 > [!Note]
-> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
+> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** has a baseline-validated and remains the incremental orchestration expansion path.
 
 ## TL;DR
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
-- **Async mutations:** create-folder and upload lifecycle are baseline-validated async workflows returning task/status-oriented outcomes; clients poll task status and complete upload flows through deterministic contract checks.
+- **Async mutations:** create-folder and async mutation task variants (move/governed-delete/quarantine-restore) are baseline-validated; upload lifecycle is baseline-validated as a session contract (`Initiate -> Upload chunk -> Complete`) with deterministic completion/idempotency checks.
 - **Secure uploads:** staged quarantine write + scan-gated promote behavior are baseline-validated, including non-stub ClamAV scanner integration evidence (clean + quarantined paths) and operational scanner closure controls (threshold alerts + runbook/escalation drill evidence).
 - **Auditing:** persisted task status + task audit events + append-only DB enforcement + external sink delivery are baseline-validated.
 - **Observability:** correlation IDs are baseline; OTEL export wiring is baseline-validated for API + worker entrypoints; collector/backend deployment hardening is baseline-validated with deterministic connectivity + drill scripts; paging-provider delivery is baseline-validated through a deterministic webhook drill path.
@@ -121,7 +120,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 | [`CL-071`](docs/capability-ledger.md#baseline-claims-implemented) | Performance budgets and capacity planning closure: k6 smoke/soak enforce latency+error thresholds, error-budget policy is documented, rough component/queue/storage sizing guidance is published, and reproducible hot-path profiling is script-backed | ✅ | `cd file-engine && go test ./internal/server -run "^$" -bench "BenchmarkHandle(Download\|UploadComplete)$" -benchtime=1x && ./file-engine/scripts/capture_hotpath_profile.sh && bash -n file-engine/scripts/capture_hotpath_profile.sh` |
 | [`CL-072`](docs/capability-ledger.md#baseline-claims-implemented) | Security posture hardening closure: threat-model diff prompt automation, focused negative security regression suite, supply-chain checks (toolchain pin verification + SBOM/signing story), and secret rotation continuity drill | ✅ | `./scripts/generate-threat-model-diff-prompt.sh && ./scripts/security-regression-suite.sh && ./scripts/supply-chain-checks.sh && ./scripts/drills/rotate-secrets-drill.sh` |
 
-> For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
+> For future target-state proposals and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
 
 </details>
 
@@ -351,7 +350,7 @@ Task state model (canonical):
 
 ## Current Implementation: Folder Flow
 
-The platform has baseline-validated async folder creation and upload lifecycle flows; folder creation remains the minimal reference walkthrough below.
+The platform has baseline-validated async folder creation and a baseline-validated upload lifecycle session flow; folder creation remains the minimal reference walkthrough below.
 
 Implemented baseline reference flow:
 
@@ -494,7 +493,7 @@ Requirements:
 
 ### 1) Run the validated baseline checks (recommended)
 
-This is the only **baseline-validated** quickstart today.
+This is the primary **baseline-verification** quickstart.
 
 ```bash
 ./file-engine/scripts/dev.sh
@@ -570,7 +569,6 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 
 > [!Note]
 > All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
-
 
 ## Deployment (dev/stage/prod + kind + rollback)
 
