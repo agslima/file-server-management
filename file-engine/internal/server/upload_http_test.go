@@ -54,6 +54,7 @@ func TestUploadLifecycleEndpointsCleanAndDirty(t *testing.T) {
 	}
 
 	chunkReq := httptest.NewRequest(http.MethodPut, "/v1/uploads/"+uploadID+":chunk?offset=0", bytes.NewBufferString("hello clean"))
+	chunkReq.Header.Set("Authorization", signedToken(t, secret))
 	chunkRR := httptest.NewRecorder()
 	h.handleUploadChunk(chunkRR, chunkReq)
 	if chunkRR.Code != http.StatusAccepted {
@@ -63,6 +64,7 @@ func TestUploadLifecycleEndpointsCleanAndDirty(t *testing.T) {
 	completeReq := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
 	completeReq.Header.Set("X-Idempotency-Key", "complete-1")
 	completeReq.Header.Set("X-Request-Id", "req-upload-1")
+	completeReq.Header.Set("Authorization", signedToken(t, secret))
 	completeRR := httptest.NewRecorder()
 	h.handleUploadComplete(completeRR, completeReq)
 	if completeRR.Code != http.StatusOK {
@@ -90,6 +92,7 @@ func TestUploadLifecycleEndpointsCleanAndDirty(t *testing.T) {
 	dirtyUploadID, _ := dirtyInitBody["upload_id"].(string)
 
 	dirtyChunk := httptest.NewRequest(http.MethodPut, "/v1/uploads/"+dirtyUploadID+":chunk?offset=0", bytes.NewBufferString("virus"))
+	dirtyChunk.Header.Set("Authorization", signedToken(t, secret))
 	dirtyChunkRR := httptest.NewRecorder()
 	h.handleUploadChunk(dirtyChunkRR, dirtyChunk)
 	if dirtyChunkRR.Code != http.StatusAccepted {
@@ -97,6 +100,7 @@ func TestUploadLifecycleEndpointsCleanAndDirty(t *testing.T) {
 	}
 
 	dirtyComplete := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+dirtyUploadID+":complete", http.NoBody)
+	dirtyComplete.Header.Set("Authorization", signedToken(t, secret))
 	dirtyCompleteRR := httptest.NewRecorder()
 	h.handleUploadComplete(dirtyCompleteRR, dirtyComplete)
 	if dirtyCompleteRR.Code != http.StatusForbidden {
@@ -175,5 +179,66 @@ func TestUploadRateLimitedReturnsThrottledEnvelopeAndAudit(t *testing.T) {
 	}
 	if len(audit.events) != 1 || audit.events[0] != "upload.throttled" {
 		t.Fatalf("expected upload.throttled audit event, got %#v", audit.events)
+	}
+}
+
+func TestUploadChunkAndCompleteRequireAuthorization(t *testing.T) {
+	secret := "test-secret"
+	verifier, _ := auth.NewJWTVerifier(secret, "", "", "")
+	acl := auth.NewInMemoryACLStore()
+	_ = acl.SetACL(auth.ACL{Path: "/tenants/acme", PrincipalID: "role:viewer", Permissions: map[auth.Permission]bool{auth.PermWrite: true}})
+
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{MaxObjectSizeBytes: 4096, TenantQuotaBytes: 10 * 1024, RequestTimeout: time.Second, RequireCleanScan: true})
+	h := &HTTPServer{
+		Verifier:       verifier,
+		ACLStore:       acl,
+		Uploads:        uploads,
+		Tenants:        auth.NewInMemoryTenantResolver(map[string][]string{"alice": {"acme"}}),
+		MaxUploadBytes: 4096,
+		UploadTimeout:  time.Second,
+		sem:            make(chan struct{}, 1),
+		rateByTenant:   map[string]int{},
+		rateByActor:    map[string]int{},
+		rateReset:      time.Now().Add(time.Minute),
+	}
+
+	initReq := httptest.NewRequest(http.MethodPost, "/v1/uploads:initiate", bytes.NewBufferString(`{"path":"/tenants/acme/docs/authz.txt"}`))
+	initReq.Header.Set("Authorization", signedToken(t, secret))
+	initReq.Header.Set("Content-Type", "application/json")
+	initRR := httptest.NewRecorder()
+	h.handleUploadInitiate(initRR, initReq)
+	if initRR.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", initRR.Code, initRR.Body.String())
+	}
+	var initBody map[string]any
+	if err := json.NewDecoder(initRR.Body).Decode(&initBody); err != nil {
+		t.Fatalf("decode initiate: %v", err)
+	}
+	uploadID, _ := initBody["upload_id"].(string)
+	if uploadID == "" {
+		t.Fatalf("missing upload_id")
+	}
+
+	chunkNoAuth := httptest.NewRequest(http.MethodPut, "/v1/uploads/"+uploadID+":chunk?offset=0", bytes.NewBufferString("hello"))
+	chunkNoAuthRR := httptest.NewRecorder()
+	h.handleUploadChunk(chunkNoAuthRR, chunkNoAuth)
+	if chunkNoAuthRR.Code != http.StatusUnauthorized {
+		t.Fatalf("expected chunk 401 got %d body=%s", chunkNoAuthRR.Code, chunkNoAuthRR.Body.String())
+	}
+
+	chunkReq := httptest.NewRequest(http.MethodPut, "/v1/uploads/"+uploadID+":chunk?offset=0", bytes.NewBufferString("hello"))
+	chunkReq.Header.Set("Authorization", signedToken(t, secret))
+	chunkRR := httptest.NewRecorder()
+	h.handleUploadChunk(chunkRR, chunkReq)
+	if chunkRR.Code != http.StatusAccepted {
+		t.Fatalf("expected chunk 202 got %d body=%s", chunkRR.Code, chunkRR.Body.String())
+	}
+
+	completeNoAuth := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
+	completeNoAuthRR := httptest.NewRecorder()
+	h.handleUploadComplete(completeNoAuthRR, completeNoAuth)
+	if completeNoAuthRR.Code != http.StatusUnauthorized {
+		t.Fatalf("expected complete 401 got %d body=%s", completeNoAuthRR.Code, completeNoAuthRR.Body.String())
 	}
 }

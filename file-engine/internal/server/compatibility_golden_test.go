@@ -98,6 +98,7 @@ func TestCompatibilityUploadLifecycleGolden(t *testing.T) {
 	assertMatchesFixture(t, initJSON, "upload_initiate.json")
 
 	chunkReq := httptest.NewRequest(http.MethodPut, "/v1/uploads/"+uploadID+":chunk?offset=0", bytes.NewBufferString("hello clean"))
+	chunkReq.Header.Set("Authorization", signedToken(t, secret))
 	chunkRR := httptest.NewRecorder()
 	h.handleUploadChunk(chunkRR, chunkReq)
 	if chunkRR.Code != http.StatusAccepted {
@@ -105,6 +106,7 @@ func TestCompatibilityUploadLifecycleGolden(t *testing.T) {
 	}
 
 	completeReq := httptest.NewRequest(http.MethodPost, "/v1/uploads/"+uploadID+":complete", http.NoBody)
+	completeReq.Header.Set("Authorization", signedToken(t, secret))
 	completeReq.Header.Set("X-Request-Id", "req-compat-1")
 	completeRR := httptest.NewRecorder()
 	h.handleUploadComplete(completeRR, completeReq)

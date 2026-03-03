@@ -36,19 +36,21 @@ Run from repository root unless noted:
 - `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v`
 - `./file-engine/scripts/dev.sh`
 - `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php`
+- `cd backend && ./scripts/smoke.sh`
+- `docker compose build --pull && docker compose up -d && ./scripts/wait-for-http.sh http://localhost:8080/healthz 120 && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/vs001_create_folder.sh && docker compose down -v`
 - `test -f frontend/README.md && test ! -f frontend/package.json`
 
 ## Current alignment notes (validated)
 
 - Proto mirror sync is expected to hold (`cmp` check).
 - File-engine baseline and integration checks are expected to pass via `scripts/dev.sh`.
-- Backend is scaffold-level; composer metadata validation is used as baseline signal.
+- Backend has a baseline-validated VS-001 slice (scaffold-plus-forwarding + polling validation), but is not feature-complete.
 - Frontend is intentionally placeholder (README present, no `package.json`).
 
 ## Known gaps to keep in mind
 
-- Some docs still describe target-state capabilities as implemented; verify with capability ledger commands before claiming support.
-- HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder` + `GetTaskStatus`; upload routes remain target-state.
+- Capability maturity truth is `docs/capability-ledger.md`; current promoted baseline spans `CL-001`..`CL-073` with no open target-state exclusions as of 2026-02-19.
+- HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder`, `GetTaskStatus`, and upload lifecycle routes (`/v1/uploads:initiate`, `/v1/uploads/{uploadId}:chunk`, `/v1/uploads/{uploadId}:complete`).
 - `file-engine/docker-compose.yml` is a compatibility mirror and should not override canonical setup guidance.
 - Root `docker-compose.yml` is the canonical developer compose entry point.
 

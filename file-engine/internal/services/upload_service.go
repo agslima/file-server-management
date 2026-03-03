@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -160,13 +161,46 @@ func (s *UploadService) StartResumableUpload(targetPath, idempotencyKey string) 
 			return existing.SessionID, nil
 		}
 	}
-	s.dlqSeq++
-	id := fmt.Sprintf("resumable-%d", s.dlqSeq)
+	id, err := newResumableSessionID()
+	if err != nil {
+		return "", err
+	}
+	for {
+		if _, exists := s.resumable[id]; !exists {
+			break
+		}
+		id, err = newResumableSessionID()
+		if err != nil {
+			return "", err
+		}
+	}
 	s.resumable[id] = &resumableUpload{TargetPath: normalized}
 	if idempotencyKey != "" {
 		s.initIdempotency[idempotencyKey] = initIdempotencyRecord{Path: normalized, SessionID: id}
 	}
 	return id, nil
+}
+
+func newResumableSessionID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate resumable session id: %w", err)
+	}
+	return "upl_" + hex.EncodeToString(b), nil
+}
+
+func (s *UploadService) ResolveResumablePath(sessionID, idempotencyKey string) (string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if r, ok := s.resumable[sessionID]; ok {
+		return r.TargetPath, nil
+	}
+	if idempotencyKey != "" {
+		if existing, found := s.idempotency[idempotencyKey]; found {
+			return existing.Path, nil
+		}
+	}
+	return "", errors.New("resumable session not found")
 }
 
 func (s *UploadService) UploadChunk(sessionID string, offset int64, data []byte) error {

@@ -2,10 +2,10 @@
 
 [//]: # (owner: Project Maintainers)
 [//]: # (review_cadence: Quarterly)
-[//]: # (last_reviewed: 2026-02-25)
+[//]: # (last_reviewed: 2026-03-03)
 
 
-**Last verified:** 2026-02-25
+**Last verified:** 2026-03-03
 
 ## Scope and evidence base
 
@@ -32,9 +32,9 @@ Validation commands executed for this review are listed in [Appendix A](#appendi
 
 ### Executive verdict
 
-**Current alignment is strong and materially improved, with core governance/doc-hygiene checks now aligned to CI behavior.**
+**Current alignment is strong and materially improved, with core governance/doc-hygiene checks aligned to CI behavior and maturity wording synchronized to the capability ledger.**
 
-The project is using a clear baseline-vs-target-state model with claim IDs and runnable verification commands. Top-level positioning now better matches the implemented baseline and reduces over-claim risk.
+The project is using a clear claim-promotion model with claim IDs and runnable verification commands. Top-level positioning now matches the implemented baseline and reduces over-claim risk.
 
 ### What is well aligned
 
@@ -57,17 +57,17 @@ The project is using a clear baseline-vs-target-state model with claim IDs and r
 4. **Frontend UX demonstration now has executable evidence.**
    - `CL-009` is now promoted from placeholder to a static thin-client demo console covering product and operator workflows, paired with deterministic narrative output via `scripts/e2e/demo_5_minute.sh --mode=mock`.
 
-5. **Target-state boundaries remain explicit.**
-   - Upload pipeline operational closure for thresholds/on-call/escalation is promoted via `CL-051`; OTEL production deployment hardening is promoted via `CL-048`, paging-provider delivery via `CL-050`, documentation contract synchronization via `CL-052`, and immutable sink delivery remains promoted via `CL-035`.
+5. **Maturity truth is now explicitly centralized in the ledger across core docs.**
+   - README, setup, API reference, and AGENTS now consistently represent upload lifecycle routes as baseline (`CL-047`) and remove stale "upload routes are target-state" wording.
+   - Capability status claims now point to the same promoted range (`CL-001`..`CL-073`) with no open target-state exclusions in the ledger snapshot (2026-02-19).
 
 ### Alignment corrections completed in this cycle
 
-5. **Resolved:** architecture boundaries are now explicitly documented and conformance-checked (logger unification + package-boundary guardrails).
-
-1. **Resolved:** governance-vs-CI mismatch for doc/governance checks.
-2. **Resolved:** stale `docker/docker-compose.yml` references in canonical docs.
-3. **Resolved:** README maturity visibility gaps for higher claim IDs.
-4. **Resolved:** stale prior-review findings that no longer reflected repo reality.
+1. **Resolved:** architecture boundaries are now explicitly documented and conformance-checked (logger unification + package-boundary guardrails).
+2. **Resolved:** governance-vs-CI mismatch for doc/governance checks.
+3. **Resolved:** stale `docker/docker-compose.yml` references in canonical docs.
+4. **Resolved:** README maturity visibility gaps for higher claim IDs.
+5. **Resolved:** stale prior-review findings that no longer reflected repo reality.
 
 ### Residual alignment risks
 
@@ -93,7 +93,7 @@ Strengths:
 Architectural risks:
 
 - Backend maturity asymmetry remains (scaffold control-plane vs stronger data-plane verification depth).
-- Target-state upload/security pipeline remains an architectural intent rather than baseline behavior.
+- Documentation synchronization overhead remains high across README/setup/API/AGENTS surfaces, so drift can reappear if claim-promotion discipline and drift checks are skipped.
 
 ### B) Process efficiency
 
@@ -117,6 +117,7 @@ Inefficiencies:
 What supports sustainability:
 
 - Explicit baseline/target-state separation.
+- Ledger-first claim promotion discipline with runnable validation commands.
 - Runnable validation culture.
 - CI + governance hygiene checks protecting documentation consistency.
 
@@ -134,6 +135,7 @@ What threatens sustainability:
 1. **Governance/CI alignment:** doc/governance hygiene checks now run on all PR paths.
 2. **Backend maturity contract harmonization:** ledger, backend AGENTS, CI, and README now reference the same VS-001 scaffold expectations.
 3. **Review refresh:** this document now reflects current repository reality and removed already-resolved findings.
+4. **Resolved maturity wording drift:** setup/API/AGENTS no longer describe upload lifecycle routes as target-state and now match ledger baseline claims.
 
 ### Priority 1 — Next 1-2 milestones
 
@@ -148,7 +150,7 @@ What threatens sustainability:
 
 1. **Institutionalize claim-promotion discipline.**
    - Keep the policy: no top-level baseline marketing before ledger claim ID + runnable evidence + CI proof.
-3. **Track sustainability metrics with release-ready artifacts.**
+2. **Track sustainability metrics with release-ready artifacts.**
    - Metrics now emit markdown for direct inclusion in PR/release notes.
 
 ---

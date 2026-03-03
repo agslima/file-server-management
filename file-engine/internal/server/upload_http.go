@@ -126,6 +126,11 @@ func (h *HTTPServer) handleUploadChunk(w http.ResponseWriter, r *http.Request) {
 		h.writeUploadError(w, r, http.StatusBadRequest, "invalid_request", "upload id is required", "")
 		return
 	}
+	authn, err := h.authorizeUploadSessionRequest(r, uploadID, "")
+	if err != nil {
+		h.mapUploadAuthError(w, r, err)
+		return
+	}
 	offset := int64(0)
 	if raw := strings.TrimSpace(r.URL.Query().Get("offset")); raw != "" {
 		parsed, err := strconv.ParseInt(raw, 10, 64)
@@ -141,7 +146,7 @@ func (h *HTTPServer) handleUploadChunk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.Uploads.UploadChunk(uploadID, offset, payload); err != nil {
-		h.writeUploadError(w, r, mapUploadServiceErrorToStatus(err), "chunk_failed", err.Error(), "")
+		h.writeUploadError(w, r, mapUploadServiceErrorToStatus(err), "chunk_failed", err.Error(), authn.tenantID)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
@@ -168,13 +173,22 @@ func (h *HTTPServer) handleUploadComplete(w http.ResponseWriter, r *http.Request
 		uploadID = strings.TrimSpace(req.UploadID)
 	}
 	idk := strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+	authn, err := h.authorizeUploadSessionRequest(r, uploadID, idk)
+	if err != nil {
+		h.mapUploadAuthError(w, r, err)
+		return
+	}
 	meta, err := h.Uploads.FinalizeResumableUpload(r.Context(), uploadID, idk)
 	if err != nil {
-		h.writeUploadError(w, r, mapUploadServiceErrorToStatus(err), "complete_failed", err.Error(), meta.TenantID)
+		tenantID := meta.TenantID
+		if tenantID == "" {
+			tenantID = authn.tenantID
+		}
+		h.writeUploadError(w, r, mapUploadServiceErrorToStatus(err), "complete_failed", err.Error(), tenantID)
 		return
 	}
 	correlationID := requestCorrelationID(r)
-	h.emitUploadAudit(r.Context(), "upload.completed", correlationID, meta.Path, meta.TenantID)
+	h.emitUploadAudit(r.Context(), "upload.completed", correlationID, meta.Path, authn.tenantID)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"upload_id":      uploadID,
@@ -190,10 +204,40 @@ func (h *HTTPServer) handleUploadComplete(w http.ResponseWriter, r *http.Request
 type uploadCorrelationIDKey struct{}
 
 func (h *HTTPServer) authorizeUploadRequest(r *http.Request, rawPath string) (uploadAuthContext, error) {
-	a, err := h.Verifier.ParseAuthContext(r.Header.Get("Authorization"))
+	a, err := h.parseUploadAuthContext(r)
 	if err != nil {
 		return uploadAuthContext{}, errors.New("unauthorized")
 	}
+	return h.authorizeUploadPath(r.Context(), a, rawPath, requestCorrelationID(r))
+}
+
+func (h *HTTPServer) authorizeUploadSessionRequest(r *http.Request, sessionID, idempotencyKey string) (uploadAuthContext, error) {
+	a, err := h.parseUploadAuthContext(r)
+	if err != nil {
+		return uploadAuthContext{}, errors.New("unauthorized")
+	}
+	if h.Uploads == nil {
+		return uploadAuthContext{}, errors.New("upload pipeline unavailable")
+	}
+	targetPath, err := h.Uploads.ResolveResumablePath(sessionID, idempotencyKey)
+	if err != nil {
+		return uploadAuthContext{}, errors.New("upload session not found")
+	}
+	return h.authorizeUploadPath(r.Context(), a, targetPath, requestCorrelationID(r))
+}
+
+func (h *HTTPServer) parseUploadAuthContext(r *http.Request) (auth.AuthContext, error) {
+	if h.Verifier == nil {
+		return auth.AuthContext{}, errors.New("unauthorized")
+	}
+	a, err := h.Verifier.ParseAuthContext(r.Header.Get("Authorization"))
+	if err != nil {
+		return auth.AuthContext{}, errors.New("unauthorized")
+	}
+	return a, nil
+}
+
+func (h *HTTPServer) authorizeUploadPath(ctx context.Context, a auth.AuthContext, rawPath, correlationID string) (uploadAuthContext, error) {
 	normalizedPath, err := security.NormalizeTenantPath(rawPath)
 	if err != nil {
 		return uploadAuthContext{}, errors.New("invalid path")
@@ -209,14 +253,14 @@ func (h *HTTPServer) authorizeUploadRequest(r *http.Request, rawPath string) (up
 	if tenantResolver == nil {
 		tenantResolver = auth.NewDenyAllTenantResolver()
 	}
-	allowed, err := tenantResolver.UserHasTenant(r.Context(), a.UserID, tenantID)
+	allowed, err := tenantResolver.UserHasTenant(ctx, a.UserID, tenantID)
 	if err != nil {
 		return uploadAuthContext{}, errors.New("tenant resolution failed")
 	}
 	if !allowed {
 		return uploadAuthContext{}, errors.New("tenant access denied")
 	}
-	return uploadAuthContext{authCtx: a, normalized: normalizedPath, tenantID: tenantID, correlationID: requestCorrelationID(r)}, nil
+	return uploadAuthContext{authCtx: a, normalized: normalizedPath, tenantID: tenantID, correlationID: correlationID}, nil
 }
 
 func (h *HTTPServer) mapUploadAuthError(w http.ResponseWriter, r *http.Request, err error) {
@@ -224,6 +268,10 @@ func (h *HTTPServer) mapUploadAuthError(w http.ResponseWriter, r *http.Request, 
 	switch msg {
 	case "unauthorized":
 		h.writeUploadError(w, r, http.StatusUnauthorized, "unauthorized", "unauthorized", "")
+	case "upload pipeline unavailable":
+		h.writeUploadError(w, r, http.StatusServiceUnavailable, "upload_unavailable", msg, "")
+	case "upload session not found":
+		h.writeUploadError(w, r, http.StatusNotFound, "not_found", msg, "")
 	case "forbidden", "tenant access denied":
 		h.writeUploadError(w, r, http.StatusForbidden, "tenant_mapping_denied", msg, "")
 	case "tenant resolution failed":
