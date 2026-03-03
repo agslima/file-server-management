@@ -24,6 +24,8 @@ func New(base string) *LocalStorage {
 	return &LocalStorage{base: base}
 }
 
+// full resolves a potentially user-supplied path to an absolute path that is
+// guaranteed to be located within the LocalStorage base directory.
 func (l *LocalStorage) full(p string) string {
 	// Normalize the user-supplied path into a safe, relative form.
 	clean := normalizePath(p)
@@ -54,6 +56,8 @@ func (l *LocalStorage) full(p string) string {
 	return baseAbs
 }
 
+// normalizePath converts an arbitrary input path into a relative, cleaned path
+// suitable for joining with the LocalStorage base directory.
 func normalizePath(p string) string {
 	// Normalize slashes and trim whitespace.
 	p = strings.TrimSpace(strings.ReplaceAll(p, "\\", "/"))
