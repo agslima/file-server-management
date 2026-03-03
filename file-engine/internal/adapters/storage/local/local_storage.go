@@ -68,7 +68,7 @@ func (l *LocalStorage) full(p string) (string, error) {
 
 // normalizePath normalizes a user-supplied path into a safe, relative form rooted at the storage base.
 // It replaces backslashes with slashes, trims whitespace, and applies filepath.Clean.
-// A single dot ("." ) is treated as the base and yields an empty string.
+// A single dot (".") is treated as the base and yields an empty string.
 // Any leading path separator is removed so the result is always relative.
 // Pure or leading parent-directory traversal (".." or "../...") is rejected and results in an empty string,
 // which denotes the base directory.
