@@ -51,13 +51,18 @@ func (l *LocalStorage) full(p string) (string, error) {
 	}
 
 	if errFull != nil && errBase == nil {
+		// If we failed to resolve the joined path but did resolve the base,
+		// fall back to the base directory.
 		return baseAbs, nil
 	}
 
 	if errBase != nil && errFull == nil {
+		// If we failed to resolve the base but did resolve the joined path,
+		// return the resolved joined path (best effort).
 		return fullAbs, nil
 	}
 
+	// As a last resort, return the configured base directory unchanged.
 	return l.base, nil
 }
 
