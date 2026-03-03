@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -25,7 +25,7 @@ func New(base string) *LocalStorage {
 	return &LocalStorage{base: base}
 }
 
-func (l *LocalStorage) full(p string) string {
+func (l *LocalStorage) full(p string) (string, error) {
 	// Normalize the user-supplied path into a safe, relative form.
 	clean := normalizePath(p)
 
@@ -35,24 +35,30 @@ func (l *LocalStorage) full(p string) string {
 	// Resolve both base and joined paths to absolute form.
 	baseAbs, errBase := filepath.Abs(l.base)
 	fullAbs, errFull := filepath.Abs(joined)
-	if errBase != nil || errFull != nil {
-		// On error resolving absolute paths, fall back to the base directory.
-		return l.base
+	if errBase == nil && errFull == nil {
+		// Ensure baseAbs has a trailing path separator when used as a prefix.
+		baseWithSep := baseAbs
+		if !strings.HasSuffix(baseWithSep, string(filepath.Separator)) {
+			baseWithSep += string(filepath.Separator)
+		}
+
+		// Only allow access within the base directory (or the base directory itself).
+		if fullAbs == baseAbs || strings.HasPrefix(fullAbs, baseWithSep) {
+			return fullAbs, nil
+		}
+
+		return "", fmt.Errorf("invalid path %q: resolved path escapes base directory", p)
 	}
 
-	// Ensure baseAbs has a trailing path separator when used as a prefix.
-	baseWithSep := baseAbs
-	if !strings.HasSuffix(baseWithSep, string(filepath.Separator)) {
-		baseWithSep += string(filepath.Separator)
+	if errFull != nil && errBase == nil {
+		return baseAbs, nil
 	}
 
-	// Only allow access within the base directory (or the base directory itself).
-	if fullAbs == baseAbs || strings.HasPrefix(fullAbs, baseWithSep) {
-		return fullAbs
+	if errBase != nil && errFull == nil {
+		return fullAbs, nil
 	}
 
-	// If the path would escape the base directory, fall back to the base itself.
-	return baseAbs
+	return l.base, nil
 }
 
 // normalizePath normalizes a user-supplied path into a safe, relative form rooted at the storage base.
@@ -86,13 +92,22 @@ func normalizePath(p string) string {
 }
 
 func (l *LocalStorage) CreateFolder(_ context.Context, path string) error {
-	return os.MkdirAll(l.full(path), 0o750)
+	full, err := l.full(path)
+	if err != nil {
+		return err
+	}
+
+	return os.MkdirAll(full, 0o750)
 }
 
 func (l *LocalStorage) AtomicWrite(_ context.Context, path string, r io.Reader) error {
-	full := l.full(path)
+	full, err := l.full(path)
+	if err != nil {
+		return err
+	}
+
 	dir := filepath.Dir(full)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
+	if err = os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
 	tmp, err := os.CreateTemp(dir, ".tmp-*")
@@ -108,8 +123,16 @@ func (l *LocalStorage) AtomicWrite(_ context.Context, path string, r io.Reader) 
 }
 
 func (l *LocalStorage) Move(_ context.Context, src, dst string) error {
-	srcF := l.full(src)
-	dstF := l.full(dst)
+	srcF, err := l.full(src)
+	if err != nil {
+		return err
+	}
+
+	dstF, err := l.full(dst)
+	if err != nil {
+		return err
+	}
+
 	if err := os.MkdirAll(filepath.Dir(dstF), 0o750); err != nil {
 		return err
 	}
@@ -135,11 +158,21 @@ func (l *LocalStorage) Move(_ context.Context, src, dst string) error {
 }
 
 func (l *LocalStorage) Delete(_ context.Context, path string) error {
-	return os.RemoveAll(l.full(path))
+	full, err := l.full(path)
+	if err != nil {
+		return err
+	}
+
+	return os.RemoveAll(full)
 }
 
 func (l *LocalStorage) Exists(_ context.Context, path string) (bool, error) {
-	_, err := os.Stat(l.full(path))
+	full, err := l.full(path)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = os.Stat(full)
 	if err == nil {
 		return true, nil
 	}
@@ -150,7 +183,11 @@ func (l *LocalStorage) Exists(_ context.Context, path string) (bool, error) {
 }
 
 func (l *LocalStorage) List(_ context.Context, prefix string) ([]storage.ObjectInfo, error) {
-	full := l.full(prefix)
+	full, err := l.full(prefix)
+	if err != nil {
+		return nil, err
+	}
+
 	entries, err := os.ReadDir(full)
 	if err != nil {
 		return nil, err
@@ -174,11 +211,15 @@ func (l *LocalStorage) List(_ context.Context, prefix string) ([]storage.ObjectI
 		}
 		checksum := ""
 		if info != nil && !e.IsDir() {
-			if f, openErr := os.Open(l.full(filepath.Join(prefix, e.Name()))); openErr == nil {
-				h := sha256.New()
-				_, _ = io.Copy(h, f)
-				checksum = hex.EncodeToString(h.Sum(nil))
-				_ = f.Close()
+			entryPath, fullErr := l.full(filepath.Join(prefix, e.Name()))
+			if fullErr == nil {
+				f, openErr := os.Open(entryPath)
+				if openErr == nil {
+					h := sha256.New()
+					_, _ = io.Copy(h, f)
+					checksum = hex.EncodeToString(h.Sum(nil))
+					_ = f.Close()
+				}
 			}
 		}
 		out = append(out, storage.ObjectInfo{
@@ -197,5 +238,10 @@ func (l *LocalStorage) List(_ context.Context, prefix string) ([]storage.ObjectI
 }
 
 func (l *LocalStorage) Open(_ context.Context, path string) (io.ReadCloser, error) {
-	return os.Open(l.full(path))
+	full, err := l.full(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.Open(full)
 }
