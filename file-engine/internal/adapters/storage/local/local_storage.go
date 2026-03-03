@@ -112,7 +112,7 @@ func (l *LocalStorage) AtomicWrite(_ context.Context, path string, r io.Reader) 
 	}
 
 	dir := filepath.Dir(full)
-	if err = os.MkdirAll(dir, 0o750); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
 	tmp, err := os.CreateTemp(dir, ".tmp-*")
@@ -218,7 +218,7 @@ func (l *LocalStorage) List(_ context.Context, prefix string) ([]storage.ObjectI
 		if info != nil && !e.IsDir() {
 			entryPath, fullErr := l.full(filepath.Join(prefix, e.Name()))
 			if fullErr == nil {
-				f, openErr := os.Open(entryPath)
+				f, openErr := os.Open(entryPath) // #nosec G304 -- entryPath is normalized by l.full
 				if openErr == nil {
 					h := sha256.New()
 					_, _ = io.Copy(h, f)
@@ -248,5 +248,5 @@ func (l *LocalStorage) Open(_ context.Context, path string) (io.ReadCloser, erro
 		return nil, err
 	}
 
-	return os.Open(full)
+	return os.Open(full) // #nosec G304 -- full is normalized by l.full
 }
