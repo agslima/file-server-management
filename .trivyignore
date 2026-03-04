@@ -1,0 +1,5 @@
+# allow-until: 2026-02-15 reason: upstream fix pending ticket:#123 owner:@agnaldo
+CVE-2025-12345
+
+# allow-until: 2026-01-30 reason: false positive in transitive dep ticket:#456 owner:@sec
+CVE-2024-99999
