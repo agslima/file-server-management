@@ -1,0 +1,84 @@
+# CodeRabbit configuration for File Server Management 
+# Documentation: https://docs.coderabbit.ai/reference/configuration
+
+language: en-US
+early_access: false
+
+# Enable tone control for reviews
+reviews:
+  # Request changes workflow
+  request_changes_workflow: false
+  
+  # High level summary of the PR
+  high_level_summary: true
+  
+  # Generate sequence diagrams
+  sequence_diagrams: true
+  
+  # Auto-review configuration
+  auto_review:
+    enabled: true
+    # Only review PRs targeting these branches
+    base_branches:
+      - main
+      - pull-request/.*
+      - dev
+    # Skip reviews for draft PRs or WIP
+    drafts: false
+    # Enable base branch analysis
+    base_branch_analysis: true
+  
+  # Poem feature toggle (must be a boolean, not an object)
+  poem: true
+  
+  # Suggest reviewers based on blame data
+  suggested_reviewers: true
+  
+  # Automatically assign suggested reviewers
+  auto_assign_reviewers: false
+  
+  # Enable finishing touches
+  finishing_touches:
+    # Generate docstrings
+    docstrings:
+      enabled: true
+    # Generate unit tests
+    unit_tests:
+      enabled: true
+  
+  # Tools configuration
+  # tools:
+  # Go-specific tools
+  #  tool:
+  #    enabled: true
+  
+  # Chat configuration
+  chat:
+    auto_reply: true
+  
+  # Path filters - ignore generated files
+  path_filters:
+    - "!**/target/**"
+    - "!**/node_modules/**"
+    - "!**/vendor/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+  
+  # Review instructions specific to Go, PHP, TypeScript
+  path_instructions:
+    - path: "**/*.go"
+      instructions: |
+        Focus on Go best practices and idiomatic code.
+        Check for security vulnerabilities in encryption/crypto code.
+        Ensure proper error handling.
+        Ensure tests cover critical security paths.
+    - path: "**/*.php"
+      instructions: |
+        Focus on Laravel best practices and idiomatic code.
+        Check for security vulnerabilities.
+        Review configuration migration code carefully.
+    - path: "**/*.{ts,tsx,js,jsx}"
+      instructions: |
+        Follow TypeScript best practices.
+        Check for security vulnerabilities.
+        Ensure proper error handling.
