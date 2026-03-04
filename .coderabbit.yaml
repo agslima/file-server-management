@@ -21,7 +21,7 @@ reviews:
     # Only review PRs targeting these branches
     base_branches:
       - main
-      - pull-request/**
+      - pull-request/.*
       - dev
     # Skip reviews for draft PRs or WIP
     drafts: false
