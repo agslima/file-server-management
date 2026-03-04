@@ -31,12 +31,11 @@ reviews:
   # Poem feature toggle (must be a boolean, not an object)
   poem: true
   
-  # Reviewer suggestions
-  reviewer:
-    # Suggest reviewers based on blame data
-    enabled: true
-    # Automatically assign suggested reviewers
-    auto_assign: false
+  # Suggest reviewers based on blame data
+  suggested_reviewers: true
+  
+  # Automatically assign suggested reviewers
+  auto_assign_reviewers: false
   
   # Enable finishing touches
   finishing_touches:
@@ -46,33 +45,40 @@ reviews:
     # Generate unit tests
     unit_tests:
       enabled: true
-
-# Tools configuration
-# tools:
+  
+  # Tools configuration
+  # tools:
   # Go-specific tools
-#  tool:
-#    enabled: true
+  #  tool:
+  #    enabled: true
   
-# Chat configuration
-chat:
-  auto_reply: true
-
-# Path filters - ignore generated files
-path_filters:
-  - "!**/target/**"
-  - "!**/node_modules/**"
-  - "!**/vendor/**"
-  - "!**/dist/**"
-  - "!**/build/**"
+  # Chat configuration
+  chat:
+    auto_reply: true
   
-
-# Review instructions specific to Go, PHP, Typescript and this project
-review_instructions:
-  - "Focus on Go best practices and idiomatic code"
-  - "Focus on Laravel best practices and idiomatic code"
-  - "Check for security vulnerabilities in encryption/crypto code"
-  - "Ensure proper error handling with Result types"
-  - "Verify memory safety and avoid unnecessary clones"
-  - "Check for proper use of lifetimes and borrowing"
-  - "Ensure tests cover critical security paths"
-  - "Review configuration migration code carefully"
+  # Path filters - ignore generated files
+  path_filters:
+    - "!**/target/**"
+    - "!**/node_modules/**"
+    - "!**/vendor/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+  
+  # Review instructions specific to Go, PHP, TypeScript
+  path_instructions:
+    - path: "**/*.go"
+      instructions: |
+        Focus on Go best practices and idiomatic code.
+        Check for security vulnerabilities in encryption/crypto code.
+        Ensure proper error handling.
+        Ensure tests cover critical security paths.
+    - path: "**/*.php"
+      instructions: |
+        Focus on Laravel best practices and idiomatic code.
+        Check for security vulnerabilities.
+        Review configuration migration code carefully.
+    - path: "**/*.{ts,tsx,js,jsx}"
+      instructions: |
+        Follow TypeScript best practices.
+        Check for security vulnerabilities.
+        Ensure proper error handling.
