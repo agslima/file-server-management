@@ -111,17 +111,12 @@ Required:
  
 ## Baseline validation commands
  
-Prefer running the curated baseline gate when available:
-- `./scripts/ledger-baseline.sh` (`CL-034`)
+Prefer running the curated baseline gate when available (`./scripts/ledger-baseline.sh`, `CL-034`). Use the tiered commands below when iterating locally or when you only touched a specific domain. 
 
-Use the tiered commands below for faster iteration when you know which area you touched.
- 
 ### Tier 0 (fast sanity — run for most changes)
  
-**Proto & generated artifacts**
- 
-- Proto mirror sync: `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` (`CL-001`)
-
+- **Proto mirror + gateway artifacts:** If proto sync fails (`CL-001`), do not proceed. Sync the proto mirror and regenerate gateway artifacts:
+  - `cd file-engine && ./scripts/generate_grpc_docker.sh && cd .. && git diff --exit-code && test -z "$(git status --porcelain)"` (`CL-016`)
 **File Engine**
 - Baseline packages: `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` (`CL-002`)
 - Integration slice: `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` (`CL-003`/`CL-004`/`CL-005`/`CL-006`)
@@ -149,10 +144,12 @@ Note: Use `docker compose build --pull` when changing base images, Dockerfiles, 
 ## Current alignment notes (ledger-aligned)
  
 - The capability ledger is the canonical implemented-vs-target status. If a validation command fails, treat the associated claim as **unverified**.
+- - **Gateway routes:** HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder`, `GetTaskStatus`, and upload lifecycle routes; `chunk` and `complete` require auth at the File Engine boundary (`CL-047`).
 - **Proto mirror + gateway artifacts:** If proto sync fails (`CL-001`), do not proceed. Sync the mirror and regenerate gateway artifacts using the ledger flow (`CL-016`) and ensure `git diff --exit-code` is clean afterward.
 - **Uploads are baseline:** Upload lifecycle and scan-gated behavior are baseline-validated (`CL-025`, `CL-033`, `CL-040`, `CL-047`). Treat uploads as baseline and verify behavior via ledger commands before documenting changes.
-- `file-engine/docker-compose.yml` is a compatibility mirror and must not override canonical setup guidance.
 - Root `docker-compose.yml` is the canonical developer compose entry point.
+- **Compose usage:** `docker compose up --build` is an experimental convenience path (see `docs/setup.md`). Only compose flows explicitly claimed in the ledger (e.g., `CL-020`, `CL-047`) should be treated as baseline validations.
+- `file-engine/docker-compose.yml` is a compatibility mirror and must not override canonical setup guidance.
 
 ## Conventions
  
