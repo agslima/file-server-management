@@ -19,7 +19,7 @@ Project: File Server Management (PHP + Go)
 - Project overview/status: `README.md` (informative narrative; not the source of truth for baseline)
 - Capability truth table (canonical): `docs/capability-ledger.md`
 - Setup/onboarding: `docs/setup.md` 
-- File-engine scoped guide: `file-engine/AGENTS.md` 
+- File-engine scoped guide: `file-engine/AGENTS.md`
 - Backend scoped guide: `backend/AGENTS.md`
  
 ## Truth & Drift Policy
