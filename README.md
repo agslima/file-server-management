@@ -154,7 +154,7 @@ Every baseline claim is mapped to a claim ID and runnable command in the capabil
 
 <details><summary><b>Operating guide</b></summary>
 
-- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
+- **Agent Constraints:** [`.github/AGENTS.md`](AGENTS.md)
 - **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
 - **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
 
