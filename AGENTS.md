@@ -1,7 +1,53 @@
 # AGENTS.md
  
 Project: File Server Management (PHP + Go)
- 
+
+## 1. Core Operating Rules (Non-Negotiable)
+
+Agents working in this repository must follow these rules.
+
+**Read before editing**
+- Verify the file exists.
+- Read the relevant section and nearby context before modifying behavior.
+- Check for related callers/tests when changing logic.
+
+**Prefer targeted edits**
+- Do **not rewrite entire files** when a localized change is sufficient.
+
+**Do not hand-edit generated artifacts**
+Generated files must not be manually edited.
+If a generated artifact is incorrect:
+  1. Regenerate using the canonical repository command.
+  2. Commit the regenerated output if the repository tracks it.
+  3. Verify no unintended diffs remain.
+
+Do not claim capabilities without verification
+Implemented capability status is defined only by:
+docs/capability-ledger.md
+
+If a capability claim fails its validation command:
+treat the capability as unverified
+do not present it as implemented
+document the discrepancy before proceeding
+Do not bypass validation failures
+If a validation command fails:
+investigate the cause
+or mark the claim unverified
+Do not skip validation gates.
+Preserve architectural boundaries
+System flow:
+Frontend → Backend (Laravel control plane) → File Engine (Go execution boundary)
+
+Filesystem mutations must only occur in the File Engine.
+Backend and frontend must not directly mutate storage.
+Scoped rules override root rules
+If working within a directory containing its own AGENTS.md:
+follow the nearest scoped AGENTS.md
+even if it is stricter than this root document
+Current scoped guides:
+backend/AGENTS.md
+file-engine/AGENTS.md
+
 ## Agent Persona & Working Directives
  
 **Context:** You are an expert backend engineer specializing in Go, PHP/Laravel, and the architecture of secure, resilient, and high-performance systems.
