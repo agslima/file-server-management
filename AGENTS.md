@@ -14,24 +14,29 @@ Project: File Server Management (PHP + Go)
 - **Context awareness:** Assume you are working in a distributed environment where async filesystem mutations have real-world consequences. 
 - **Scoped rules win:** When working under `backend/` or `file-engine/`, follow the scoped `AGENTS.md` even if stricter than this root file.
 
+## Canonical docs (read first)
+  
+- Project overview/status: `README.md` (informative narrative; not the source of truth for baseline)
+- Capability truth table (canonical): `docs/capability-ledger.md`
+- Setup/onboarding: `docs/setup.md` 
+- File-engine scoped guide: `file-engine/AGENTS.md` 
+- Backend scoped guide: `backend/AGENTS.md`
+
 ## Agent Quick Map
 
 Use this map to find the authoritative source for each task type.
 
 | Task | Canonical Location |
 |-----|--------------------|
-| Determine what features are actually implemented | `docs/capability-ledger.md` |
-| Understand system architecture | `README.md` |
-| Run the system locally | `docs/setup.md` |
-| Modify File Engine behavior (storage, tasks, auth, uploads) | `file-engine/AGENTS.md` |
-| Modify backend control-plane (Laravel API) | `backend/AGENTS.md` |
-| Validate baseline functionality | `./scripts/ledger-baseline.sh` |
-| Regenerate proto/gateway artifacts | Tier-0 proto commands in this file |
-| Investigate CI failures or capability regressions | `docs/capability-ledger.md` validation commands |
-| Debug runtime locally | `docs/setup.md` (File Engine local run) |
+| Feature truth / implemented status | `docs/capability-ledger.md` |
+| Architecture / system overview | `README.md` |
+| Local run / debugging | `docs/setup.md` |
+| File Engine changes | `file-engine/AGENTS.md` |
+| Backend changes | `backend/AGENTS.md` |
+| Baseline validation | `./scripts/ledger-baseline.sh` |
 
 **Rule:** When uncertain, start with the Capability Ledger and follow its validation commands.
-If a task affects filesystem mutations, treat `file-engine/` as the authority.
+- If a task affects filesystem mutations, treat `file-engine/` as the authority.
 
 ## Agent Safety Contract
 
@@ -75,6 +80,16 @@ Filesystem mutations must always pass through the File Engine.
 
 Direct filesystem access from the backend or frontend must not be introduced.
 
+## Truth & Drift Policy
+  
+- **Precedence order:** capability ledger -> setup -> scoped AGENTS -> architecture deep-dives -> README.
+- **Conflict handling:** If conflict is found, stop and (a) update the lower-precedence doc OR (b) add a ledger note + issue link before proceeding.
+- **No unproven claims:** If `README.md` (or any doc) claims a capability that ledger validations don’t prove, treat the claim as unverified and add a ledger note + ticket before proceeding.
+- **Promotion discipline:** Do not present a capability as baseline until it has:
+  - a claim ID in the ledger,
+  - a runnable validation command,
+  - CI/PR evidence path as defined in the ledger.
+
 ## Capability Discovery Shortcut
 
 The capability ledger is the canonical truth for implemented features.
@@ -95,30 +110,8 @@ When working on a feature, locate the relevant claim quickly:
 Workflow:
 
 1. Identify the feature area.
-2. Find the claim ID(s) in `docs/capability-ledger.md`.
-3. Run the runnable validation command for those claims.
-4. Only then modify code or documentation.
+2. Find and run the related claim validations before changing code or docs.
 
-## Canonical docs (read first)
-  
-- Project overview/status: `README.md` (informative narrative; not the source of truth for baseline)
-- Capability truth table (canonical): `docs/capability-ledger.md`
-- Setup/onboarding: `docs/setup.md` 
-- File-engine scoped guide: `file-engine/AGENTS.md` 
-- Backend scoped guide: `backend/AGENTS.md`
-- Frontend scoped guide: `frontend/AGENTS.md`
-- GitHub scoped guide: `.github/AGENTS.md`
- 
-## Truth & Drift Policy
-  
-- **Precedence order:** capability ledger -> setup -> scoped AGENTS -> architecture deep-dives -> README.
-- **Conflict handling:** If conflict is found, stop and (a) update the lower-precedence doc OR (b) add a ledger note + issue link before proceeding.
-- **No unproven claims:** If `README.md` (or any doc) claims a capability that ledger validations don’t prove, treat the claim as unverified and add a ledger note + ticket before proceeding.
-- **Promotion discipline:** Do not present a capability as baseline until it has:
-  - a claim ID in the ledger,
-  - a runnable validation command,
-  - CI/PR evidence path as defined in the ledger.
- 
 ## High-level flow
  
 User → Frontend → Backend (Laravel control-plane) → File Engine (Go API + worker) → Storage backend.
@@ -193,13 +186,13 @@ Required:
  
 ## Repository layout
  
-- `backend/` Laravel control-plane (vertical-slice baseline exists; see ledger claims)
-- `file-engine/` Go data-plane (API + worker + storage/auth/authz + proto/gateway)
-- `frontend/` demo console (static assets; no Node build runtime required; see `CL-009`)
+- `backend/` Laravel control-plane
+- `file-engine/` Go data-plane
+- `frontend/` demo console
 - `docs/` architecture/setup/security/api references/ADR
-- `scripts/` Scripts 
-- `docker-compose.yml` root compose for multi-service local stack
- 
+- `scripts/` validation, drill, and helper scripts 
+- `docker-compose.yml` validation, drill, and helper scripts
+
 ## Baseline validation commands
  
 Prefer running the curated baseline gate when available (`./scripts/ledger-baseline.sh`, `CL-034`). Use the tiered commands below when iterating locally or when you only touched a specific domain. 
@@ -223,13 +216,7 @@ Prefer running the curated baseline gate when available (`./scripts/ledger-basel
  
 ### Tier 1 integration checks
 
-Required when touching:
-  - cross-service contracts
-  - forwarding
-  - API envelopes
-  - headers
-  - routing
-  - task polling
+Run when touching cross-service contracts, forwarding, API envelopes, headers, routing, or task polling.
 
 ```bash
 docker compose up -d
@@ -242,11 +229,7 @@ docker compose down -v
  
 ### Tier 2 — runtime / dependency checks
 
-Required when changing:
-  - dependencies
-  - containers
-  - test harnesses
-  - bootstrap assumptions
+Run when changing dependencies, containers, test harnesses, bootstrap assumptions
 - Backend PHPUnit smoke: `docker compose run --rm --no-deps backend sh -lc 'composer install --no-interaction && ./vendor/bin/phpunit -c phpunit.xml'` (`CL-031`)
 
 Note: Use `docker compose build --pull` when changing base images, Dockerfiles, or when you need strict CI parity.
@@ -255,8 +238,8 @@ Note: Use `docker compose build --pull` when changing base images, Dockerfiles, 
  
 - The capability ledger is the canonical implemented-vs-target status.
 - If a validation command fails, treat the associated claim as **unverified**.
-- **Gateway routes:** HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder`, `GetTaskStatus`, and upload lifecycle routes; `chunk` and `complete` require auth at the File Engine boundary (`CL-047`).
 - **Uploads are baseline:** Upload lifecycle and scan-gated behavior are baseline-validated (`CL-025`, `CL-033`, `CL-040`, `CL-047`). Treat uploads as baseline and verify behavior via ledger commands before documenting changes.
+- **Gateway routes:** HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder`, `GetTaskStatus`, and upload lifecycle routes; `chunk` and `complete` require auth at the File Engine boundary (`CL-047`).
 - **Proto + generated artifacts:** follow Tier 0 commands for mirror validation (`CL-001`) and gateway regeneration (`CL-016`).
 - **Compose usage:** `docker compose up --build` is an experimental convenience path (see `docs/setup.md`). Only compose flows explicitly claimed in the ledger (e.g., `CL-020`, `CL-047`) should be treated as baseline validations.
 - `file-engine/docker-compose.yml` is a compatibility mirror and must not override canonical setup guidance.
