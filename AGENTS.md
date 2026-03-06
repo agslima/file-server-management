@@ -182,7 +182,7 @@ Required:
 - Never swallow an error without emitting an actionable log and/or metric.
 - Propagate trace/correlation context across the Laravel→Go boundary for control-plane calls.
 
-**Principle tie-break:** When principles conflict, prioritize: Security > Determinism > Fail Fast (with rollback) > KISS > DRY.
+> **Principle tie-break:** When principles conflict, prioritize: Security > Determinism > Fail Fast (with rollback) > KISS > DRY.
  
 ## Repository layout
  
@@ -191,8 +191,7 @@ Required:
 - `frontend/` demo console
 - `docs/` architecture/setup/security/api references/ADR
 - `scripts/` validation, drill, and helper scripts 
-- `docker-compose.yml` validation, drill, and helper scripts
-
+- `docker-compose.yml` canonical multi-service dev stack
 ## Baseline validation commands
  
 Prefer running the curated baseline gate when available (`./scripts/ledger-baseline.sh`, `CL-034`). Use the tiered commands below when iterating locally or when you only touched a specific domain. 
@@ -223,6 +222,7 @@ docker compose up -d
 ./scripts/wait-for-http.sh http://localhost:8080/healthz 120
 ./scripts/wait-for-http.sh http://localhost:8081/healthz 120
 ./scripts/e2e/vs001_create_folder.sh
+# ALWAYS run teardown, even if the e2e script fails:
 docker compose down -v
 ```
 (`CL-020`)
