@@ -29,7 +29,7 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 </div>
 
 > [!Note]
-> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
+> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and will evolve into the orchestration layer as features are developed.
 <!--
 ## TL;DR
 
@@ -55,7 +55,7 @@ Legend:
 
 > [!Note]
 > **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
-> **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implantation.
+> **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implementation.
 
 ---
 
@@ -127,7 +127,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - Multi-tenant enforcement via **server-side tenant mapping**
 - Upload quarantine + malware scan gate before publish (baseline guardrails + non-stub scanner adapter integration are validated)
 - Dual-layer audit (queryable + tamper-resistant sink) with baseline-validated external sink delivery adapters
-- Access review compliance exports are available via stable JSON contract + monthly operator report generator (`file-engine/scripts/export_access_review.sh`, `file-engine/scripts/generate_monthly_access_review_report.sh`).
+- Access review compliance exports are available via stable JSON contract + monthly operator report generator.
 
 ---
 
@@ -143,7 +143,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder, GetTaskStatus, and upload lifecycle endpoints via `CL-047`)
+- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder, GetTaskStatus, and upload lifecycle endpoints)
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
 - OTEL tracer provider wiring is initialized in both API + worker entrypoints when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (
 - Enqueues tasks; worker executes storage operations with least privilege
@@ -259,7 +259,7 @@ Core gRPC methods (canonical):
 
 - `CreateFolder` → returns `taskId` (async)
 - `GetTaskStatus` → poll task status
-- `InitiateUpload` / `CompleteUpload` *(baseline-validated via CL-047 contract flow; chunk upload path is exercised in the same validation)*
+- `InitiateUpload` / `CompleteUpload` *(baseline-validated)*
 
 HTTP/JSON routes (baseline-validated):
 
@@ -357,7 +357,7 @@ Secure-by-default controls:
 - Deny-by-default authorization at File Engine
 - Tenant scope from server-side mapping (not JWT)
 - Strict path normalization + traversal rejection
-- Quarantine → scan → promote gating (baseline guardrails + non-stub scanner integration validated via `CL-033` and `CL-040`)
+- Quarantine → scan → promote gating (baseline guardrails + non-stub scanner integration validated)
 - Redaction policy: never log tokens or pre-signed URLs
 
 Known gaps / planned hardening (examples):
