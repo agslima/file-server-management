@@ -20,16 +20,16 @@
 # Audit sink + DLQ
 /file-engine/internal/app/tasks/audit_*                  @agslima
 /file-engine/internal/services/upload_service.go         @agslima
-/scripts/drills/audit_sink_catchup_drill.sh             @agslima
-/scripts/drills/restore-scan-dlq-drill.sh               @agslima
+/scripts/drills/audit_sink_catchup_drill.sh              @agslima
+/scripts/drills/restore-scan-dlq-drill.sh                @agslima
 
 # Observability/alerts/drills
 /monitoring/**                                           @agslima
 /observability/**                                        @agslima
 /file-engine/internal/observability/**                   @agslima
-/scripts/validate-observability-assets.sh               @agslima
-/scripts/drills/observability_incident_drill.sh         @agslima
-/scripts/drills/production_deployment_hardening.sh      @agslima
+/scripts/validate-observability-assets.sh                @agslima
+/scripts/drills/observability_incident_drill.sh          @agslima
+/scripts/drills/production_deployment_hardening.sh       @agslima
 
 # Governance controls
 /docs/governance.md                                      @agslima
