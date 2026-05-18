@@ -2,32 +2,26 @@ name: Workflow Self-Test
 
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: workflow-selftest-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   change-detection-test:
     name: Test change detection logic (unit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
-
       - name: Run test
         run: python tests/test_ci_pr_security_scan_change_detection.py
 
-  actionlint:
-    name: Lint workflows (actionlint)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Check workflow files
-        uses: docker://rhysd/actionlint:latest
-        with:
-          args: -color
+  workflow-test:
+    name: Check workflows (actionlint + provenance)
+    permissions:
+      contents: read
+    uses: agslima/app-stayhealthy-pipeline/.github/workflows/workflow-selftest.yml@main
