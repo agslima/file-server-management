@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: workflow-selftest-${{ github.ref }}
-  cancel-in-progress: false
 jobs:
   change-detection-test:
     name: Test change detection logic (unit)
