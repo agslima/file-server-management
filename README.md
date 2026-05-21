@@ -12,25 +12,17 @@
 ![Go Version](https://img.shields.io/badge/go-1.26+-yellowgreen)
 ![Laravel](https://img.shields.io/badge/laravel-10%2B-blue)
 ![gRPC](https://img.shields.io/badge/API-gRPC%20-4e6e6e)
-[![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-green)](https://github.com/agslima/file-server-management/tree/main/docs)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-
-<!--
-![Go Tests](https://github.com/<org>/<repo>/actions/workflows/go-test.yaml/badge.svg)
-![Laravel Tests](https://github.com/<org>/<repo>/actions/workflows/phpunit.yaml/badge.svg)
-[![codecov](https://codecov.io/gh/<org>/<repo>/branch/main/graph/badge.svg)](https://codecov.io/gh/<org>/<repo>)
-![Dependency Review](https://github.com/<org>/<repo>/actions/workflows/dependency-review.yml/badge.svg)
-![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
--->
 
 ⚡️ **A governance-focused, multi-tenant file management platform written in Go and PHP** ⚡️ \
 Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a baseline-validated **quarantine → scan → promote** guardrail flow (local semantics).
 
 </div>
 
+<!--
 > [!Note]
 > **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and will evolve into the orchestration layer as features are developed.
-<!--
+
 ## TL;DR
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
@@ -54,12 +46,12 @@ Legend:
 - 🔒 planned / target state
 
 > [!Note]
-> **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
-> **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implementation.
+> **Current maturity note:** Some controls are documented as the target state. The project roadmap tracks what has already been implemented vs what is intended. 
+> **Validation source of truth:** Please see [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implementation.
 
 ---
 
-## Canonical doc map
+## Documentation map
 
 **Architecture & Implementation:**
 
@@ -82,8 +74,6 @@ Legend:
 - **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
 - **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
 - **Branch protection mapping:** [`docs/branch-protection-mapping.md`](docs/branch-protection-mapping.md)
-- **Ownership source of truth:** [`.github/OWNERS`](.github/OWNERS)
-- **Ownership backup matrix:** [`docs/ownership-backup-matrix.md`](docs/ownership-backup-matrix.md)
 
 <!--
 > [!Warning]
@@ -103,7 +93,7 @@ Many organizations rely on direct file server access (shared drives/SSH/FTP) to 
 
 This platform provides a centralized, permissioned interface that **controls and records every filesystem mutation**.
 
----
+<!--
 
 ## What it does
 
@@ -111,7 +101,7 @@ This platform provides a centralized, permissioned interface that **controls and
 
 - Browse folders (tree navigation, directory listing)
 - Metadata display (size, timestamps, ownership) with backend-specific best-effort fields
-- **Baseline-validated read path:** list results + size/timestamps/ownership metadata + download path normalization valid
+- **Read path:** list results + size/timestamps/ownership metadata + download path normalization valid
 - **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary.
 
 ### Write path (async)
@@ -152,29 +142,27 @@ This platform provides a centralized, permissioned interface that **controls and
 
 ```mermaid
 flowchart TB
-  U[User / Browser] -->|HTTPS| L[Laravel Control Plane<br/>UI + Business Validation]
-
+  U[User / Browser] --|HTTPS| L[Laravel Control Plane<br/>UI + Business Validation]
+  
   %% TB2: Service boundary
-  L -->|"gRPC/HTTP (mTLS recommended)"| FE[Go File Engine API<br/>AuthContext + Final AuthZ Gate]
+  L --|"gRPC/HTTP (mTLS recommended)"| FE[Go File Engine API<br/>AuthContext + Final AuthZ Gate]
 
   %% TB3: Queue boundary
-  FE --> Q[Redis Queue]
-  Q --> W[Worker<br/>Executes tasks]
+  FE -- Q[Redis Queue]
+  Q -- W[Worker<br/>Executes tasks]
 
   %% TB4: Data boundary
-  W --> ST["(Storage Backend<br/>Local/NFS/SMB/SFTP mounts<br/>S3/MinIO<br/>GCS)"]
+  W -- ST["(Storage Backend<br/>Local/NFS/SMB/SFTP mounts<br/>S3/MinIO<br/>GCS)"]
 
   %% TB5: Scanner boundary
-  W --> AV[Scanner Boundary<br/>ClamAV / pluggable]
-  AV -->|verdict| W
+  W -- AV[Scanner Boundary<br/>ClamAV / pluggable]
+  AV --|verdict| W
 
   %% Audit
-  FE --> DB["(Postgres<br/>audit_events (append-only, baseline-validated)<br/>ACL / mappings)"]
-  W --> DB
-  DB --> SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
+  FE -- DB["(Postgres<br/>audit_events (append-only, baseline-validated)<br/>ACL / mappings)"]
+  W -- DB
+  DB -- SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
 ```
-
----
 
 ### Multi-tenancy model
 
@@ -292,12 +280,11 @@ Validation command:
 ```bash
 cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderRejectsNonTenantPath|TestCreateFolderRejectsUnauthorizedTenant|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ```
-
+-->
 ---
 
 ## Key flows
 
-**Baseline-validated upload API flow (`CL-047`) with storage guardrails (`CL-033`, `CL-040`):**
 
 ```mermaid
 sequenceDiagram
@@ -342,6 +329,7 @@ sequenceDiagram
 
 ---
 
+<!--
 ## Security model
 
 Trust boundaries:
@@ -409,6 +397,7 @@ Operational signals to monitor:
 > Full spec: `docs/observability.md`
 
 ---
+-->
 
 ## Quickstart (local development)
 
@@ -497,6 +486,7 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 > [!Note]
 > All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
 
+---
 
 ## Deployment (dev/stage/prod + kind + rollback)
 
@@ -528,13 +518,12 @@ file-server-management/
 
 ## Disclaimer
 
-This project is a work in progress. Some controls are documented as “target state” and may not be fully implemented yet. Each milestone aims to move documented intent into enforced reality.
+This project is a work in progress. Some controls are documented as “target state” and may not be fully implemented yet.
 
 ---
 
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
-
 <br><hr>
 [🔼 Back to top](#back-to-top)
