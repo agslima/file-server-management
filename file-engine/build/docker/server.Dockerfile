@@ -2,7 +2,7 @@ FROM golang:1.26-alpine AS builder
 WORKDIR /src
 COPY . .
 RUN go build -o /bin/file-engine ./cmd/file-engine
-FROM alpine:3.23
+FROM alpine:3.24
 COPY --from=builder /bin/file-engine /usr/local/bin/file-engine
 EXPOSE 8080 50051
 ENTRYPOINT ["/usr/local/bin/file-engine"]
