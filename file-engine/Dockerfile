@@ -5,7 +5,7 @@ RUN go mod download
 COPY . .
 RUN go build -o /src/file-engine ./cmd/file-engine
 
-FROM alpine:3.23
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates \
     && addgroup -S fileeng \
     && adduser -S -G fileeng fileeng
