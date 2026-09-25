@@ -1,8 +1,7 @@
-<div align="center">
-
-<a name="back-to-top"></a>
-
 # Server File Manager Platform (PHP + Go File Engine)
+
+<div align="center">
+  <a name="back-to-top"></a>
 
 [//]: # (owner: Project Maintainers)
 [//]: # (review_cadence: Quarterly)
@@ -27,7 +26,7 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 
 - **Multi-tenant:** tenant scope is resolved **server-side** (not trusted from JWT/client).
 - **AuthZ:** RBAC + path-based ACL with inheritance, **deny-by-default**, enforced at the File Engine boundary.
-- **Async mutations:** create-folder and upload lifecycle are baseline-validated async workflows returning task/status-oriented outcomes; clients poll task status and complete upload flows through deterministic contract checks.
+- **Async mutations:** create-folder and async mutation task variants (move/governed-delete/quarantine-restore) are baseline-validated; upload lifecycle is baseline-validated as a session contract (`Initiate -> Upload chunk -> Complete`) with deterministic completion/idempotency checks.
 - **Secure uploads:** staged quarantine write + scan-gated promote behavior are baseline-validated, including non-stub ClamAV scanner integration evidence (clean + quarantined paths) and operational scanner closure controls (threshold alerts + runbook/escalation drill evidence).
 - **Auditing:** persisted task status + task audit events + append-only DB enforcement + external sink delivery are baseline-validated.
 - **Observability:** correlation IDs are baseline; OTEL export wiring is baseline-validated for API + worker entrypoints; collector/backend deployment hardening is baseline-validated with deterministic connectivity + drill scripts; paging-provider delivery is baseline-validated through a deterministic webhook drill path.
@@ -265,7 +264,7 @@ Task state model (canonical):
 
 ## Current Implementation: Folder Flow
 
-The platform has baseline-validated async folder creation and upload lifecycle flows; folder creation remains the minimal reference walkthrough below.
+The platform has baseline-validated async folder creation and a baseline-validated upload lifecycle session flow; folder creation remains the minimal reference walkthrough below.
 
 Implemented baseline reference flow:
 
@@ -409,7 +408,7 @@ Requirements:
 
 ### 1) Run the validated baseline checks (recommended)
 
-This is the only **baseline-validated** quickstart today.
+This is the primary **baseline-verification** quickstart.
 
 ```bash
 ./file-engine/scripts/dev.sh

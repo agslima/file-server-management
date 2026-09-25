@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"io"
 	"testing"
@@ -232,6 +233,32 @@ func TestUploadServiceResumableUploadFinalize(t *testing.T) {
 	b, _ := io.ReadAll(r)
 	if string(b) != "hello" {
 		t.Fatalf("expected hello, got %q", string(b))
+	}
+}
+
+func TestUploadServiceResumableSessionIDsUseHighEntropyFormat(t *testing.T) {
+	st := localstorage.New(t.TempDir())
+	svc := NewUploadService(st, scannerStub{result: ports.MalwareScanResult{Status: ports.MalwareStatusClean}}, UploadPolicy{MaxObjectSizeBytes: 20, TenantQuotaBytes: 100, RequestTimeout: time.Second})
+
+	first, err := svc.StartResumableUpload("/tenants/acme/docs/a.txt", "")
+	if err != nil {
+		t.Fatalf("start first resumable: %v", err)
+	}
+	second, err := svc.StartResumableUpload("/tenants/acme/docs/b.txt", "")
+	if err != nil {
+		t.Fatalf("start second resumable: %v", err)
+	}
+	if first == second {
+		t.Fatalf("expected unique session IDs, got %q", first)
+	}
+	if len(first) != len("upl_")+32 {
+		t.Fatalf("unexpected session id length: %q", first)
+	}
+	if first[:4] != "upl_" {
+		t.Fatalf("unexpected session id prefix: %q", first)
+	}
+	if _, err := hex.DecodeString(first[4:]); err != nil {
+		t.Fatalf("expected hex-encoded random suffix, got %q: %v", first, err)
 	}
 }
 

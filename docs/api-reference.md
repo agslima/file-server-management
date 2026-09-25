@@ -1,8 +1,8 @@
 # File Engine API Reference (gRPC + HTTP)
 
 ## Overview
-The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is available for the baseline `CreateFolder` and `GetTaskStatus` routes.
-Filesystem mutations run **asynchronously** via a worker, so the API returns a **Task ID** you can poll.
+The File Engine exposes a **gRPC-first** API (source of truth). HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder`, `GetTaskStatus`, and the upload lifecycle routes (`Initiate -> Upload chunk -> Complete`).
+Create-folder and async mutation flows return a **Task ID** you can poll. The upload lifecycle is session-based (`upload_id`) with deterministic complete/idempotency semantics.
 
 Route maturity and claim mapping: [`docs/route-maturity-matrix.md`](route-maturity-matrix.md).
 
@@ -22,8 +22,10 @@ Route maturity and claim mapping: [`docs/route-maturity-matrix.md`](route-maturi
 - `CreateFolder` (gRPC + HTTP/JSON) → async task enqueued
 - `GetTaskStatus` (gRPC + HTTP/JSON) → task status polling
 - `ListObjects` (gRPC-only) → list results + size/timestamps/ownership metadata
-
-Uploads and other routes remain target-state until implemented.
+- `DownloadObject` (gRPC streaming) → read path with tenant + ACL/RBAC final gate
+- `InitiateUpload` (`POST /v1/uploads:initiate`) → resumable session start (`upload_id`, `upload_url`)
+- `Upload chunk` (`PUT /v1/uploads/{uploadId}:chunk`) → append bytes at explicit offset
+- `CompleteUpload` (`POST /v1/uploads/{uploadId}:complete`) → deterministic clean/dirty completion with idempotent replay support
 
 ## Base URLs
 ### HTTP
@@ -132,11 +134,11 @@ Baseline routes:
 
 - `POST /v1/folders` → `CreateFolder`
 - `GET /v1/tasks/{taskId}` → `GetTaskStatus`
-
-Target-state routes:
-
 - `POST /v1/uploads:initiate` → `InitiateUpload`
+- `PUT /v1/uploads/{uploadId}:chunk` → Upload chunk
 - `POST /v1/uploads/{uploadId}:complete` → `CompleteUpload`
+- `GET /healthz` → health probe
+- `GET /readyz` → dependency readiness probe
 
 ## Errors
 See `docs/errors.md`.

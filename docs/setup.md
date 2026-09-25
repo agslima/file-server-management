@@ -18,7 +18,7 @@ From repository root:
 ./file-engine/scripts/dev.sh
 ```
 
-This is the only baseline-validated quickstart today (see `docs/capability-ledger.md`).
+This is the primary baseline-validated quickstart (see `docs/capability-ledger.md`, `CL-007`).
 
 ### One-command onboarding (new contributor fast path)
 
@@ -80,7 +80,7 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtYWRtaW4iLCJyb2xlcyI6WyJhZG1pbiJdLCJleHAiOjQxMDI0NDQ4MDB9.Y-JdrUO96XS3odOeBWtYSIjPwR7z7g7IytvBLxTbCus"
 ```
 
-Note: HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder` and `GetTaskStatus`. Upload routes remain target-state. Use this path for debugging beyond baseline behavior.
+Note: HTTP/JSON via gRPC-Gateway is baseline for `CreateFolder`, `GetTaskStatus`, and the upload lifecycle routes (`/v1/uploads:initiate`, `/v1/uploads/{uploadId}:chunk`, `/v1/uploads/{uploadId}:complete`) via `CL-047`. `chunk` and `complete` require auth at the File Engine boundary. Use this path for debugging beyond baseline behavior.
 
 ---
 

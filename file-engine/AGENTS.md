@@ -26,6 +26,10 @@ Before making changes, treat these as source-of-truth checks:
    - `go test ./tests/integration -run TestAsyncCreateFolderFlow -v`
 4. Preferred local guardrail script:
    - `./scripts/dev.sh`
+5. Upload contract/security changes must keep lifecycle and compatibility checks green:
+   - `go test ./internal/server -run "TestUploadLifecycleEndpointsCleanAndDirty|TestUploadChunkAndCompleteRequireAuthorization|TestCompatibilityUploadLifecycleGolden" -v`
+
+Current maturity truth is the capability ledger (`docs/capability-ledger.md`), which currently promotes `CL-001` through `CL-073` with no open target-state exclusions (last reviewed 2026-02-19).
 
 ## Required Workflow for Changes
 
@@ -41,6 +45,8 @@ After edits, always run:
 go test ./internal/config ./internal/logger ./internal/worker -v
 go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ```
+
+Then run claim-focused checks for the touched area from `docs/capability-ledger.md` (for example, upload lifecycle/compatibility tests when changing upload handlers or API envelopes).
 
 If proto or API contract changes:
 

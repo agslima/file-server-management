@@ -15,9 +15,9 @@ If guidance conflicts, prefer the same order above.
 
 ## Backend reality check (important)
 
-- `backend/` is currently scaffold-level, not a feature-complete control plane.
+- `backend/` has a baseline-validated VS-001 control-plane slice, but is not a feature-complete control plane yet.
 - Do **not** present backend endpoints as production-ready unless validated by runnable checks.
-- Keep claims aligned with the ledger (`CL-008`, `CL-018`, and `CL-031` define the backend baseline contract).
+- Keep claims aligned with the ledger (`CL-008`, `CL-018`, `CL-020`, and `CL-031` define the backend baseline contract).
 
 ## Change expectations for backend edits
 
@@ -36,6 +36,7 @@ Run from repository root unless noted:
 - `cd backend && composer validate --strict`
 - `cd backend && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php`
 - `cd backend && ./scripts/smoke.sh`
+- `docker compose build --pull && docker compose up -d && ./scripts/wait-for-http.sh http://localhost:8080/healthz 120 && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/vs001_create_folder.sh && docker compose down -v`
 
 If you add executable backend behavior, also add/update focused tests and include exact commands used to validate.
 

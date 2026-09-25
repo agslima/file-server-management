@@ -2,7 +2,7 @@
 
 [//]: # (owner: Project Maintainers)
 [//]: # (review_cadence: Quarterly)
-[//]: # (last_reviewed: 2026-02-25)
+[//]: # (last_reviewed: 2026-03-03)
 
 This document maps branch-protection requirements for `main` across always-required checks, path-scoped checks, and approval ownership.
 
@@ -26,7 +26,29 @@ These checks are required regardless of changed paths:
 
 - `doc-drift` (documentation link + governance hygiene drift)
 - `governance-hygiene` checks in CI pipeline
-- Dependency/security workflow category required by governance policy (`snyk-scan`)
+- PR security scan gates from `.github/workflows/ci-pr-security-scan.yaml`:
+  - `Secret Scan (Gitleaks)`
+  - `Trivy Gate (Dependencies)`
+  - `Trivy Gate - Misconfig (IaC)`
+
+## CodeQL policy
+
+- CodeQL runs in `.github/workflows/codeql.yml` on `pull_request`, `push` to `main`, and scheduled cadence.
+- Current governance policy treats CodeQL as advisory/non-blocking by default (not listed in always-required branch-protection checks).
+- If/when promoted to required, add both matrix checks (`Analyze (actions)` and `Analyze (go)`) to required checks and update this document and `docs/governance.md` together.
+
+## Scheduled (non-branch-protection) claim checks
+
+- Workflow: `.github/workflows/promoted-claim-cadence.yml`
+- Weekly schedule-gated claim checks:
+  - `CL-009` (`CL-009 Demo Console Validation`)
+  - `CL-070` (`CL-070 Deployment Realism Validation`)
+  - `CL-072` (`CL-072 Security Posture Validation`)
+- Manual periodic claim checks (dispatch-only):
+  - `CL-071` (`CL-071 Performance Validation (Manual)`)
+  - `CL-073` (`CL-073 Onboarding Validation (Manual)`)
+
+These checks are intentionally outside branch-protection required status checks, but are mandatory evidence paths for claim maintenance cadence.
 
 ## Required checks: path-scoped
 
@@ -45,7 +67,7 @@ These checks become required when matching paths are touched:
 Reviewer check expectations:
 
 - `Security reviewer` and `Platform reviewer` are path-scoped CI checks that codify reviewer rotation expectations into branch-protection-compatible status checks.
-- `.github/OWNERS` remains the canonical owner/approver/reviewer source; these path-scoped checks turn mapping guidance into enforceable CI expectations.
+- `.github/OWNERS` remains the canonical owner/approver/reviewer source; these path-scoped checks turn mapping guidance into enforceable CI expectations, including distinct-reviewer continuity checks when multiple critical approval groups are required.
 
 ## Release-review branch protection audit checklist
 
