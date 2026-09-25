@@ -82,45 +82,6 @@ Legend:
 
 ---
 
-## Canonical doc map
-
-**Architecture & Implementation:**
-
-- **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
-- **API Versioning Policy:** [`docs/api-versioning-policy.md`](docs/api-versioning-policy.md)
-- **Client SDKs (thin):** [`docs/client-sdks.md`](docs/client-sdks.md)
-- **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
-- **Architecture Boundaries:** [`docs/architecture_boundaries.md`](docs/architecture_boundaries.md)
-- **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
-- **Threat Model:** [`docs/threat-model.md`](docs/threat-model.md)
-- **Observability:** [`docs/observability.md`](docs/observability.md)
-- **Roadmap (staged milestones):** [`docs/roadmap.md`](docs/roadmap.md)
-- **Setup/onboarding guide:** [`docs/setup.md`](docs/setup.md)
-- **Decisions and rationale:** [`docs/adr`](docs/adr)
-
-**Governance & Status:**
-
-- **Capability Ledger (Truth):** [`docs/capability-ledger.md`](docs/capability-ledger.md)
-- **Route maturity matrix:** [`docs/route-maturity-matrix.md`](docs/route-maturity-matrix.md)
-- **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
-- **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
-- **Branch protection mapping:** [`docs/branch-protection-mapping.md`](docs/branch-protection-mapping.md)
-- **Ownership source of truth:** [`.github/OWNERS`](.github/OWNERS)
-- **Ownership backup matrix:** [`docs/ownership-backup-matrix.md`](docs/ownership-backup-matrix.md)
-
-<details><summary><b>Operating guide</b></summary>
-
-- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
-- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
-
-</details>
-
-> [!Warning]
-> If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
-
----
-
 ## Why this exists
 
 Many organizations rely on direct file server access (shared drives/SSH/FTP) to create folders, upload documents, and manage structured storage. This is:
@@ -524,14 +485,6 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 
 > [!Note]
 > All setup flows (local File Engine run, canonical root compose, dev JWT) are documented in `docs/setup.md`.
-
-
-## Deployment (dev/stage/prod + kind + rollback)
-
-- Environment profile templates are versioned in `env/.env.dev.example`, `env/.env.stage.example`, and `env/.env.prod.example`.
-- Config/secret separation and required runtime wiring checks are documented in `docs/deployment-profiles.md` and validated with `./scripts/check-runtime-wiring.sh --profile prod`.
-- Kubernetes smoke and rollback drill paths are script-backed via `./scripts/k8s/kind_smoke.sh` and `./scripts/drills/k8s_rollback_drill.sh`.
-- Release versioning + changelog + rollback discipline is documented in `docs/release/versioning-and-rollback.md`.
 
 ---
 
