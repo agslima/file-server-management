@@ -16,7 +16,6 @@ type Logger struct {
 }
 
 func New(level string) *Logger {
-	log.SetOutput(os.Stdout)
 	return &Logger{level: strings.ToLower(level), base: map[string]string{"service": "file-engine"}}
 }
 

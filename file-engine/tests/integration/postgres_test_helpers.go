@@ -23,11 +23,11 @@ func mustConnectAuditDB(t *testing.T, ctx context.Context) *pgxpool.Pool {
 	t.Helper()
 	pool, err := pgxpool.New(ctx, testPostgresDSN())
 	if err != nil {
-		t.Fatalf("connect postgres: %v", err)
+		t.Skipf("skip integration test: postgres unavailable (connect failed): %v", err)
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
-		t.Fatalf("ping postgres: %v", err)
+		t.Skipf("skip integration test: postgres unavailable (ping failed): %v", err)
 	}
 	mustApplyAuditMigration(t, ctx, pool)
 	return pool

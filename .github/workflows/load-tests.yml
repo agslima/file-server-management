@@ -87,10 +87,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Setup k6
-        uses: grafana/setup-k6-action@ffe7d7290dfa715e48c2ccc924d068444c94bde2
+        uses: grafana/setup-k6-action@43b9fc21641a76002687994433dd586f56e791b1
 
       - name: Start load-test stack
         run: docker compose up -d --build redis postgres file-engine file-engine-worker
@@ -156,7 +156,7 @@ jobs:
 
       - name: Upload k6 artifacts (${{ matrix.profile }})
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: k6-${{ matrix.profile }}-${{ github.run_id }}
           path: |

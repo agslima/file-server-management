@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -25,6 +24,8 @@ func New(base string) *LocalStorage {
 	return &LocalStorage{base: base}
 }
 
+// full resolves a potentially user-supplied path to an absolute path that is
+// guaranteed to be located within the LocalStorage base directory.
 func (l *LocalStorage) full(p string) string {
 	// Normalize the user-supplied path into a safe, relative form.
 	clean := normalizePath(p)
@@ -32,7 +33,7 @@ func (l *LocalStorage) full(p string) string {
 	// Join the (relative) cleaned path with the base directory.
 	joined := filepath.Join(l.base, clean)
 
-	// Ensure that the resolved path stays within the configured base directory.
+	// Resolve both base and joined paths to absolute form.
 	baseAbs, errBase := filepath.Abs(l.base)
 	fullAbs, errFull := filepath.Abs(joined)
 	if errBase != nil || errFull != nil {
@@ -55,12 +56,14 @@ func (l *LocalStorage) full(p string) string {
 	return baseAbs
 }
 
+// normalizePath converts an arbitrary input path into a relative, cleaned path
+// suitable for joining with the LocalStorage base directory.
 func normalizePath(p string) string {
 	// Normalize slashes and trim whitespace.
 	p = strings.TrimSpace(strings.ReplaceAll(p, "\\", "/"))
 
 	// Clean the path to remove redundant components.
-	p = path.Clean(p)
+	p = filepath.Clean(p)
 
 	// Treat "." as the base directory itself.
 	if p == "." {
@@ -68,10 +71,10 @@ func normalizePath(p string) string {
 	}
 
 	// Remove any leading slash so that the path is always relative to the base.
-	p = strings.TrimPrefix(p, "/")
+	p = strings.TrimPrefix(p, string(filepath.Separator))
 
-	// Reject any remaining traversal attempts defensively.
-	if p == ".." || strings.HasPrefix(p, "../") || strings.Contains(p, "/../") || strings.HasSuffix(p, "/..") {
+	// Reject simple traversal-only values defensively; full() still enforces base containment.
+	if p == ".." || strings.HasPrefix(p, ".."+string(filepath.Separator)) {
 		// Returning empty here will cause full() to resolve to the base directory only.
 		return ""
 	}
