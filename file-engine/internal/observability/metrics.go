@@ -2,6 +2,7 @@ package observability
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync"
@@ -53,25 +54,31 @@ func (s *durationSummary) snapshot() (count, sumMs, maxMs int64) {
 }
 
 type Metrics struct {
-	queueDepth          atomic.Int64
-	tasksEnqueuedTotal  atomic.Int64
-	tasksRunningTotal   atomic.Int64
-	tasksSucceededTotal atomic.Int64
-	tasksFailedTotal    atomic.Int64
-	auditEventsTotal    atomic.Int64
-	auditSinkFailures   atomic.Int64
-	auditDeadLetters    atomic.Int64
-	queueLagMs          durationSummary
-	auditSinkLagMs      atomic.Int64
-	scanBacklog         atomic.Int64
-	scanDLQSize         atomic.Int64
-	uploadDurationMs    durationSummary
-	malwareScanDuration durationSummary
-	malwareScanVerdicts counterVec
-	quarantineTimeMs    durationSummary
-	governanceDrift     counterVec
-	governanceDriftOn   atomic.Int64
-	archiveTransitions  atomic.Int64
+	queueDepth             atomic.Int64
+	tasksEnqueuedTotal     atomic.Int64
+	tasksRunningTotal      atomic.Int64
+	tasksSucceededTotal    atomic.Int64
+	tasksFailedTotal       atomic.Int64
+	auditEventsTotal       atomic.Int64
+	auditSinkFailures      atomic.Int64
+	auditDeadLetters       atomic.Int64
+	queueLagMs             durationSummary
+	auditSinkLagMs         atomic.Int64
+	scanBacklog            atomic.Int64
+	scanDLQSize            atomic.Int64
+	uploadDurationMs       durationSummary
+	malwareScanDuration    durationSummary
+	malwareScanVerdicts    counterVec
+	quarantineTimeMs       durationSummary
+	governanceDrift        counterVec
+	governanceDriftOn      atomic.Int64
+	archiveTransitions     atomic.Int64
+	rateLimitBlocks        counterVec
+	queueRejects           atomic.Int64
+	tenantUploadBytes      sync.Map
+	tenantDownloadBytes    sync.Map
+	integrityChecksTotal   atomic.Int64
+	integrityFailuresTotal atomic.Int64
 
 	statusTransitions sync.Map
 	httpRequests      counterVec
@@ -211,6 +218,61 @@ func (m *Metrics) IncArchiveTransition() {
 	m.archiveTransitions.Add(1)
 }
 
+func (m *Metrics) IncRateLimitBlock(scope, reason string) {
+	m.rateLimitBlocks.inc(fmt.Sprintf("%s|%s", sanitizeLabel(strings.ToLower(scope)), sanitizeLabel(strings.ToLower(reason))))
+}
+
+func (m *Metrics) IncQueueBackpressureReject() { m.queueRejects.Add(1) }
+
+func (m *Metrics) addTenantBytes(mp *sync.Map, tenantID string, bytes int64) {
+	tenantID = sanitizeLabel(tenantID)
+	if tenantID == "unknown" || bytes <= 0 {
+		return
+	}
+	val, _ := mp.LoadOrStore(tenantID, &atomic.Int64{})
+	val.(*atomic.Int64).Add(bytes)
+}
+
+func snapshotTenantBytes(mp *sync.Map) map[string]int64 {
+	out := map[string]int64{}
+	mp.Range(func(k, v any) bool {
+		tenant, _ := k.(string)
+		ctr, _ := v.(*atomic.Int64)
+		out[tenant] = ctr.Load()
+		return true
+	})
+	return out
+}
+
+func (m *Metrics) AddTenantUploadedBytes(tenantID string, bytes int64) {
+	m.addTenantBytes(&m.tenantUploadBytes, tenantID, bytes)
+}
+
+func (m *Metrics) AddTenantDownloadedBytes(tenantID string, bytes int64) {
+	m.addTenantBytes(&m.tenantDownloadBytes, tenantID, bytes)
+}
+
+func (m *Metrics) IncIntegrityCheck(ok bool) {
+	m.integrityChecksTotal.Add(1)
+	if !ok {
+		m.integrityFailuresTotal.Add(1)
+	}
+}
+
+func (m *Metrics) TenantUsageSnapshot() map[string]map[string]int64 {
+	out := map[string]map[string]int64{}
+	for tenant, uploaded := range snapshotTenantBytes(&m.tenantUploadBytes) {
+		out[tenant] = map[string]int64{"uploaded_bytes": uploaded, "downloaded_bytes": 0}
+	}
+	for tenant, downloaded := range snapshotTenantBytes(&m.tenantDownloadBytes) {
+		if _, ok := out[tenant]; !ok {
+			out[tenant] = map[string]int64{"uploaded_bytes": 0, "downloaded_bytes": 0}
+		}
+		out[tenant]["downloaded_bytes"] = downloaded
+	}
+	return out
+}
+
 func (m *Metrics) SnapshotPrometheus() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# HELP fileengine_queue_depth Current queue depth\n")
@@ -267,7 +329,13 @@ func (m *Metrics) SnapshotPrometheus() string {
 	fmt.Fprintf(&b, "fileengine_quarantine_time_ms_max %d\n", qMax)
 	fmt.Fprintf(&b, "fileengine_governance_drift_active %d\n", m.governanceDriftOn.Load())
 	fmt.Fprintf(&b, "fileengine_archive_transitions_total %d\n", m.archiveTransitions.Load())
+	fmt.Fprintf(&b, "fileengine_queue_backpressure_rejections_total %d\n", m.queueRejects.Load())
+	fmt.Fprintf(&b, "fileengine_integrity_checks_total %d\n", m.integrityChecksTotal.Load())
+	fmt.Fprintf(&b, "fileengine_integrity_failures_total %d\n", m.integrityFailuresTotal.Load())
 	emitCounterVec(&b, "fileengine_governance_drift_checks_total", []string{"state", "reason"}, m.governanceDrift.snapshot())
+	emitCounterVec(&b, "fileengine_rate_limit_blocks_total", []string{"scope", "reason"}, m.rateLimitBlocks.snapshot())
+	emitCounterVec(&b, "fileengine_tenant_uploaded_bytes_total", []string{"tenant"}, stringifyTenantBytes(snapshotTenantBytes(&m.tenantUploadBytes)))
+	emitCounterVec(&b, "fileengine_tenant_downloaded_bytes_total", []string{"tenant"}, stringifyTenantBytes(snapshotTenantBytes(&m.tenantDownloadBytes)))
 
 	emitCounterVec(&b, "fileengine_http_requests_total", []string{"method", "route", "status"}, m.httpRequests.snapshot())
 	emitCounterVec(&b, "fileengine_grpc_requests_total", []string{"method", "code"}, m.grpcRequests.snapshot())
@@ -275,6 +343,12 @@ func (m *Metrics) SnapshotPrometheus() string {
 	emitDurationSummaries(&b, "fileengine_http_request_duration_ms", []string{"method", "route"}, &m.httpDurations)
 	emitDurationSummaries(&b, "fileengine_grpc_request_duration_ms", []string{"method"}, &m.grpcDurations)
 	return b.String()
+}
+
+func stringifyTenantBytes(values map[string]int64) map[string]int64 {
+	out := map[string]int64{}
+	maps.Copy(out, values)
+	return out
 }
 
 func emitCounterVec(b *strings.Builder, metric string, labels []string, values map[string]int64) {

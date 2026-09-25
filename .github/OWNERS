@@ -1,8 +1,43 @@
 owners:
-- agslima
+  - agslima
 
 approvers:
-- agslima
+  - agslima
 
 reviewers:
-- agslima
+  - agslima
+
+domain_reviewers:
+  auth_authz:
+    primary:
+      - agslima
+    backups:
+      - agslima
+  upload_scanner:
+    primary:
+      - agslima
+    backups:
+      - agslima
+  audit_sink_dlq:
+    primary:
+      - agslima
+    backups:
+      - agslima
+  observability_alerts_drills:
+    primary:
+      - agslima
+    backups:
+      - agslima
+  governance_controls:
+    primary:
+      - agslima
+    backups:
+      - agslima
+
+required_reviewers:
+  security:
+    - agslima
+  platform:
+    - agslima
+  maintainers:
+    - agslima

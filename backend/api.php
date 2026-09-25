@@ -17,9 +17,10 @@ $method = strtoupper($request->method());
 $path = '/' . ltrim($request->path(), '/');
 
 $service = new FileEngineService(
-    new HttpFactory(),
-    getenv('FILE_ENGINE_URL') ?: 'http://file-engine:8080/v1',
-    getenv('FILE_ENGINE_BEARER_TOKEN') ?: null,
+    http: new HttpFactory(),
+    baseUrl: getenv('FILE_ENGINE_URL') ?: 'http://file-engine:8080/v1',
+    adminBaseUrl: getenv('FILE_ENGINE_ADMIN_URL') ?: null,
+    bearerToken: getenv('FILE_ENGINE_BEARER_TOKEN') ?: null,
 );
 
 if ($method === 'GET' && $path === '/healthz') {

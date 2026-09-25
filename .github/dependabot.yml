@@ -111,3 +111,14 @@ updates:
     labels:
       - "docker"
       - "file-engine"
+      
+  - package-ecosystem: "docker"
+    directory: "/file-engine/build/docker"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "docker"
+      - "file-engine"
+  

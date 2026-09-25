@@ -305,3 +305,15 @@ Trust boundaries are where data crosses between privilege levels, identities, or
 - Trust boundary map and network segmentation diagram
 - STRIDE worksheet per component (this doc)
 - Controls checklist mapped to security requirements (CI/CD + runtime)
+
+---
+
+## 9) Continuous threat-model refresh automation
+
+To keep threat modeling always-on (not only feature-triggered), use:
+
+```bash
+./scripts/generate-threat-model-diff-prompt.sh
+```
+
+This generates a review prompt whenever boundary-sensitive files change (handlers/authz/governance/security docs). If output includes `THREAT_MODEL_DIFF_PROMPT`, reviewers should refresh STRIDE mappings and trust-boundary controls in this document in the same PR.

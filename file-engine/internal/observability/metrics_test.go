@@ -27,6 +27,9 @@ func TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics(t *testing.T) 
 	m.ObserveQuarantineTimeMs(1500)
 	m.ObserveGovernanceDrift(true, "runtime_policy_mismatch")
 	m.IncArchiveTransition()
+	m.AddTenantUploadedBytes("acme", 64)
+	m.AddTenantDownloadedBytes("acme", 32)
+	m.IncIntegrityCheck(false)
 
 	snapshot := m.SnapshotPrometheus()
 	assertContains := func(expected string) {
@@ -58,4 +61,18 @@ func TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics(t *testing.T) 
 	assertContains("fileengine_governance_drift_active 1")
 	assertContains("fileengine_archive_transitions_total 1")
 	assertContains("fileengine_governance_drift_checks_total{state=\"drift\",reason=\"runtime_policy_mismatch\"} 1")
+}
+
+func TestTenantUsageSnapshot(t *testing.T) {
+	m := NewMetrics()
+	m.AddTenantUploadedBytes("acme", 10)
+	m.AddTenantUploadedBytes("acme", 5)
+	m.AddTenantDownloadedBytes("acme", 3)
+	usage := m.TenantUsageSnapshot()
+	if usage["acme"]["uploaded_bytes"] != 15 {
+		t.Fatalf("expected uploaded 15 got %d", usage["acme"]["uploaded_bytes"])
+	}
+	if usage["acme"]["downloaded_bytes"] != 3 {
+		t.Fatalf("expected downloaded 3 got %d", usage["acme"]["downloaded_bytes"])
+	}
 }

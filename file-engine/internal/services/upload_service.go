@@ -5,11 +5,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"path"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -61,6 +63,17 @@ type ScanDLQEntry struct {
 type CleanupReport struct {
 	Deleted int `json:"deleted"`
 	Skipped int `json:"skipped"`
+}
+
+type IntegrityFailure struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+}
+
+type IntegrityReport struct {
+	Checked  int                `json:"checked"`
+	Failed   int                `json:"failed"`
+	Failures []IntegrityFailure `json:"failures"`
 }
 
 type UploadService struct {
@@ -205,6 +218,31 @@ func (s *UploadService) SetGovernancePolicy(p GovernancePolicy) error {
 	}
 	s.governance = p
 	return nil
+}
+
+func (s *UploadService) UpdateGovernancePolicy(actorID string, p GovernancePolicy) (string, string, error) {
+	if err := p.Validate(); err != nil {
+		return "", "", err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if p.Tenants == nil {
+		p.Tenants = map[string]TenantGovernancePolicy{}
+	}
+	beforeHash := governancePolicyHash(s.governance)
+	afterHash := governancePolicyHash(p)
+	s.governance = p
+	s.appendGovernanceEventLocked(actorID, "control-plane", "policy_update", "/governance/policy", "allow", fmt.Sprintf("before_hash=%s after_hash=%s", beforeHash, afterHash))
+	return beforeHash, afterHash, nil
+}
+
+func governancePolicyHash(p GovernancePolicy) string {
+	b, err := json.Marshal(p)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *UploadService) GovernanceEvents() []GovernanceEvent {
@@ -712,6 +750,78 @@ func (s *UploadService) RestoreQuarantinedObject(ctx context.Context, actorID, o
 	s.appendGovernanceEventLocked(actorID, tenantID, "restore_quarantine", normalized, "allow", map[bool]string{true: "force_reprocess", false: "operator_restore"}[forceReprocess])
 	s.updateOperationalMetricsLocked()
 	return meta, nil
+}
+
+func (s *UploadService) VerifyIntegritySample(ctx context.Context, actorID string, sampleSize int) IntegrityReport {
+	if sampleSize <= 0 {
+		sampleSize = 10
+	}
+	s.mu.RLock()
+	paths := make([]string, 0, len(s.metadata))
+	for p := range s.metadata {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	if len(paths) > sampleSize {
+		paths = paths[:sampleSize]
+	}
+	metas := make([]UploadMetadata, 0, len(paths))
+	for _, p := range paths {
+		metas = append(metas, s.metadata[p])
+	}
+	s.mu.RUnlock()
+
+	report := IntegrityReport{Failures: make([]IntegrityFailure, 0)}
+	for _, meta := range metas {
+		report.Checked++
+		rc, err := s.st.Open(ctx, meta.Path)
+		if err != nil {
+			report.Failed++
+			report.Failures = append(report.Failures, IntegrityFailure{Path: meta.Path, Reason: "object_missing"})
+			observability.DefaultMetrics.IncIntegrityCheck(false)
+			s.mu.Lock()
+			s.appendGovernanceEventLocked(actorID, meta.TenantID, "integrity_verify", meta.Path, "deny", "object_missing")
+			s.mu.Unlock()
+			continue
+		}
+		h := sha256.New()
+		cr := &countingReader{r: rc}
+		_, copyErr := io.Copy(h, cr)
+		_ = rc.Close()
+		if copyErr != nil {
+			report.Failed++
+			report.Failures = append(report.Failures, IntegrityFailure{Path: meta.Path, Reason: "read_error"})
+			observability.DefaultMetrics.IncIntegrityCheck(false)
+			s.mu.Lock()
+			s.appendGovernanceEventLocked(actorID, meta.TenantID, "integrity_verify", meta.Path, "deny", "read_error")
+			s.mu.Unlock()
+			continue
+		}
+		digest := hex.EncodeToString(h.Sum(nil))
+		if meta.Checksum != "" && digest != meta.Checksum {
+			report.Failed++
+			report.Failures = append(report.Failures, IntegrityFailure{Path: meta.Path, Reason: "checksum_mismatch"})
+			observability.DefaultMetrics.IncIntegrityCheck(false)
+			s.mu.Lock()
+			s.appendGovernanceEventLocked(actorID, meta.TenantID, "integrity_verify", meta.Path, "deny", "checksum_mismatch")
+			s.mu.Unlock()
+			continue
+		}
+		if meta.Size > 0 && cr.n != meta.Size {
+			report.Failed++
+			report.Failures = append(report.Failures, IntegrityFailure{Path: meta.Path, Reason: "size_mismatch"})
+			observability.DefaultMetrics.IncIntegrityCheck(false)
+			s.mu.Lock()
+			s.appendGovernanceEventLocked(actorID, meta.TenantID, "integrity_verify", meta.Path, "deny", "size_mismatch")
+			s.mu.Unlock()
+			continue
+		}
+		observability.DefaultMetrics.IncIntegrityCheck(true)
+		s.mu.Lock()
+		s.appendGovernanceEventLocked(actorID, meta.TenantID, "integrity_verify", meta.Path, "allow", "ok")
+		s.mu.Unlock()
+	}
+	return report
 }
 
 func (s *UploadService) DeleteObject(ctx context.Context, actorID, objectPath string) error {

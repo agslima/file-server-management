@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	var files []string
+	files := make([]string, 0, len(entries))
 	for _, e := range entries {
 		if e.IsDir() || filepath.Ext(e.Name()) != ".sql" {
 			continue

@@ -20,8 +20,9 @@ import (
 )
 
 type fakeTaskQueue struct {
-	enqueued *enqueueRecord
-	statuses map[string]*redisq.TaskStatus
+	enqueued   *enqueueRecord
+	statuses   map[string]*redisq.TaskStatus
+	enqueueErr error
 }
 
 type mutableTenantResolver struct {
@@ -47,6 +48,9 @@ type enqueueRecord struct {
 }
 
 func (q *fakeTaskQueue) EnqueueCreateFolder(_ context.Context, parentPath, folderName, requestedBy, correlationID string) (string, error) {
+	if q.enqueueErr != nil {
+		return "", q.enqueueErr
+	}
 	q.enqueued = &enqueueRecord{parentPath: parentPath, folderName: folderName, requestedBy: requestedBy, correlationID: correlationID}
 	id := "task-abc"
 	if q.statuses == nil {
@@ -395,5 +399,15 @@ func TestUploadObjectEmitsAuditStartAndFinish(t *testing.T) {
 	}
 	if !seenStart || !seenFinish {
 		t.Fatalf("expected upload.started and upload.completed events, got %+v", auditor.events)
+	}
+}
+
+func TestCreateFolderQueueUnavailableReturnsUnavailable(t *testing.T) {
+	q := &fakeTaskQueue{enqueueErr: redisq.ErrQueueUnavailable}
+	h := NewGRPCHandler(q, nil, nil, auth.NewInMemoryACLStore(), tenantResolverForTests(), nil, nil)
+	ctx := auth.WithAuthContext(context.Background(), auth.AuthContext{UserID: "alice", Roles: []string{"admin"}})
+	_, err := h.CreateFolder(ctx, &pb.CreateFolderRequest{ParentPath: "/tenants/acme", FolderName: "reports"})
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("expected unavailable, got %v", err)
 	}
 }

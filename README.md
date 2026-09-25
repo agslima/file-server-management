@@ -8,28 +8,20 @@
 [//]: # (review_cadence: Quarterly)
 [//]: # (last_reviewed: 2026-02-19)
 
-
 [![CI](https://github.com/agslima/file-server-management/actions/workflows/ci.yml/badge.svg)](https://github.com/agslima/file-server-management/actions/workflows/ci.yml)
-![Go Version](https://img.shields.io/badge/go-1.24+-blue)
-![Laravel](https://img.shields.io/badge/laravel-10%2B-red)
-![gRPC](https://img.shields.io/badge/API-gRPC%20-5e5e5e)
-[![Docs](https://img.shields.io/badge/docs-architecture%20%7C%20adr-brightgreen)](https://github.com/agslima/file-server-management/tree/main/docs)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-<!--
-![Go Tests](https://github.com/<org>/<repo>/actions/workflows/go-test.yaml/badge.svg)
-![Laravel Tests](https://github.com/<org>/<repo>/actions/workflows/phpunit.yaml/badge.svg)
-[![codecov](https://codecov.io/gh/<org>/<repo>/branch/main/graph/badge.svg)](https://codecov.io/gh/<org>/<repo>)
-![Dependency Review](https://github.com/<org>/<repo>/actions/workflows/dependency-review.yml/badge.svg)
-![Trivy](https://github.com/<org>/<repo>/actions/workflows/trivy.yml/badge.svg)
--->
+![Go Version](https://img.shields.io/badge/go-1.26+-yellowgreen)
+![Laravel](https://img.shields.io/badge/laravel-10%2B-blue)
+![gRPC](https://img.shields.io/badge/API-gRPC%20-4e6e6e)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
 ⚡️ **A governance-focused, multi-tenant file management platform written in Go and PHP** ⚡️ \
-Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a baseline-validated **quarantine -> scan -> promote** guardrail flow (local semantics).
+Designed to operate directly on **real storage backends** (local/mounted SMB/NFS/SFTP, with adapter-based extensibility for S3/GCS). It centralizes access to shared storage with **RBAC + path-based ACL**, **async mutations**, baseline **task audit events**, and a baseline-validated **quarantine → scan → promote** guardrail flow (local semantics).
 
 </div>
 
+<!--
 > [!Note]
-> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and becomes the orchestration layer as features are promoted via the capability ledger.
+> **Honest status:** The **Go File Engine** is the current working nucleus (baseline-validated). The **Laravel control plane** is scaffold/in-progress and will evolve into the orchestration layer as features are developed.
 
 ## TL;DR
 
@@ -39,14 +31,33 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **Secure uploads:** staged quarantine write + scan-gated promote behavior are baseline-validated, including non-stub ClamAV scanner integration evidence (clean + quarantined paths) and operational scanner closure controls (threshold alerts + runbook/escalation drill evidence).
 - **Auditing:** persisted task status + task audit events + append-only DB enforcement + external sink delivery are baseline-validated.
 - **Observability:** correlation IDs are baseline; OTEL export wiring is baseline-validated for API + worker entrypoints; collector/backend deployment hardening is baseline-validated with deterministic connectivity + drill scripts; paging-provider delivery is baseline-validated through a deterministic webhook drill path.
+-->
+  
+---
+
+## Project status
+
+This repository documents an evolving architecture.
+
+Legend:
+
+- ✅ implemented
+- 🟡 in progress
+- 🔒 planned / target state
+
+> [!Note]
+> **Current maturity note:** Some controls are documented as the target state. The project roadmap tracks what has already been implemented vs what is intended. 
+> **Validation source of truth:** Please see [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implementation.
 
 ---
 
-## Canonical doc map
+## Documentation map
 
 **Architecture & Implementation:**
 
 - **API Reference:** [`docs/api-reference.md`](docs/api-reference.md)
+- **API Versioning Policy:** [`docs/api-versioning-policy.md`](docs/api-versioning-policy.md)
+- **Client SDKs (thin):** [`docs/client-sdks.md`](docs/client-sdks.md)
 - **Architecture Overview:** [`docs/architecture.md`](docs/architecture.md)
 - **Architecture Boundaries:** [`docs/architecture_boundaries.md`](docs/architecture_boundaries.md)
 - **Auth Model (RBAC/JWT):** [`docs/auth.md`](docs/auth.md)
@@ -63,92 +74,11 @@ Designed to operate directly on **real storage backends** (local/mounted SMB/NFS
 - **Project Alignment:** [`docs/project-alignment-review.md`](docs/project-alignment-review.md)
 - **Governance (merge gates):** [`docs/governance.md`](docs/governance.md)
 - **Branch protection mapping:** [`docs/branch-protection-mapping.md`](docs/branch-protection-mapping.md)
-- **Ownership source of truth:** [`.github/OWNERS`](.github/OWNERS)
-- **Ownership backup matrix:** [`docs/ownership-backup-matrix.md`](docs/ownership-backup-matrix.md)
 
-<details><summary><b>Operating guide</b></summary>
-
-- **Agent Constraints:** [`.github/AGENTS.md`](.github/AGENTS.md)
-- **File Engine scoped operating guide:** [`file-engine/AGENTS.md`](file-engine/AGENTS.md)
-- **Backend operating guide:** [`backend/AGENTS.md`](backend/AGENTS.md)
-
-</details>
-
+<!--
+> [!Warning]
 > If guidance conflicts, use this precedence order: capability ledger -> setup -> scoped AGENTS -> architecture deep-dives.
-
----
-
-## Project status
-
-This repository documents an evolving architecture.
-
-Legend:
-
-- ✅ implemented
-- 🟡 in progress
-- 🔒 planned / target state
-
-> [!Note]
-> **Current maturity note:** Some controls are documented as target state. The roadmap tracks what is enforced vs intended.
-> **Validation source of truth:** See [`docs/capability-ledger.md`](docs/capability-ledger.md) for runnable commands that validate each implemented claim.
-
-### Implementation status (baseline)
-
-Every baseline claim is mapped to a claim ID and runnable command in the capability ledger.
-
-<details><summary><b>See more details</b></summary>
-  
-| Claim ID | Capability | Status | Runnable validation |
-| :-- | :-- | :--: | :-- |
-| [`CL-001`](docs/capability-ledger.md#baseline-claims-implemented) | Canonical proto contract sync | ✅ | `cmp file-engine/api/proto/fileengine.proto file-engine/proto/fileengine.proto` |
-| [`CL-002`](docs/capability-ledger.md#baseline-claims-implemented) | File Engine baseline module checks | ✅ | `cd file-engine && go test ./internal/config ./internal/logger ./internal/worker -v` |
-| [`CL-003`](docs/capability-ledger.md#baseline-claims-implemented) | Async folder flow (enqueue -> worker -> folder created) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| [`CL-004`](docs/capability-ledger.md#baseline-claims-implemented) | Task status persistence (`queued -> running -> success`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| [`CL-005`](docs/capability-ledger.md#baseline-claims-implemented) | Basic audit event emission (`task.processing`, `task.succeeded`) | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| [`CL-006`](docs/capability-ledger.md#baseline-claims-implemented) | Correlation ID propagation in async flow | ✅ | `cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v` |
-| [`CL-007`](docs/capability-ledger.md#baseline-claims-implemented) | Known-working local dev script | ✅ | `./file-engine/scripts/dev.sh` |
-| [`CL-008`](docs/capability-ledger.md#baseline-claims-implemented) | Backend scaffold validation | ✅ | `cd backend && composer validate --strict` |
-| [`CL-009`](docs/capability-ledger.md#baseline-claims-implemented) | Frontend placeholder scaffold | 🔒 | `test -f frontend/README.md && test ! -f frontend/package.json` |
-| [`CL-010`](docs/capability-ledger.md#baseline-claims-implemented) | Structured logs + queue/task metrics baseline | ✅ | `cd file-engine && go test ./internal/handlers ./internal/observability -v` |
-| [`CL-011`](docs/capability-ledger.md#baseline-claims-implemented) | Documentation drift checks (links + governance hygiene) | ✅ | `./scripts/doc-drift-check.sh` |
-| [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented) | Read-path behavior + final authz (list/download + path normalization + tenant enforcement) | ✅ | `cd file-engine && go test ./internal/handlers -run "TestListObjectsReturnsEntries|TestListObjectsRequiresAuthContext|TestListObjectsRejectsUnauthorizedTenant|TestDownloadObjectRejectsUnauthorizedTenant" -v && go test ./internal/adapters/storage/local -run TestLocalStorageListMetadata -v && go test ./internal/authz -run "TestGRPCAuthZInterceptorListObjects" -v && go test ./internal/server -run "TestHandleDownloadNormalizesPath|TestHandleDownloadRejectsTraversal" -v && go test -tags integration_authz ./tests/integration -run TestReadListBehaviorAndAuthzRejection -v` |
-| [`CL-013`](docs/capability-ledger.md#baseline-claims-implemented) | HTTP gateway routes for `CreateFolder` + `GetTaskStatus` are generated and responsive | ✅ | `cd file-engine && go test ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v` |
-| [`CL-014`](docs/capability-ledger.md#baseline-claims-implemented) | AuthZ precedence behavior (ACL vs RBAC) | ✅ | `cd file-engine && go test ./internal/auth -run "TestRBACFallback|TestUserACLOverridesRBAC|TestACLPathInheritance|TestUserDenyPrecedesRoleAllowAndRBAC|TestRoleDenyPrecedesRoleAllowAtSamePath|TestClosestPathACLWinsBeforeParentACLs|TestUserACLPrecedenceOnSamePath|TestUserACLWithoutPermissionFallsThroughToRoleACL" -v` |
-| [`CL-015`](docs/capability-ledger.md#baseline-claims-implemented) | Path normalization guarantees (traversal rejection + canonicalization) | ✅ | `cd file-engine && go test ./internal/authz -run "TestExtractPathNormalizesCreateFolder|TestExtractPathRejectsTraversal|TestNormalizePathHandlesWindowsAndWhitespace|TestNormalizePathAllowsDotContainingNames|TestTenantFromPath|TestTenantFromPathRejectsNonTenantRoot" -v` |
-| [`CL-016`](docs/capability-ledger.md#baseline-claims-implemented) | Generated gateway artifacts remain in sync with proto | ✅ | `cd file-engine && ./scripts/generate_grpc_docker.sh && cd .. && git diff --exit-code && test -z "$(git status --porcelain)"` |
-| [`CL-017`](docs/capability-ledger.md#baseline-claims-implemented) | Worker performance guardrails (status retries + task timeout) for async create-folder | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestWorkerRetriesStatusPersistence|TestWorkerMarksTaskFailedOnProcessingTimeout" -v` |
-| [`CL-018`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 scaffold contract (create-folder forward + task polling wiring checks) | ✅ | `cd backend && composer validate --strict && php -l app/Http/Controllers/FolderController.php && php -l app/Http/Controllers/TaskController.php && php -l app/Services/FileEngineService.php` |
-| [`CL-020`](docs/capability-ledger.md#baseline-claims-implemented) | Backend VS-001 docker-compose E2E (forward create-folder + poll task to success + folder existence) | 🟡 | `docker compose up -d --build && ./scripts/wait-for-http.sh http://localhost:8080/healthz 60 && ./scripts/wait-for-http.sh http://localhost:8081/healthz 60 && ./scripts/e2e/vs001_create_folder.sh && docker compose down -v` |
-| [`CL-022`](docs/capability-ledger.md#baseline-claims-implemented) | Audit coverage for read/list/download actions (`object.list`, `object.read`, `object.download`) | 🟡 | `cd file-engine && go test ./tests/integration -run TestAuditEventsEmittedForReadListDownload -v` |
-| [`CL-025`](docs/capability-ledger.md#baseline-claims-implemented) | Upload pipeline baseline: staged quarantine write + atomic promote (no partial final object visibility) | 🟡 | `cd file-engine && go test ./tests/integration -run TestStagedUploadAtomicPromote -v` |
-| [`CL-031`](docs/capability-ledger.md#baseline-claims-implemented) | Backend baseline smoke suite (composer install + phpunit) | ✅ | `docker compose run --rm --no-deps backend sh -lc 'composer install --no-interaction && ./vendor/bin/phpunit -c phpunit.xml'` |
-| [`CL-032`](docs/capability-ledger.md#baseline-claims-implemented) | Audit table append-only enforcement (UPDATE/DELETE rejected for app DB user) | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditEventsAppendOnlyEnforced -v` |
-| [`CL-033`](docs/capability-ledger.md#baseline-claims-implemented) | Upload malware gating: dirty scan blocks promote, clean scan promotes from quarantine | ✅ | `cd file-engine && go test ./tests/integration -run TestUploadScanGateDirtyPreventsPromotion -v` |
-| [`CL-034`](docs/capability-ledger.md#baseline-claims-implemented) | Curated ledger baseline gate script runs in CI to catch regressions | ✅ | `./scripts/ledger-baseline.sh` |
-| [`CL-035`](docs/capability-ledger.md#baseline-claims-implemented) | Audit external sink delivery covers S3 WORM/Loki/SIEM adapters with retries + DLQ + lag metric | ✅ | `cd file-engine && go test ./tests/integration -run TestAuditExternalSinkDeliveryWithDLQAndLagMetrics -v` |
-| [`CL-036`](docs/capability-ledger.md#baseline-claims-implemented) | `/readyz` checks DB+queue+storage dependencies with deterministic per-check JSON output | ✅ | `cd file-engine && go test ./internal/server -run "TestHandleReadyzReturnsReadyWhenChecksPass|TestHandleReadyzReturnsServiceUnavailableWhenAnyCheckFails|TestHandleReadyzWithoutChecksReturnsDeterministicReadyPayload" -v` |
-| [`CL-037`](docs/capability-ledger.md#baseline-claims-implemented) | Storage contract suite passes for local baseline backend (optional S3/GCS adapters are env-gated) | ✅ | `cd file-engine && go test ./internal/adapters/storage/local -run TestLocalStorageContractSuite -v` |
-| [`CL-038`](docs/capability-ledger.md#baseline-claims-implemented) | OTEL export wiring initialized for API + worker with deterministic endpoint parsing + safe no-endpoint fallback | ✅ | `cd file-engine && go test ./internal/observability -run "TestResolveTracingConfigDefaultsAndExporterToggle|TestInitTracingRejectsUnsupportedEndpointScheme|TestInitTracingWithoutExporterIsDeterministic" -v` |
-| [`CL-039`](docs/capability-ledger.md#baseline-claims-implemented) | External audit sink minimal env wiring validated for bucket/Loki/SIEM/S3-WORM adapters | ✅ | `cd file-engine && go test ./internal/app/tasks -run "TestBuildImmutableSinkFromEnvBucketWritesJSONL|TestBuildImmutableSinkFromEnvLokiPostsLine|TestBuildImmutableSinkFromEnvSIEMPostsNDJSONWithAuth|TestBuildImmutableSinkFromEnvS3WormWritesJSONL" -v` |
-| [`CL-040`](docs/capability-ledger.md#baseline-claims-implemented) | Real scanner integration (non-stub ClamAV adapter) validates clean + quarantined outcomes and emits scan duration/verdict metrics+logs | ✅ | `cd file-engine && go test ./tests/integration -run TestUploadRealScannerIntegrationEmitsMetricsAndLogs -v` |
-| [`CL-041`](docs/capability-ledger.md#baseline-claims-implemented) | Governance hardening: key-doc ownership metadata + quarterly alignment cadence + CI architecture conformance checks | ✅ | `./scripts/doc-ownership-check.sh && ./scripts/architecture-conformance-check.sh` |
-| [`CL-042`](docs/capability-ledger.md#baseline-claims-implemented) | Enterprise identity integration flow (OIDC profile) is CI-gated, deterministic, and proves tenant mapping denial semantics | ✅ | `./scripts/e2e/run_oidc_profile.sh` |
-| [`CL-043`](docs/capability-ledger.md#baseline-claims-implemented) | Malware gate operational hardening: scanner retry + scan DLQ workflows + TTL cleanup + metrics | ✅ | `cd file-engine && go test ./internal/services ./internal/server ./internal/observability -run "TestUploadServiceScannerRetryEventuallySucceeds|TestUploadServiceScannerFailureEnqueuesDLQ|TestUploadServiceCleanupQuarantineDeletesExpiredObjects|TestScanDLQListEndpoint|TestQuarantineCleanupEndpoint|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v` |
-| [`CL-044`](docs/capability-ledger.md#baseline-claims-implemented) | End-to-end observability assets are checked in (collector profile, alerts-as-code, dashboards, drill script) | ✅ | `./scripts/validate-observability-assets.sh && cd file-engine && go test ./internal/observability -v` |
-| [`CL-048`](docs/capability-ledger.md#baseline-claims-implemented) | Production OTEL deployment hardening closure: connectivity SLO checks, alerts syntax validation, and deterministic sink/scanner/exporter drill scripts | ✅ | `./scripts/check-otel-connectivity.sh && ./scripts/drills/production_deployment_hardening.sh` |
-| [`CL-050`](docs/capability-ledger.md#baseline-claims-implemented) | Paging-provider delivery validation: deterministic local webhook receiver confirms alert payload delivery in production-like drill path | ✅ | `./scripts/check-paging-delivery.sh` |
-| [`CL-051`](docs/capability-ledger.md#baseline-claims-implemented) | Scanner/upload operational closure: SLO thresholds + on-call/escalation runbook + operator-ready scanner drill transcript are baseline-validated | ✅ | `./scripts/validate-alert-rules.sh && ./scripts/check-malware-runbook.sh && ./scripts/drills/scanner_down.sh` |
-| [`CL-052`](docs/capability-ledger.md#baseline-claims-implemented) | Documentation contract synchronization: README, route maturity matrix, and roadmap-ledger gap analysis align with promoted baseline claims | ✅ | `./scripts/doc-drift-check.sh && rg -n -F "POST /v1/uploads:initiate" docs/route-maturity-matrix.md && rg -n -F "PUT /v1/uploads/{uploadId}:chunk" docs/route-maturity-matrix.md && rg -n -F "POST /v1/uploads/{uploadId}:complete" docs/route-maturity-matrix.md && rg -n -F "GET /readyz" docs/route-maturity-matrix.md && rg -n -F "OIDC profile end-to-end" docs/route-maturity-matrix.md && rg -n "Milestone 7 — Production Operations Closure.*Implemented|README wording drift corrected|Route maturity matrix refreshed" docs/roadmap-ledger-gap-analysis.md` |
-| [`CL-053`](docs/capability-ledger.md#baseline-claims-implemented) | Sustainability & ownership resilience kickoff: branch-protection mapping + named backups + deterministic release metrics report | ✅ | `./scripts/sustainability-metrics.sh artifacts/sustainability-metrics.md && rg -n "branch-protection-mapping\|ownership-backup-matrix\|OWNERS" docs/governance.md` |
-| [`CL-054`](docs/capability-ledger.md#baseline-claims-implemented) | Sustainability closure: path-scoped reviewer checks (`Security reviewer`/`Platform reviewer`), quarterly alignment checklist generation, and new maintainer operability drill automation | ✅ | `./scripts/check-owners-governance.sh && ./scripts/generate-quarterly-alignment-issue.sh && ./scripts/drills/new_maintainer_operability_drill.sh` |
-| [`CL-045`](docs/capability-ledger.md#baseline-claims-implemented) | Storage contract maturity/parity hardening: normalized paths + deterministic list ordering + metadata/checksum + resumable semantics tests | ✅ | `cd file-engine && go test ./internal/adapters/storage/local ./internal/services -run "TestLocalStorageContractSuite|TestLocalStorageListMetadata|TestUploadServiceResumableUploadFinalize" -v` |
-| [`CL-046`](docs/capability-ledger.md#baseline-claims-implemented) | Governance controls baseline: startup-validated tenant policy config with quota/object/rate limits, retention/legal-hold delete protection, and policy-driven lifecycle cleanup controls | ✅ | `cd file-engine && go test ./internal/services ./internal/server -run "TestUploadServiceTenantPolicyQuotaFinalGate|TestUploadServiceRetentionBlocksDelete|TestUploadServiceLegalHoldBlocksDelete|TestGovernanceDeleteEndpointBlockedByRetention|TestLifecycleCleanupEndpoint" -v` |
-| [`CL-047`](docs/capability-ledger.md#baseline-claims-implemented) | Upload API contract (`Initiate -> Upload chunk -> Complete`) is stable with idempotency/retry semantics and deterministic clean/dirty outcomes | ✅ | `docker compose up -d --build redis postgres file-engine file-engine-worker backend && ./scripts/wait-for-http.sh http://localhost:8081/healthz 120 && ./scripts/e2e/upload_lifecycle.sh && docker compose down -v` |
-| [`CL-049`](docs/capability-ledger.md#baseline-claims-implemented) | Governance control-plane next step: archive-tier lifecycle transitions, external policy source distribution, drift-detection metrics/audit signal, and effective-policy operator endpoint | ✅ | `cd file-engine && go test ./internal/services ./internal/server ./internal/observability -run "TestLoadGovernancePolicyFromSourceEnvelope|TestUploadServiceArchiveLifecycleTransition|TestUploadServiceGovernanceDriftDetection|TestGovernanceEffectiveEndpoint|TestGovernanceDriftCheckEndpoint|TestSnapshotPrometheusIncludesQueueTaskAndOperabilityMetrics" -v` |
-
-> For target-state exclusions and promotion criteria, see [`docs/capability-ledger.md`](docs/capability-ledger.md).
-
-</details>
+-->
 
 ---
 
@@ -163,7 +93,7 @@ Many organizations rely on direct file server access (shared drives/SSH/FTP) to 
 
 This platform provides a centralized, permissioned interface that **controls and records every filesystem mutation**.
 
----
+<!--
 
 ## What it does
 
@@ -171,14 +101,14 @@ This platform provides a centralized, permissioned interface that **controls and
 
 - Browse folders (tree navigation, directory listing)
 - Metadata display (size, timestamps, ownership) with backend-specific best-effort fields
-- **Baseline-validated read path:** list results + size/timestamps/ownership metadata + download path normalization validated by [`CL-012`](docs/capability-ledger.md#baseline-claims-implemented)
-- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary; verified by unit + integration coverage in [`file-engine/internal/handlers/grpc_handler_test.go`](file-engine/internal/handlers/grpc_handler_test.go) and [`file-engine/tests/integration/read_list_authz_integration_test.go`](file-engine/tests/integration/read_list_authz_integration_test.go)
+- **Read path:** list results + size/timestamps/ownership metadata + download path normalization valid
+- **Final authz enforcement for reads:** gRPC list/download enforce tenant-scoped paths, server-side tenant membership, and ACL/RBAC checks at File Engine boundary.
 
 ### Write path (async)
 
 - Create folders (policy-enforced naming)
-- Upload lifecycle is baseline-validated end-to-end (`Initiate -> Upload chunk -> Complete`) with scan-gated promote semantics and deterministic clean/dirty outcomes (`CL-047`, `CL-033`, `CL-040`).
-- Move/rename/delete/restore object operations *(API-level baseline validated; async task variants remain target-state)*
+- Upload lifecycle is baseline-validated end-to-end (`Initiate → Upload chunk → Complete`) with scan-gated promote semantics and deterministic clean/dirty outcomes.
+- Move/rename/delete/restore object operations *(API-level baseline validated; async task variants for move, governed delete, and quarantine restore are baseline-validated*
 
 ### Governance & security
 
@@ -187,7 +117,7 @@ This platform provides a centralized, permissioned interface that **controls and
 - Multi-tenant enforcement via **server-side tenant mapping**
 - Upload quarantine + malware scan gate before publish (baseline guardrails + non-stub scanner adapter integration are validated)
 - Dual-layer audit (queryable + tamper-resistant sink) with baseline-validated external sink delivery adapters
-- Access review compliance exports are available via stable JSON contract + monthly operator report generator (`file-engine/scripts/export_access_review.sh`, `file-engine/scripts/generate_monthly_access_review_report.sh`).
+- Access review compliance exports are available via stable JSON contract + monthly operator report generator.
 
 ---
 
@@ -203,38 +133,36 @@ This platform provides a centralized, permissioned interface that **controls and
 
 **Data Plane — Go File Engine + Worker:**
 
-- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder, GetTaskStatus, and upload lifecycle endpoints via `CL-047`)
+- gRPC-first API + HTTP/JSON via gRPC-Gateway (baseline for CreateFolder, GetTaskStatus, and upload lifecycle endpoints)
 - **Final authorization gate** (tenant membership + RBAC/ACL + safe-path execution)
-- OTEL tracer provider wiring is initialized in both API + worker entrypoints when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (baseline wiring claim `CL-038`)
+- OTEL tracer provider wiring is initialized in both API + worker entrypoints when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (
 - Enqueues tasks; worker executes storage operations with least privilege
 
 ### Diagram (trust boundaries)
 
 ```mermaid
 flowchart TB
-  U[User / Browser] -->|HTTPS| L[Laravel Control Plane<br/>UI + Business Validation]
-
+  U[User / Browser] --|HTTPS| L[Laravel Control Plane<br/>UI + Business Validation]
+  
   %% TB2: Service boundary
-  L -->|"gRPC/HTTP (mTLS recommended)"| FE[Go File Engine API<br/>AuthContext + Final AuthZ Gate]
+  L --|"gRPC/HTTP (mTLS recommended)"| FE[Go File Engine API<br/>AuthContext + Final AuthZ Gate]
 
   %% TB3: Queue boundary
-  FE --> Q[Redis Queue]
-  Q --> W[Worker<br/>Executes tasks]
+  FE -- Q[Redis Queue]
+  Q -- W[Worker<br/>Executes tasks]
 
   %% TB4: Data boundary
-  W --> ST["(Storage Backend<br/>Local/NFS/SMB/SFTP mounts<br/>S3/MinIO<br/>GCS)"]
+  W -- ST["(Storage Backend<br/>Local/NFS/SMB/SFTP mounts<br/>S3/MinIO<br/>GCS)"]
 
   %% TB5: Scanner boundary
-  W --> AV[Scanner Boundary<br/>ClamAV / pluggable]
-  AV -->|verdict| W
+  W -- AV[Scanner Boundary<br/>ClamAV / pluggable]
+  AV --|verdict| W
 
   %% Audit
-  FE --> DB["(Postgres<br/>audit_events (append-only, baseline-validated)<br/>ACL / mappings)"]
-  W --> DB
-  DB --> SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
+  FE -- DB["(Postgres<br/>audit_events (append-only, baseline-validated)<br/>ACL / mappings)"]
+  W -- DB
+  DB -- SINK[Immutable Audit Sink<br/>SIEM / Loki / S3 WORM]
 ```
-
----
 
 ### Multi-tenancy model
 
@@ -319,7 +247,7 @@ Core gRPC methods (canonical):
 
 - `CreateFolder` → returns `taskId` (async)
 - `GetTaskStatus` → poll task status
-- `InitiateUpload` / `CompleteUpload` *(baseline-validated via CL-047 contract flow; chunk upload path is exercised in the same validation)*
+- `InitiateUpload` / `CompleteUpload` *(baseline-validated)*
 
 HTTP/JSON routes (baseline-validated):
 
@@ -352,12 +280,11 @@ Validation command:
 ```bash
 cd file-engine && go test ./internal/handlers -run "TestCreateFolderRequiresAuthContext|TestCreateFolderRejectsNonTenantPath|TestCreateFolderRejectsUnauthorizedTenant|TestCreateFolderEnqueuesWithCorrelationAndActorFallback|TestGetTaskStatusRequiresAuthAndReturnsPersistedStatus" -v && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ```
-
+-->
 ---
 
 ## Key flows
 
-**Target-state upload API flow (storage guardrails are baseline-validated; endpoint contract is not yet baseline-promoted):**
 
 ```mermaid
 sequenceDiagram
@@ -402,6 +329,7 @@ sequenceDiagram
 
 ---
 
+<!--
 ## Security model
 
 Trust boundaries:
@@ -417,7 +345,7 @@ Secure-by-default controls:
 - Deny-by-default authorization at File Engine
 - Tenant scope from server-side mapping (not JWT)
 - Strict path normalization + traversal rejection
-- Quarantine → scan → promote gating (baseline guardrails + non-stub scanner integration validated via `CL-033` and `CL-040`)
+- Quarantine → scan → promote gating (baseline guardrails + non-stub scanner integration validated)
 - Redaction policy: never log tokens or pre-signed URLs
 
 Known gaps / planned hardening (examples):
@@ -469,12 +397,13 @@ Operational signals to monitor:
 > Full spec: `docs/observability.md`
 
 ---
+-->
 
 ## Quickstart (local development)
 
 Requirements:
 
-- Go 1.24+
+- Go 1.26+
 - Docker Engine / Docker Desktop + Compose v2 (optional; only needed for containerized dependencies)
 - curl (optional; only needed for manual API calls)
 
@@ -486,13 +415,21 @@ This is the only **baseline-validated** quickstart today.
 ./file-engine/scripts/dev.sh
 ```
 
-### 2) Optional: run the async folder flow integration test alone
+### 2) One-command onboarding + demo evidence
+
+```bash
+make bootstrap && make demo
+```
+
+This command pair regenerates docs, enforces architecture boundaries, runs doc drift checks, executes the deterministic 5-minute demo script, and prints evidence links for generated docs.
+
+### 3) Optional: run the async folder flow integration test alone
 
 ```bash
 cd file-engine && go test ./tests/integration -run TestAsyncCreateFolderFlow -v
 ```
 
-### 3) Optional: local File Engine run (scaffold-level, for debugging)
+### 4) Optional: local File Engine run (scaffold-level, for debugging)
 
 This brings up Redis/Postgres in Docker and runs the API/worker locally for debugging. REST endpoints include baseline create-folder/task-status and upload lifecycle paths; treat this path as local debugging rather than the canonical baseline verification flow.
 
@@ -533,7 +470,7 @@ Dev JWT (HS256 with `JWT_SECRET=dev-secret`, `sub=dev-admin`, `roles=["admin"]`)
 export JWT="***"
 ```
 
-### 4) Canonical compose entry point
+### 5) Canonical compose entry point
 
 Use **repository-root `docker-compose.yml`** as the primary developer compose entry point.
 
@@ -551,11 +488,20 @@ Use **repository-root `docker-compose.yml`** as the primary developer compose en
 
 ---
 
+## Deployment (dev/stage/prod + kind + rollback)
+
+- Environment profile templates are versioned in `env/.env.dev.example`, `env/.env.stage.example`, and `env/.env.prod.example`.
+- Config/secret separation and required runtime wiring checks are documented in `docs/deployment-profiles.md` and validated with `./scripts/check-runtime-wiring.sh --profile prod`.
+- Kubernetes smoke and rollback drill paths are script-backed via `./scripts/k8s/kind_smoke.sh` and `./scripts/drills/k8s_rollback_drill.sh`.
+- Release versioning + changelog + rollback discipline is documented in `docs/release/versioning-and-rollback.md`.
+
+---
+
 ## Repository structure
 
 ```text
 file-server-management/
-├─ frontend/                  # React / Next.js UI
+├─ frontend/                  # Static thin-client demo console (no Node build)
 ├─ backend/                   # Laravel control plane
 ├─ file-engine/               # Go File Engine (API + Worker)
 └─ docs/
@@ -572,13 +518,12 @@ file-server-management/
 
 ## Disclaimer
 
-This project is a work in progress. Some controls are documented as “target state” and may not be fully implemented yet. Each milestone aims to move documented intent into enforced reality.
+This project is a work in progress. Some controls are documented as “target state” and may not be fully implemented yet.
 
 ---
 
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
-
 <br><hr>
 [🔼 Back to top](#back-to-top)

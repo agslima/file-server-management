@@ -141,3 +141,39 @@ func TestUploadInitiateIdempotencyAndCompleteReplay(t *testing.T) {
 		t.Fatalf("expected replay checksum %q got %q", meta.Checksum, replayMeta.Checksum)
 	}
 }
+
+func TestUploadRateLimitedReturnsThrottledEnvelopeAndAudit(t *testing.T) {
+	secret := "test-secret"
+	verifier, _ := auth.NewJWTVerifier(secret, "", "", "")
+	acl := auth.NewInMemoryACLStore()
+	_ = acl.SetACL(auth.ACL{Path: "/tenants/acme", PrincipalID: "role:viewer", Permissions: map[auth.Permission]bool{auth.PermWrite: true}})
+	st := localstorage.New(t.TempDir())
+	uploads := services.NewUploadService(st, adaptersecurity.NewMalwareScannerStub(), services.UploadPolicy{MaxObjectSizeBytes: 4096, TenantQuotaBytes: 10 * 1024, RequestTimeout: time.Second, RequireCleanScan: true})
+	audit := &uploadAuditSpy{}
+	h := &HTTPServer{Verifier: verifier, ACLStore: acl, Uploads: uploads, UploadAuditor: audit, Tenants: auth.NewInMemoryTenantResolver(map[string][]string{"alice": {"acme"}}), MaxUploadBytes: 4096, UploadTimeout: time.Second, sem: make(chan struct{}, 1), rateByTenant: map[string]int{"acme": 40}, rateByActor: map[string]int{"alice": 20}, rateReset: time.Now().Add(time.Second)}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/objects:upload?path=/tenants/acme/docs/report.txt", bytes.NewBufferString("hello"))
+	req.Header.Set("Authorization", signedToken(t, secret))
+	req.Header.Set("X-Request-Id", "req-throttle-1")
+	rr := httptest.NewRecorder()
+	h.handleUpload(rr, req)
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var body map[string]map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if body["error"]["code"] != "THROTTLED" {
+		t.Fatalf("expected THROTTLED code got %v", body["error"]["code"])
+	}
+	if body["error"]["reason"] != "rate_limited" {
+		t.Fatalf("expected rate_limited reason got %v", body["error"]["reason"])
+	}
+	if body["error"]["retryable"] != true {
+		t.Fatalf("expected retryable true got %v", body["error"]["retryable"])
+	}
+	if len(audit.events) != 1 || audit.events[0] != "upload.throttled" {
+		t.Fatalf("expected upload.throttled audit event, got %#v", audit.events)
+	}
+}

@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 env:
-  GOLANG_VERSION: '1.24.x'
+  GOLANG_VERSION: '1.26.x'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,12 +26,13 @@ jobs:
       infra: ${{ steps.filter.outputs.infra_any_changed }}
       authz: ${{ steps.filter.outputs.authz_any_changed }}
       monitoring: ${{ steps.filter.outputs.monitoring_any_changed }}
+      ledger: ${{ steps.filter.outputs.ledger_any_changed }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           
-      - uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+      - uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         id: filter
         with:
           files_yaml: |
@@ -52,10 +53,15 @@ jobs:
               - 'scripts/wait-for-oidc-token.sh'
               - '.github/workflows/ci.yml'
             authz:
+              - 'file-engine/internal/auth/**'
               - 'file-engine/internal/authz/**'
               - 'file-engine/tests/integration/**authz**'
             monitoring:
               - 'monitoring/**'
+              - 'observability/**'
+              - 'file-engine/internal/observability/**'
+            ledger:
+              - 'docs/capability-ledger.md'
               
   backend:
     name: Test Backend
@@ -65,13 +71,13 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup PHP
-        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: 8.2
       - name: Cache Composer cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.composer/cache
           key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
@@ -94,13 +100,13 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup PHP
-        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: 8.2
       - name: Cache Composer cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.composer/cache
           key: ${{ runner.os }}-composer-lint-${{ hashFiles('backend/composer.lock') }}
@@ -119,7 +125,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate frontend scaffold baseline
         run: |
           test -f frontend/README.md
@@ -133,15 +139,17 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
 
       - name: Cache Go module download + build cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/go/pkg/mod
@@ -155,6 +163,12 @@ jobs:
         
       - name: Run gateway route test (explicit)
         run: cd file-engine && go test -race ./internal/server -run TestGatewayCreateFolderAndGetTaskStatusRoutes -v
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Enforce API compatibility policy + golden fixtures
+        run: ./scripts/check-api-compatibility.sh
     
       - name: Ensure generated gateway artifacts are in sync
         run: |
@@ -176,16 +190,16 @@ jobs:
       checks: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Golang
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
           cache: false
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.9.0
           args: --timeout=5m --color=always # Prevent CI hanging on heavy lint jobs
@@ -198,7 +212,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       
       - name: Doc drift check
         run: ./scripts/doc-drift-check.sh
@@ -220,11 +234,11 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate security reviewer rotation references
         run: |
-          rg -n "Security reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
-          rg -n "Security" docs/ownership-backup-matrix.md
+          grep -n "Security reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
+          grep -n "Security" docs/ownership-backup-matrix.md
 
   platform-reviewer:
     name: Platform reviewer
@@ -234,11 +248,28 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate platform reviewer rotation references
         run: |
-          rg -n "Platform reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
-          rg -n "Platform" docs/ownership-backup-matrix.md
+          grep -n "Platform reviewer" docs/branch-protection-mapping.md docs/capability-ledger.md
+          grep -n "Platform" docs/ownership-backup-matrix.md
+
+  reviewer-continuity:
+    name: Reviewer continuity
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && (needs.changes.outputs.authz == 'true' || needs.changes.outputs.monitoring == 'true' || needs.changes.outputs.ledger == 'true') }}
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Enforce reviewer continuity for critical paths
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/check-reviewer-continuity.sh
 
   sustainability-metrics:
     name: Sustainability metrics
@@ -248,11 +279,11 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Generate sustainability markdown report
         run: ./scripts/sustainability-metrics.sh artifacts/sustainability-metrics.md
       - name: Upload sustainability report artifact
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sustainability-metrics-report
           path: artifacts/sustainability-metrics.md
@@ -268,15 +299,15 @@ jobs:
     env:
       RUN_CL020: "0"
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ env.GOLANG_VERSION }}
 
       - name: Cache Go module download + build cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/go/pkg/mod
@@ -286,12 +317,12 @@ jobs:
             ${{ runner.os }}-go-ledger-${{ env.GOLANG_VERSION }}-
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2.36.0
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: 8.2
 
       - name: Cache Composer cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.composer/cache
           key: ${{ runner.os }}-composer-ledger-${{ hashFiles('backend/composer.lock') }}
@@ -307,6 +338,7 @@ jobs:
       - changes
       - backend
       - lint-backend
+      - frontend
       - file-engine
       - doc-drift
       - ledger-baseline
@@ -355,7 +387,7 @@ jobs:
 
           require_success_or_skipped "backend" "$BACKEND_RESULT"
           require_success_or_skipped "lint-backend" "$LINT_BACKEND_RESULT"
-          # require_success_or_skipped "frontend" "$FRONTEND_RESULT"
+          require_success_or_skipped "frontend" "$FRONTEND_RESULT"
           require_success_or_skipped "file-engine" "$FILE_ENGINE_RESULT"
           require_success_or_skipped "ledger-baseline" "$LEDGER_BASELINE_RESULT"
           require_success_or_skipped "lint-go" "$LINT_GO_RESULT"
@@ -373,7 +405,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run VS-001 docker-compose E2E
         env:
@@ -397,7 +429,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run upload lifecycle docker-compose E2E
         env:
@@ -421,7 +453,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run OIDC docker-compose E2E (bounded)
         env:

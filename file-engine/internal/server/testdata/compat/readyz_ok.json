@@ -1,0 +1,9 @@
+{
+  "ready": true,
+  "checks": [
+    {
+      "name": "queue",
+      "ready": true
+    }
+  ]
+}

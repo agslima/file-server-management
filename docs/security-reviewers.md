@@ -143,3 +143,22 @@ Recommended minimum:
 ## Named backup maintainer
 
 - Backup maintainer for Security (authz/audit): **Agnaldo Silva Lima** (see `docs/ownership-backup-matrix.md`).
+
+---
+
+## Continuous security posture checks (Milestone 12)
+
+Use these commands during security review so posture is continuously re-validated:
+
+```bash
+./scripts/generate-threat-model-diff-prompt.sh
+./scripts/security-regression-suite.sh
+./scripts/supply-chain-checks.sh
+./scripts/drills/rotate-secrets-drill.sh
+```
+
+Focus areas:
+- boundary deltas (handlers/authz/governance),
+- negative security regressions (traversal, IDOR-style tenant crossing, token misuse, tenant confusion, policy drift),
+- supply-chain evidence (toolchain pin checks + SBOM/signing readiness),
+- operational continuity during secret rotation drills.

@@ -20,6 +20,16 @@ From repository root:
 
 This is the only baseline-validated quickstart today (see `docs/capability-ledger.md`).
 
+### One-command onboarding (new contributor fast path)
+
+From repository root:
+
+```bash
+make bootstrap && make demo
+```
+
+This runs docs generation + architecture conformance + doc drift checks, then runs a deterministic demo narrative and prints evidence links.
+
 ---
 
 ## 2) File Engine local run (scaffold-level)

@@ -2,7 +2,7 @@
 
 [//]: # (owner: Project Maintainers)
 [//]: # (review_cadence: Quarterly)
-[//]: # (last_reviewed: 2026-02-21)
+[//]: # (last_reviewed: 2026-02-25)
 
 This document maps branch-protection requirements for `main` across always-required checks, path-scoped checks, and approval ownership.
 
@@ -35,11 +35,12 @@ These checks become required when matching paths are touched:
 | Path scope | Required checks |
 | :-- | :-- |
 | `file-engine/**` | `file-engine-dev` (`./file-engine/scripts/dev.sh`), gateway route race test, generated gateway drift check, `lint-go` |
-| `file-engine/internal/authz/**` | `Security reviewer` |
-| `monitoring/**` | `Platform reviewer` |
+| `file-engine/internal/auth*` | `Security reviewer`, `Reviewer continuity` |
+| `monitoring/**`, `observability/**`, `file-engine/internal/observability/**` | `Platform reviewer`, `Reviewer continuity` |
 | `backend/**` | Backend scaffold contract checks (`composer validate --strict` + VS-001 syntax/smoke checks) |
 | `frontend/**` | Frontend scaffold validation |
 | `docs/**` | Doc drift + governance hygiene checks (always-on) |
+| `docs/capability-ledger.md` | `Reviewer continuity` (maintainer approval) |
 
 Reviewer check expectations:
 
@@ -53,4 +54,5 @@ At each release cadence review:
 1. Confirm all required checks above are configured as branch-protection gates.
 2. Confirm path-scoped checks map to current CI workflow jobs.
 3. Confirm `.github/OWNERS` and `docs/ownership-backup-matrix.md` remain synchronized.
-4. Record the review date by updating `last_reviewed` metadata.
+4. Verify release checklist includes the gate `new maintainer drill executed` with `scripts/drills/new_maintainer_operability_drill.sh` evidence attached.
+5. Record the review date by updating `last_reviewed` metadata.

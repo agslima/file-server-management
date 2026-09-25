@@ -6,6 +6,7 @@ import (
 
 	"github.com/example/file-engine/internal/auth"
 	"github.com/example/file-engine/internal/authz"
+	"github.com/example/file-engine/internal/observability"
 )
 
 func (h *HTTPServer) handleDownload(w http.ResponseWriter, r *http.Request) {
@@ -40,5 +41,7 @@ func (h *HTTPServer) handleDownload(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = rc.Close() }()
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	_, _ = io.Copy(w, rc)
+	n, _ := io.Copy(w, rc)
+	tenantID, _ := authz.TenantFromPath(normalizedPath)
+	observability.DefaultMetrics.AddTenantDownloadedBytes(tenantID, n)
 }

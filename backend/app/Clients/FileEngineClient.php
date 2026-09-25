@@ -1,0 +1,106 @@
+<?php
+
+namespace App\Clients;
+
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
+
+class FileEngineClient
+{
+    public function __construct(
+        private readonly HttpFactory $http,
+        private readonly string $baseUrl,
+        private readonly string $bearerToken = '',
+    ) {
+        if (trim($this->baseUrl) === '' || filter_var($this->baseUrl, FILTER_VALIDATE_URL) === false) {
+            throw new \InvalidArgumentException('FileEngine base URL must be a valid absolute URL.');
+        }
+    }
+
+    private function request(): PendingRequest
+    {
+        if ($this->bearerToken !== '') {
+            return $this->http->withToken($this->bearerToken);
+        }
+
+        return $this->http->withHeaders([]);
+    }
+
+
+    private function buildUrl(string $path): string
+    {
+        return rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+    }
+
+    public function post(string $path, array $payload = [], array $headers = []): Response
+    {
+        return $this->request()->withHeaders($headers)->post($this->buildUrl($path), $payload);
+    }
+
+    public function get(string $path, array $headers = []): Response
+    {
+        return $this->request()->withHeaders($headers)->get($this->buildUrl($path));
+    }
+
+    public function putRaw(string $path, string $content, array $headers = []): Response
+    {
+        return $this->request()->withHeaders($headers)->withBody($content, 'application/octet-stream')->put($this->buildUrl($path));
+    }
+
+    public function postOrThrow(string $path, array $payload = [], array $headers = []): Response
+    {
+        return $this->invokeOrThrow('POST', fn () => $this->post($path, $payload, $headers));
+    }
+
+    public function getOrThrow(string $path, array $headers = []): Response
+    {
+        return $this->invokeOrThrow('GET', fn () => $this->get($path, $headers));
+    }
+
+    public function putRawOrThrow(string $path, string $content, array $headers = []): Response
+    {
+        return $this->invokeOrThrow('PUT', fn () => $this->putRaw($path, $content, $headers));
+    }
+
+    /**
+     * @param callable(): Response $call
+     */
+    private function invokeOrThrow(string $method, callable $call): Response
+    {
+        try {
+            return $this->throwIfError($call());
+        } catch (FileEngineException $exception) {
+            throw $exception;
+        } catch (ConnectionException $exception) {
+            throw new FileEngineException(
+                0,
+                'TRANSPORT_ERROR',
+                'transport_error',
+                true,
+                "file-engine {$method} request failed: {$exception->getMessage()}",
+                $exception,
+            );
+        }
+    }
+
+    private function throwIfError(Response $response): Response
+    {
+        if ($response->successful()) {
+            return $response;
+        }
+
+        $payload = $response->json();
+        $codeValue = (string) Arr::get($payload, 'error.code', 'HTTP_ERROR');
+        $reason = (string) Arr::get($payload, 'error.reason', 'http_error');
+        $retryable = (bool) Arr::get($payload, 'error.retryable', false);
+        $rawMessage = Arr::get($payload, 'error.message');
+        $message = is_string($rawMessage) && $rawMessage !== ''
+            ? $rawMessage
+            : "file-engine returned HTTP {$response->status()}";
+
+        throw new FileEngineException($response->status(), $codeValue, $reason, $retryable, $message);
+    }
+}

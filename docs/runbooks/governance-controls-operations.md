@@ -45,6 +45,8 @@ cd file-engine && go test ./internal/services ./internal/server -run "TestLoadGo
 
 ## Operator admin endpoints
 
+- `POST /admin/v1/governance:policy` payload: `{"policy":{...}}`
+  - updates runtime governance policy and emits governance audit event reason with `before_hash` + `after_hash`.
 - `POST /admin/v1/governance:delete` payload: `{"path":"/tenants/<tenant>/..."}`
   - returns `409` when blocked by retention/legal hold.
 - `POST /admin/v1/lifecycle:cleanup`

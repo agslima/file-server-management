@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "THROTTLED",
+    "reason": "rate_limited",
+    "message": "rate limit exceeded",
+    "tenant_id": "acme",
+    "request_id": "req-compat-throttle",
+    "correlation_id": "req-compat-throttle",
+    "retryable": true
+  }
+}

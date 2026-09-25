@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Server Management Demo Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>File Server Management Demo Console</h1>
+      <p>Thin client for product UX + operator UX end-to-end demos.</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Environment</h2>
+        <div class="grid two">
+          <label>Backend base URL <input id="backendBase" value="http://localhost:8081/api" /></label>
+          <label>File Engine admin base URL <input id="engineBase" value="http://localhost:8080" /></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>13.1 Minimal Product UI</h2>
+        <div class="grid two">
+          <label>OIDC username <input id="username" value="demo-user" /></label>
+          <label>OIDC password <input id="password" type="password" value="demo-password" /></label>
+        </div>
+        <button id="loginBtn">Login (OIDC)</button>
+        <p id="loginStatus" class="status">Not authenticated.</p>
+
+        <div class="grid two">
+          <label>Tenant selector
+            <select id="tenant">
+              <option value="acme">acme</option>
+              <option value="globex">globex</option>
+              <option value="initech">initech</option>
+            </select>
+          </label>
+          <label>Folder path <input id="folderPath" value="/tenants/acme/docs/demo-folder" /></label>
+        </div>
+
+        <div class="actions">
+          <button id="createFolderBtn">Create folder</button>
+          <button id="taskStatusBtn">Get latest task status</button>
+        </div>
+
+        <label>Upload path <input id="uploadPath" value="/tenants/acme/docs/demo-upload.txt" /></label>
+        <label>Upload content <textarea id="uploadBody">hello from demo thin client</textarea></label>
+        <button id="uploadBtn">Run upload flow (initiate → chunk → complete)</button>
+
+        <div class="grid three">
+          <label>Move source <input id="moveSource" value="/tenants/acme/docs/demo-upload.txt" /></label>
+          <label>Move destination <input id="moveDestination" value="/tenants/acme/docs/demo-upload-renamed.txt" /></label>
+          <button id="moveBtn">Move object</button>
+        </div>
+
+        <div class="grid two">
+          <label>Delete path <input id="deletePath" value="/tenants/acme/docs/demo-upload-renamed.txt" /></label>
+          <label>Restore path <input id="restorePath" value="/tenants/acme/quarantine/demo-upload-renamed.txt" /></label>
+        </div>
+
+        <div class="actions">
+          <button id="deleteBtn">Delete object</button>
+          <button id="restoreBtn">Restore quarantined object</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>13.2 Operator UI (admin-lite)</h2>
+        <div class="actions">
+          <button id="dlqBtn">List scan DLQ</button>
+          <button id="retryDlqBtn">Retry first DLQ entry</button>
+          <button id="cleanupBtn">Run quarantine cleanup</button>
+        </div>
+
+        <div class="grid two">
+          <label>Effective policy tenant <input id="policyTenant" value="acme" /></label>
+          <button id="effectivePolicyBtn">View effective policy</button>
+        </div>
+
+        <div class="actions">
+          <button id="driftBtn">Check drift status</button>
+          <button id="evidenceBtn">Generate evidence pack pointer</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Results</h2>
+        <pre id="output">Ready.</pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

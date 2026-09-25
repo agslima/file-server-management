@@ -1,0 +1,43 @@
+# ==================================
+# GLOBAL MAINTAINER OWNERSHIP
+# ==================================
+*                               @agslima
+
+# ==================================
+# CRITICAL DOMAIN OWNERSHIP (10.2.1)
+# ==================================
+
+# Auth/AuthZ
+/file-engine/internal/auth*      @agslima
+/file-engine/internal/authz/**   @agslima
+
+# Upload pipeline + scanner
+/file-engine/internal/services/upload_service.go         @agslima
+/file-engine/internal/services/upload_service_test.go    @agslima
+/file-engine/internal/adapters/security/**               @agslima
+/scripts/check-malware-runbook.sh                        @agslima
+
+# Audit sink + DLQ
+/file-engine/internal/app/tasks/audit_*                  @agslima
+/file-engine/internal/services/upload_service.go         @agslima
+/scripts/drills/audit_sink_catchup_drill.sh              @agslima
+/scripts/drills/restore-scan-dlq-drill.sh                @agslima
+
+# Observability/alerts/drills
+/monitoring/**                                           @agslima
+/observability/**                                        @agslima
+/file-engine/internal/observability/**                   @agslima
+/scripts/validate-observability-assets.sh                @agslima
+/scripts/drills/observability_incident_drill.sh          @agslima
+/scripts/drills/production_deployment_hardening.sh       @agslima
+
+# Governance controls
+/docs/governance.md                                      @agslima
+/docs/capability-ledger.md                               @agslima
+/docs/branch-protection-mapping.md                       @agslima
+/scripts/check-owners-governance.sh                      @agslima
+
+# CI/workflow governance
+/.github/workflows/**                                    @agslima
+/.github/OWNERS                                          @agslima
+/.github/codeowners                                      @agslima

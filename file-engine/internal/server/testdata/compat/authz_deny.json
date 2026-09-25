@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "AUTHZ_DENY",
+    "reason": "tenant_mapping_denied",
+    "tenant_id": "beta",
+    "request_id": "req-123",
+    "correlation_id": "req-123"
+  }
+}
