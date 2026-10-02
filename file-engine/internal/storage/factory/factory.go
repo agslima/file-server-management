@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	gs "github.com/example/file-engine/internal/adapters/storage/gcs"
-	ls "github.com/example/file-engine/internal/adapters/storage/local"
-	ss "github.com/example/file-engine/internal/adapters/storage/s3"
-	"github.com/example/file-engine/internal/storage"
+	gs "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/gcs"
+	ls "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/local"
+	ss "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/s3"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
 )
 
 type Config struct {

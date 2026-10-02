@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
 )
 
 func TestNewDualLayerAuditEmitterWithNoOptionalSinksFallsBackToLog(t *testing.T) {

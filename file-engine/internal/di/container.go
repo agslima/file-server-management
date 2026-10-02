@@ -11,17 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/example/file-engine/internal/adapters/queue/redisq"
-	adaptersecurity "github.com/example/file-engine/internal/adapters/security"
-	"github.com/example/file-engine/internal/app/tasks"
-	"github.com/example/file-engine/internal/auth"
-	"github.com/example/file-engine/internal/config"
-	"github.com/example/file-engine/internal/handlers"
-	"github.com/example/file-engine/internal/identity"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/server"
-	"github.com/example/file-engine/internal/services"
-	storagefactory "github.com/example/file-engine/internal/storage/factory"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/queue/redisq"
+	adaptersecurity "github.com/agslima/file-server-management/file-engine/internal/adapters/security"
+	"github.com/agslima/file-server-management/file-engine/internal/app/tasks"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/config"
+	"github.com/agslima/file-server-management/file-engine/internal/handlers"
+	"github.com/agslima/file-server-management/file-engine/internal/identity"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/server"
+	"github.com/agslima/file-server-management/file-engine/internal/services"
+	storagefactory "github.com/agslima/file-server-management/file-engine/internal/storage/factory"
 )
 
 type Container struct {

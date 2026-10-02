@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/file-engine/internal/auth"
-	"github.com/example/file-engine/internal/authz"
-	"github.com/example/file-engine/internal/observability"
-	"github.com/example/file-engine/internal/security"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/authz"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/security"
 )
 
 type UploadAuditEmitter interface {

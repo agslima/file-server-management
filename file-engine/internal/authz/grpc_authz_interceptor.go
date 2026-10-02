@@ -3,7 +3,7 @@ package authz
 import (
 	"context"
 
-	"github.com/example/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/file-engine/internal/auth"
-	"github.com/example/file-engine/internal/storage"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
 	jwtgo "github.com/golang-jwt/jwt/v5"
 )
 

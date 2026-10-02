@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/file-engine/internal/adapters/queue/redisq"
-	securityadp "github.com/example/file-engine/internal/adapters/security"
-	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
-	"github.com/example/file-engine/internal/app/tasks"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/services"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/queue/redisq"
+	securityadp "github.com/agslima/file-server-management/file-engine/internal/adapters/security"
+	localstorage "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/local"
+	"github.com/agslima/file-server-management/file-engine/internal/app/tasks"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/services"
 )
 
 type uploadMutationExecutor struct{ svc *services.UploadService }

@@ -3,8 +3,8 @@ package local
 import (
 	"testing"
 
-	"github.com/example/file-engine/internal/adapters/storage/contract"
-	"github.com/example/file-engine/internal/storage"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/storage/contract"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
 )
 
 func TestLocalStorageContractSuite(t *testing.T) {

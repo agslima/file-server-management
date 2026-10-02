@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	pb "github.com/example/file-engine/pkg/generated"
+	pb "github.com/agslima/file-server-management/file-engine/pkg/generated"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc"

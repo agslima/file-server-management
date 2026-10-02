@@ -1,6 +1,6 @@
 syntax = "proto3";
 package fileengine;
-option go_package = "github.com/example/file-engine/pkg/generated;generated";
+option go_package = "github.com/agslima/file-server-management/file-engine/pkg/generated;generated";
 
 import "annotations.proto";
 import "google/protobuf/timestamp.proto";

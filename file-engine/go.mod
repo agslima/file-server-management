@@ -1,4 +1,4 @@
-module github.com/example/file-engine
+module github.com/agslima/file-server-management/file-engine
 
 go 1.26.0
 

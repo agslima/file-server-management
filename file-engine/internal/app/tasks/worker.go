@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/file-engine/internal/adapters/queue/redisq"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/queue/redisq"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
 )
 
 const (

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/file-engine/internal/adapters/storage/contract"
-	"github.com/example/file-engine/internal/storage"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/storage/contract"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
 )
 
 func TestGCSStorageContractSuite(t *testing.T) {

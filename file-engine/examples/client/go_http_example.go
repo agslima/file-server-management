@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/example/file-engine/client"
+	"github.com/agslima/file-server-management/file-engine/client"
 )
 
 func main() {

@@ -4,9 +4,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/example/file-engine/internal/auth"
-	"github.com/example/file-engine/internal/authz"
-	"github.com/example/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/authz"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
 )
 
 func (h *HTTPServer) handleDownload(w http.ResponseWriter, r *http.Request) {

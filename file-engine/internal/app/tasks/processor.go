@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/example/file-engine/internal/adapters/queue/redisq"
-	"github.com/example/file-engine/internal/storage"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/queue/redisq"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
 )
 
 type MutationExecutor interface {

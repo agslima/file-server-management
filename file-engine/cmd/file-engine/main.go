@@ -7,10 +7,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/example/file-engine/internal/config"
-	"github.com/example/file-engine/internal/di"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/config"
+	"github.com/agslima/file-server-management/file-engine/internal/di"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
 )
 
 func main() {
