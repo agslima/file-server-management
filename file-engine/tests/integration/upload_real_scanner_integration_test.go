@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	adaptersecurity "github.com/example/file-engine/internal/adapters/security"
-	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/observability"
-	"github.com/example/file-engine/internal/services"
+	adaptersecurity "github.com/agslima/file-server-management/file-engine/internal/adapters/security"
+	localstorage "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/local"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/services"
 )
 
 func TestUploadRealScannerIntegrationEmitsMetricsAndLogs(t *testing.T) {

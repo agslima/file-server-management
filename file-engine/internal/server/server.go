@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/example/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -19,13 +19,13 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	"github.com/example/file-engine/internal/auth"
-	"github.com/example/file-engine/internal/authz"
-	"github.com/example/file-engine/internal/identity"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/services"
-	"github.com/example/file-engine/internal/storage"
-	pb "github.com/example/file-engine/pkg/generated"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/authz"
+	"github.com/agslima/file-server-management/file-engine/internal/identity"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/services"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
+	pb "github.com/agslima/file-server-management/file-engine/pkg/generated"
 )
 
 type GRPCServer struct {

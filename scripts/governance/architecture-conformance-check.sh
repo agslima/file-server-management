@@ -37,13 +37,13 @@ if rg -n "database/sql|jackc/pgx|gorm.io|sqlx" file-engine/internal/handlers fil
   exit 1
 fi
 
-if rg -n "github.com/example/file-engine/internal/adapters/(storage|security|fs|config)" file-engine/internal/handlers file-engine/internal/server --glob "*.go" --glob "!*_test.go" >/tmp/arch_conformance_transport_adapter_hits.txt; then
+if rg -n "github.com/agslima/file-server-management/file-engine/internal/adapters/(storage|security|fs|config)" file-engine/internal/handlers file-engine/internal/server --glob "*.go" --glob "!*_test.go" >/tmp/arch_conformance_transport_adapter_hits.txt; then
   echo "transport layer must not import storage/security/fs/config adapters directly:" >&2
   cat /tmp/arch_conformance_transport_adapter_hits.txt >&2
   exit 1
 fi
 
-if rg -n "github.com/example/file-engine/internal/(delivery|server|handlers)/" file-engine/internal/services --glob '*.go' >/tmp/arch_conformance_service_transport_hits.txt; then
+if rg -n "github.com/agslima/file-server-management/file-engine/internal/(delivery|server|handlers)/" file-engine/internal/services --glob '*.go' >/tmp/arch_conformance_service_transport_hits.txt; then
   echo "service layer must not import transport packages:" >&2
   cat /tmp/arch_conformance_service_transport_hits.txt >&2
   exit 1
@@ -103,7 +103,7 @@ for item in "${required_boundary_entries[@]}"; do
   fi
 done
 
-if rg -n "github.com/example/file-engine/internal/infra/logger" file-engine --glob '*.go' >/tmp/arch_conformance_logger_hits.txt; then
+if rg -n "github.com/agslima/file-server-management/file-engine/internal/infra/logger" file-engine --glob '*.go' >/tmp/arch_conformance_logger_hits.txt; then
   echo "deprecated logger import detected:" >&2
   cat /tmp/arch_conformance_logger_hits.txt >&2
   exit 1

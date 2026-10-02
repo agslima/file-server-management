@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
-	"github.com/example/file-engine/internal/app/ports"
-	"github.com/example/file-engine/internal/services"
+	localstorage "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/local"
+	"github.com/agslima/file-server-management/file-engine/internal/app/ports"
+	"github.com/agslima/file-server-management/file-engine/internal/services"
 )
 
 type staticScanner struct {

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/file-engine/internal/app/ports"
+	"github.com/agslima/file-server-management/file-engine/internal/app/ports"
 )
 
 func TestBuildMalwareScannerFromEnvDefaultsToStub(t *testing.T) {

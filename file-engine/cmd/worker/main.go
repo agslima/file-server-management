@@ -9,12 +9,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/example/file-engine/internal/adapters/queue/redisq"
-	"github.com/example/file-engine/internal/app/tasks"
-	"github.com/example/file-engine/internal/config"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/observability"
-	storagefactory "github.com/example/file-engine/internal/storage/factory"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/queue/redisq"
+	"github.com/agslima/file-server-management/file-engine/internal/app/tasks"
+	"github.com/agslima/file-server-management/file-engine/internal/config"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
+	storagefactory "github.com/agslima/file-server-management/file-engine/internal/storage/factory"
 )
 
 func main() {

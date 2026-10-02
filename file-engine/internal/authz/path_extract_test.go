@@ -3,7 +3,7 @@ package authz
 import (
 	"testing"
 
-	pb "github.com/example/file-engine/pkg/generated"
+	pb "github.com/agslima/file-server-management/file-engine/pkg/generated"
 )
 
 func TestExtractPathNormalizesCreateFolder(t *testing.T) {

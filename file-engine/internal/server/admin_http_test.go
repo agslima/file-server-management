@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	adaptersecurity "github.com/example/file-engine/internal/adapters/security"
-	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
-	"github.com/example/file-engine/internal/app/ports"
-	"github.com/example/file-engine/internal/auth"
-	"github.com/example/file-engine/internal/services"
+	adaptersecurity "github.com/agslima/file-server-management/file-engine/internal/adapters/security"
+	localstorage "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/local"
+	"github.com/agslima/file-server-management/file-engine/internal/app/ports"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/services"
 	jwtgo "github.com/golang-jwt/jwt/v5"
 )
 

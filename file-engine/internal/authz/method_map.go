@@ -1,6 +1,6 @@
 package authz
 
-import "github.com/example/file-engine/internal/auth"
+import "github.com/agslima/file-server-management/file-engine/internal/auth"
 
 // MethodPermission maps gRPC full method name -> required permission.
 // Keep this list in sync with the proto/handlers so new RPCs are authorized.

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/file-engine/internal/adapters/queue/redisq"
-	localstorage "github.com/example/file-engine/internal/adapters/storage/local"
-	"github.com/example/file-engine/internal/app/tasks"
-	"github.com/example/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/queue/redisq"
+	localstorage "github.com/agslima/file-server-management/file-engine/internal/adapters/storage/local"
+	"github.com/agslima/file-server-management/file-engine/internal/app/tasks"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
 )
 
 type inMemoryQueue struct {

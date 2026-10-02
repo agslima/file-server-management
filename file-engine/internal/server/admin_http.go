@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/file-engine/internal/auth"
-	"github.com/example/file-engine/internal/observability"
-	"github.com/example/file-engine/internal/security"
-	"github.com/example/file-engine/internal/services"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/security"
+	"github.com/agslima/file-server-management/file-engine/internal/services"
 )
 
 func (h *HTTPServer) requireAdmin(w http.ResponseWriter, r *http.Request) (auth.AuthContext, bool) {

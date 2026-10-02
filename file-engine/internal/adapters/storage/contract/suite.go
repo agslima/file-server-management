@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/file-engine/internal/storage"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
 )
 
 type StorageFactory func(t *testing.T) storage.Storage

@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	fsadapter "github.com/example/file-engine/internal/adapters/fs"
+	fsadapter "github.com/agslima/file-server-management/file-engine/internal/adapters/fs"
 )
 
 type LocalFs struct {

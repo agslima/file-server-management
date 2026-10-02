@@ -3,7 +3,7 @@ package di
 import (
 	"testing"
 
-	"github.com/example/file-engine/internal/auth"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

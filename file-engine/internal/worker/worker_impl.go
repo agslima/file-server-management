@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/example/file-engine/internal/adapters/fs/local"
+	"github.com/agslima/file-server-management/file-engine/internal/adapters/fs/local"
 	"github.com/redis/go-redis/v9"
 )
 

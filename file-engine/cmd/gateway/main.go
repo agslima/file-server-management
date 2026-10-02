@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	pb "github.com/example/file-engine/pkg/generated"
+	pb "github.com/agslima/file-server-management/file-engine/pkg/generated"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

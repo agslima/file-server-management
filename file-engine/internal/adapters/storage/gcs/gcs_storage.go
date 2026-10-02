@@ -13,7 +13,7 @@ import (
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
 
-	istorage "github.com/example/file-engine/internal/storage"
+	istorage "github.com/agslima/file-server-management/file-engine/internal/storage"
 )
 
 type GCSStorage struct {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/example/file-engine/internal/auth"
-	pb "github.com/example/file-engine/pkg/generated"
+	"github.com/agslima/file-server-management/file-engine/internal/auth"
+	pb "github.com/agslima/file-server-management/file-engine/pkg/generated"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

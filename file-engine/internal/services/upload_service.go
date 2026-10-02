@@ -17,11 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/example/file-engine/internal/app/ports"
-	"github.com/example/file-engine/internal/logger"
-	"github.com/example/file-engine/internal/observability"
-	"github.com/example/file-engine/internal/security"
-	"github.com/example/file-engine/internal/storage"
+	"github.com/agslima/file-server-management/file-engine/internal/app/ports"
+	"github.com/agslima/file-server-management/file-engine/internal/logger"
+	"github.com/agslima/file-server-management/file-engine/internal/observability"
+	"github.com/agslima/file-server-management/file-engine/internal/security"
+	"github.com/agslima/file-server-management/file-engine/internal/storage"
 )
 
 type UploadPolicy struct {
