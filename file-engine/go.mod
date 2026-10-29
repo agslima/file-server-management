@@ -11,13 +11,13 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.32.0
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/pkg/sftp v1.13.11
+	github.com/pkg/sftp v1.13.12
 	github.com/redis/go-redis/v9 v9.23.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	golang.org/x/crypto v0.58.0
-	google.golang.org/api v0.307.0
+	google.golang.org/api v0.308.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20261012220534-4341edf3f941
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b
 	google.golang.org/grpc v1.86.0-dev
