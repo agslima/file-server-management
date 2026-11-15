@@ -123,8 +123,8 @@ Review limitations:
 
 Documentation and operational impact
 
-- [ ] "docs/capability-ledger.md" updated when implementation status or evidence changed.
-- [ ] "docs/setup.md" updated when setup or local development procedures changed.
+- [ ] [`docs/capability-ledger.md`](docs/capability-ledger.md) updated when implementation status or evidence changed.
+- [ ] [`docs/setup.md`](docs/setup.md) updated when setup or local development procedures changed.
 - [ ] Relevant API, architecture, security, or operational documentation updated.
 - [ ] No documentation changes required.
 
