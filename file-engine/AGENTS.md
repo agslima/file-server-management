@@ -91,6 +91,53 @@ If storage/auth/authz behavior changes, add/adjust tests in:
 - Keep correlation IDs propagated across request -> task -> worker logs.
 - Avoid introducing bypasses that allow direct client-controlled tenant scoping.
 
+
+### Adversarial Review Focus
+
+When reviewing changes within the File Engine, prioritize the following risks:
+
+**Filesystem and storage security**
+- Path traversal, symlink attacks, and namespace escapes.
+- Tenant boundary violations.
+- Unsafe file creation, deletion, rename, and overwrite operations.
+- Race conditions between validation and filesystem mutation.
+- Unsafe storage adapter behavior.
+
+**Authentication and authorization**
+- Missing or incorrectly applied authorization checks.
+- Client-controlled tenant or actor identifiers.
+- Privilege escalation and identity normalization errors.
+- Authorization bypasses during asynchronous execution.
+
+**Upload lifecycle**
+- Quarantine and malware scanning bypasses.
+- Invalid or inconsistent upload state transitions.
+- Duplicate completion and replay behavior.
+- Partial uploads, expiration, and interrupted processing.
+- Unsafe promotion of staged files.
+
+**Worker reliability**
+- Duplicate task execution and idempotency.
+- Retry behavior and failure recovery.
+- Concurrent filesystem mutations.
+- Task state consistency and error propagation.
+- Missing audit events and correlation context.
+
+**API and contract integrity**
+- Protobuf mirror synchronization.
+- Generated gateway artifact consistency.
+- HTTP/JSON and gRPC compatibility.
+- Request validation and error semantics.
+
+**Performance**
+- Memory allocation and buffering in streaming operations.
+- Unbounded concurrency and resource consumption.
+- Storage and database bottlenecks.
+- Queue processing latency.
+
+Prioritize security and correctness over micro-optimizations.
+Never weaken authorization, isolation, or filesystem safety to improve performance.
+
 ## Storage & Worker Notes
 
 - Local storage path behavior depends on `FILE_BASE_ROOT`.
