@@ -29,6 +29,44 @@ If guidance conflicts, prefer the same order above.
   - Routes/config: minimal, declarative wiring
 - Avoid introducing target-state claims in code comments, docs, or PR text without validation evidence.
 
+
+### Adversarial Review Focus
+
+When reviewing backend changes, prioritize:
+
+**Authorization and identity**
+- Authentication and authorization enforcement.
+- Tenant isolation and ownership validation.
+- Prevention of client-controlled privilege escalation.
+- Consistency between backend identity and File Engine identity.
+
+**API boundaries**
+- Request validation and Form Request usage.
+- Incorrect HTTP status codes and error responses.
+- API contract compatibility.
+- Safe propagation of correlation and tracing headers.
+
+**Control-plane orchestration**
+- Correct task creation and status tracking.
+- Failure handling when the File Engine is unavailable.
+- Retry behavior and duplicate requests.
+- Timeout handling and partial failures.
+
+**Database integrity**
+- Transaction boundaries.
+- Migration reversibility.
+- Referential integrity.
+- Concurrent updates and inconsistent task states.
+
+**Security and observability**
+- Sensitive information exposure.
+- Secret and token leakage.
+- Auditability of privileged operations.
+- Actionable error logging without sensitive payloads.
+
+Do not introduce backend filesystem mutations.
+All filesystem execution remains the responsibility of the File Engine.
+
 ## Validation baseline for backend changes
 
 Run from repository root unless noted:
